@@ -7,7 +7,7 @@ from pyln.proto.onion import TlvPayload
 from pyln.testing.utils import EXPERIMENTAL_DUAL_FUND, FUNDAMOUNT, scid_to_int
 from utils import (
     DEVELOPER, wait_for, only_one, sync_blockheight, TIMEOUT,
-    VALGRIND, mine_funding_to_announce, first_scid, anchor_expected
+    VALGRIND, mine_funding_to_announce, first_scid
 )
 import copy
 import os
@@ -70,6 +70,9 @@ def test_pay(node_factory):
     # Test listsendpays indexed by bolt11.
     payments = l1.rpc.listsendpays(inv)['payments']
     assert len(payments) == 1 and payments[0]['payment_preimage'] == preimage
+
+    # Make sure they're completely settled, so accounting correct.
+    wait_for(lambda: only_one(l1.rpc.listpeerchannels()['channels'])['htlcs'] == [])
 
     # Check channels apy summary view of channel activity
     apys_1 = l1.rpc.bkpr_channelsapy()['channels_apy']
@@ -699,10 +702,14 @@ def test_sendpay(node_factory):
 
 
 @unittest.skipIf(TEST_NETWORK != 'regtest', "The reserve computation is bitcoin specific")
-def test_sendpay_cant_afford(node_factory):
+@pytest.mark.parametrize("anchors", [False, True])
+def test_sendpay_cant_afford(node_factory, anchors):
     # Set feerates the same so we don't have to wait for update.
-    l1, l2 = node_factory.line_graph(2, fundamount=10**6,
-                                     opts={'feerates': (15000, 15000, 15000, 15000)})
+    opts = {'feerates': (15000, 15000, 15000, 15000)}
+    if anchors:
+        opts['experimental-anchors'] = None
+
+    l1, l2 = node_factory.line_graph(2, fundamount=10**6, opts=opts)
 
     # Can't pay more than channel capacity.
     with pytest.raises(RpcError):
@@ -726,7 +733,7 @@ def test_sendpay_cant_afford(node_factory):
     # assert False
 
     # This is the fee, which needs to be taken into account for l1.
-    if anchor_expected(l1, l2):
+    if anchors:
         # option_anchor_outputs
         available = 10**9 - 44700000
     else:
@@ -3546,7 +3553,7 @@ def test_keysend_strip_tlvs(node_factory):
         opts=[
             {
                 # Not needed, just for listconfigs test.
-                'accept-htlc-tlv-types': '133773310,99990',
+                'accept-htlc-tlv-type': [133773310, 99990],
                 "plugin": os.path.join(os.path.dirname(__file__), "plugins/sphinx-receiver.py"),
             },
             {
@@ -3556,7 +3563,7 @@ def test_keysend_strip_tlvs(node_factory):
     )
 
     # Make sure listconfigs works here
-    assert l1.rpc.listconfigs()['accept-htlc-tlv-types'] == '133773310,99990'
+    assert l1.rpc.listconfigs('accept-htlc-tlv-type')['configs']['accept-htlc-tlv-type']['values_int'] == [133773310, 99990]
 
     # l1 is configured to accept, so l2 should still filter them out
     l1.rpc.keysend(l2.info['id'], amt, extratlvs={133773310: 'FEEDC0DE'})
@@ -5397,3 +5404,17 @@ def test_fetchinvoice_with_no_quantity(node_factory):
     inv = inv['invoice']
     decode_inv = l2.rpc.decode(inv)
     assert decode_inv['invreq_quantity'] == 2, f'`invreq_quantity` in the invoice did not match, received {decode_inv["quantity"]}, expected 2'
+
+
+def test_invoice_pay_desc_with_quotes(node_factory):
+    """Test that we can decode and pay invoice where hashed description contains double quotes"""
+    l1, l2 = node_factory.line_graph(2)
+    description = '[["text/plain","Funding @odell on stacker.news"],["text/identifier","odell@stacker.news"]]'
+
+    invoice = l2.rpc.invoice(label="test12345", amount_msat=1000,
+                             description=description, deschashonly=True)["bolt11"]
+
+    l1.rpc.decodepay(invoice, description)
+
+    # pay an invoice
+    l1.rpc.pay(invoice, description=description)

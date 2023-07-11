@@ -6,11 +6,11 @@ from pathlib import Path
 from pyln.client import RpcError
 from pyln.testing.btcproxy import BitcoinRpcProxy
 from pyln.testing.gossip import GossipStore
+from pyln.testing import grpc
 from collections import OrderedDict
 from decimal import Decimal
 from pyln.client import LightningRpc
 from pyln.client import Millisatoshi
-from pyln.testing import grpc
 
 import ephemeral_port_reserve  # type: ignore
 import json
@@ -406,7 +406,6 @@ class BitcoinD(TailableProc):
         self.cmd_line = [
             'bitcoind',
             '-datadir={}'.format(bitcoin_dir),
-            '-debuglogfile={}'.format(os.path.join(bitcoin_dir, "log")),  # So it can be put to stdout
             '-printtoconsole',
             '-server',
             '-logtimestamps',
@@ -434,7 +433,7 @@ class BitcoinD(TailableProc):
             drop_unused_port(self.reserved_rpcport)
 
     def start(self):
-        TailableProc.start(self, stdout_redir=False)
+        TailableProc.start(self)
         self.wait_for_log("Done loading", timeout=TIMEOUT)
 
         logging.info("BitcoinD started")
@@ -882,8 +881,8 @@ class LightningNode(object):
             creds,
             options=(('grpc.ssl_target_name_override', 'cln'),)
         )
-        from pyln.testing import node_pb2_grpc as nodegrpc
-        return nodegrpc.NodeStub(channel)
+        from pyln import grpc as clnpb
+        return clnpb.NodeStub(channel)
 
     def connect(self, remote_node):
         self.rpc.connect(remote_node.info['id'], '127.0.0.1', remote_node.port)
@@ -1282,7 +1281,7 @@ class LightningNode(object):
         # Hack so we can mutate the txid: pass it in a list
         def rbf_or_txid_broadcast(txids):
             # RBF onchain txid d4b597505b543a4b8b42ab4d481fd7a533febb7e7df150ca70689e6d046612f7 (fee 6564sat) with txid 979878b8f855d3895d1cd29bd75a60b21492c4842e38099186a8e649bee02c7c (fee 8205sat)
-            line = self.daemon.is_in_log("RBF onchain txid {}".format(txids[-1]))
+            line = self.daemon.is_in_log("RBF (onchain|HTLC) txid {}".format(txids[-1]))
             if line is not None:
                 newtxid = re.search(r'with txid ([0-9a-fA-F]*)', line).group(1)
                 txids.append(newtxid)
@@ -1349,10 +1348,17 @@ class LightningNode(object):
 
     def config(self, config_name):
         try:
-            opt = self.rpc.listconfigs(config_name)
-            return opt[config_name]
+            config = self.rpc.listconfigs(config_name)
         except RpcError:
             return None
+
+        config = config['configs'][config_name]
+        for valfield in ('set',
+                         'value_str', 'value_bool', 'value_int',
+                         'values_str', 'values_bool', 'values_int'):
+            if valfield in config:
+                return config[valfield]
+        raise ValueError("Unknown value in config {}".format(config))
 
     def dev_pay(self, bolt11, amount_msat=None, label=None, riskfactor=None,
                 maxfeepercent=None, retry_for=None,

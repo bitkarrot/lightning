@@ -165,6 +165,11 @@ void json_add_unsaved_channel(struct json_stream *response,
 			       OPT_ANCHOR_OUTPUTS))
 		json_add_string(response, NULL, "option_anchor_outputs");
 
+	if (feature_negotiated(channel->peer->ld->our_features,
+			       channel->peer->their_features,
+			       OPT_ANCHORS_ZERO_FEE_HTLC_TX))
+		json_add_string(response, NULL, "option_anchors_zero_fee_htlc_tx");
+
 	json_array_end(response);
 	json_object_end(response);
 }
@@ -1261,14 +1266,19 @@ wallet_commit_channel(struct lightningd *ld,
 					     &commitment_feerate);
 	channel->min_possible_feerate = commitment_feerate;
 	channel->max_possible_feerate = commitment_feerate;
-	channel->scb = tal(channel, struct scb_chan);
-	channel->scb->id = channel->dbid;
-	channel->scb->addr = channel->peer->addr;
-	channel->scb->node_id = channel->peer->id;
-	channel->scb->funding = *funding;
-	channel->scb->cid = channel->cid;
-	channel->scb->funding_sats = total_funding;
+	if (channel->peer->addr.itype == ADDR_INTERNAL_WIREADDR) {
+		channel->scb = tal(channel, struct scb_chan);
+		channel->scb->id = channel->dbid;
+		channel->scb->unused = 0;
+		channel->scb->addr = channel->peer->addr.u.wireaddr.wireaddr;
+		channel->scb->node_id = channel->peer->id;
+		channel->scb->funding = *funding;
+		channel->scb->cid = channel->cid;
+		channel->scb->funding_sats = total_funding;
+	} else
+		channel->scb = NULL;
 
+	tal_free(channel->type);
 	channel->type = channel_type_dup(channel, type);
 	channel->scb->type = channel_type_dup(channel->scb, type);
 
@@ -1277,7 +1287,7 @@ wallet_commit_channel(struct lightningd *ld,
 			= tal_steal(channel, our_upfront_shutdown_script);
 	else
 		channel->shutdown_scriptpubkey[LOCAL]
-			= p2wpkh_for_keyidx(channel, channel->peer->ld,
+			= p2tr_for_keyidx(channel, channel->peer->ld,
 					    channel->final_key_idx);
 
 	 /* Can't have gotten their alias for this channel yet. */
@@ -2602,7 +2612,7 @@ static void validate_input_unspent(struct bitcoind *bitcoind,
 		struct bitcoin_outpoint outpoint;
 
 		assert(pv->next_index > 0);
-		wally_tx_input_get_outpoint(&pv->psbt->tx->inputs[pv->next_index - 1],
+		wally_psbt_input_get_outpoint(&pv->psbt->inputs[pv->next_index - 1],
 					    &outpoint);
 
 		err = tal_fmt(pv, "Requested only confirmed"
@@ -2629,8 +2639,8 @@ static void validate_input_unspent(struct bitcoind *bitcoind,
 		if (serial % 2 != pv->role_to_validate)
 			continue;
 
-		wally_tx_input_get_outpoint(&pv->psbt->tx->inputs[i],
-					    &outpoint);
+		wally_psbt_input_get_outpoint(&pv->psbt->inputs[i],
+					      &outpoint);
 		pv->next_index = i + 1;
 
 		/* Confirm input is in a block */
@@ -2842,24 +2852,6 @@ static struct command_result *json_openchannel_init(struct command *cmd,
 		return command_fail(cmd, FUNDING_UNKNOWN_PEER, "Unknown peer");
 	}
 
-	channel = peer_any_unsaved_channel(peer, NULL);
-	if (!channel) {
-		channel = new_unsaved_channel(peer,
-					      peer->ld->config.fee_base,
-					      peer->ld->config.fee_per_satoshi);
-
-		/* We derive initial channel_id *now*, so we can tell it to
-		 * connectd. */
-		derive_tmp_channel_id(&channel->cid,
-				      &channel->local_basepoints.revocation);
-	}
-
-	if (channel->open_attempt
-	     || !list_empty(&channel->inflights))
-		return command_fail(cmd, FUNDING_STATE_INVALID,
-				    "Channel funding in-progress. %s",
-				    channel_state_name(channel));
-
 	if (!feature_negotiated(cmd->ld->our_features,
 			        peer->their_features,
 				OPT_DUAL_FUND)) {
@@ -2898,6 +2890,20 @@ static struct command_result *json_openchannel_init(struct command *cmd,
 				    type_to_string(tmpctx, struct wally_psbt,
 						   psbt));
 
+	if (socketpair(AF_LOCAL, SOCK_STREAM, 0, fds) != 0) {
+		return command_fail(cmd, FUND_MAX_EXCEEDED,
+				    "Failed to create socketpair: %s",
+				    strerror(errno));
+	}
+
+	/* Now we can't fail, create channel */
+	channel = new_unsaved_channel(peer,
+				      peer->ld->config.fee_base,
+				      peer->ld->config.fee_per_satoshi);
+	/* We derive initial channel_id *now*, so we can tell it to connectd. */
+	derive_tmp_channel_id(&channel->cid,
+			      &channel->local_basepoints.revocation);
+
 	/* Get a new open_attempt going */
 	channel->opener = LOCAL;
 	channel->open_attempt = oa = new_channel_open_attempt(channel);
@@ -2935,6 +2941,7 @@ static struct command_result *json_openchannel_init(struct command *cmd,
 					   oa->our_upfront_shutdown_script,
 					   our_upfront_shutdown_script_wallet_index,
 					   *feerate_per_kw,
+					   unilateral_feerate(cmd->ld->topology, true),
 					   *feerate_per_kw_funding,
 					   channel->channel_flags,
 					   amount_sat_zero(*request_amt) ?
@@ -2942,12 +2949,6 @@ static struct command_result *json_openchannel_init(struct command *cmd,
 					   get_block_height(cmd->ld->topology),
 					   false,
 					   rates);
-
-	if (socketpair(AF_LOCAL, SOCK_STREAM, 0, fds) != 0) {
-		return command_fail(cmd, FUND_MAX_EXCEEDED,
-				    "Failed to create socketpair: %s",
-				    strerror(errno));
-	}
 
 	/* Start dualopend! */
 	if (!peer_start_dualopend(peer, new_peer_fd(cmd, fds[0]), channel)) {
@@ -3424,24 +3425,14 @@ static struct command_result *json_queryrates(struct command *cmd,
 				    peer->connected == PEER_DISCONNECTED
 				    ? "not connected" : "still connecting");
 
-	/* FIXME: This is wrong: we should always create a new channel? */
-	channel = peer_any_unsaved_channel(peer, NULL);
-	if (!channel) {
-		channel = new_unsaved_channel(peer,
-					      peer->ld->config.fee_base,
-					      peer->ld->config.fee_per_satoshi);
+	channel = new_unsaved_channel(peer,
+				      peer->ld->config.fee_base,
+				      peer->ld->config.fee_per_satoshi);
 
-		/* We derive initial channel_id *now*, so we can tell it to
-		 * connectd. */
-		derive_tmp_channel_id(&channel->cid,
-				      &channel->local_basepoints.revocation);
-	}
-
-	if (channel->open_attempt
-	     || !list_empty(&channel->inflights))
-		return command_fail(cmd, FUNDING_STATE_INVALID,
-				    "Channel funding in-progress. %s",
-				    channel_state_name(channel));
+	/* We derive initial channel_id *now*, so we can tell it to
+	 * connectd. */
+	derive_tmp_channel_id(&channel->cid,
+			      &channel->local_basepoints.revocation);
 
 	if (!feature_negotiated(cmd->ld->our_features,
 			        peer->their_features,
@@ -3493,6 +3484,7 @@ static struct command_result *json_queryrates(struct command *cmd,
 					   oa->our_upfront_shutdown_script,
 					   our_upfront_shutdown_script_wallet_index,
 					   *feerate_per_kw,
+					   unilateral_feerate(cmd->ld->topology, true),
 					   *feerate_per_kw_funding,
 					   channel->channel_flags,
 					   amount_sat_zero(*request_amt) ?

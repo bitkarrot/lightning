@@ -63,7 +63,8 @@
             "ipv6": 2,
             "local socket": 0,
             "torv2": 3,
-            "torv3": 4
+            "torv3": 4,
+            "websocket": 5
         },
         "GetrouteRouteStyle": {
             "tlv": 0
@@ -272,7 +273,8 @@
         "NewaddrAddresstype": {
             "all": 2,
             "bech32": 0,
-            "p2sh-segwit": 1
+            "p2sh-segwit": 1,
+            "p2tr": 3
         },
         "PayStatus": {
             "complete": 0,
@@ -586,6 +588,7 @@
             "Feerates.onchain_fee_estimates.htlc_timeout_satoshis": 4,
             "Feerates.onchain_fee_estimates.mutual_close_satoshis": 2,
             "Feerates.onchain_fee_estimates.opening_channel_satoshis": 1,
+            "Feerates.onchain_fee_estimates.unilateral_close_nonanchor_satoshis": 6,
             "Feerates.onchain_fee_estimates.unilateral_close_satoshis": 3
         },
         "FeeratesPerkb": {
@@ -598,6 +601,7 @@
             "Feerates.perkb.mutual_close": 4,
             "Feerates.perkb.opening": 3,
             "Feerates.perkb.penalty": 8,
+            "Feerates.perkb.unilateral_anchor_close": 11,
             "Feerates.perkb.unilateral_close": 5
         },
         "FeeratesPerkbEstimates": {
@@ -615,6 +619,7 @@
             "Feerates.perkw.mutual_close": 4,
             "Feerates.perkw.opening": 3,
             "Feerates.perkw.penalty": 8,
+            "Feerates.perkw.unilateral_anchor_close": 11,
             "Feerates.perkw.unilateral_close": 5
         },
         "FeeratesPerkwEstimates": {
@@ -660,6 +665,8 @@
             "FundPsbt.locktime": 6,
             "FundPsbt.min_witness_weight": 7,
             "FundPsbt.minconf": 4,
+            "FundPsbt.nonwrapped": 9,
+            "FundPsbt.opening_anchor_channel": 10,
             "FundPsbt.reserve": 5,
             "FundPsbt.satoshi": 1,
             "FundPsbt.startweight": 3
@@ -1257,7 +1264,8 @@
         },
         "NewaddrResponse": {
             "NewAddr.bech32": 1,
-            "NewAddr.p2sh-segwit": 2
+            "NewAddr.p2sh-segwit": 2,
+            "NewAddr.p2tr": 3
         },
         "PayRequest": {
             "Pay.amount_msat": 13,
@@ -1293,6 +1301,14 @@
         },
         "PingResponse": {
             "Ping.totlen": 1
+        },
+        "PreapproveinvoiceRequest": {
+            "PreApproveInvoice.bolt11": 1
+        },
+        "PreapprovekeysendRequest": {
+            "PreApproveKeysend.amount_msat": 3,
+            "PreApproveKeysend.destination": 1,
+            "PreApproveKeysend.payment_hash": 2
         },
         "SendcustommsgRequest": {
             "SendCustomMsg.msg": 2,
@@ -1456,6 +1472,7 @@
             "UtxoPsbt.feerate": 2,
             "UtxoPsbt.locktime": 6,
             "UtxoPsbt.min_witness_weight": 7,
+            "UtxoPsbt.opening_anchor_channel": 10,
             "UtxoPsbt.reserve": 5,
             "UtxoPsbt.reservedok": 8,
             "UtxoPsbt.satoshi": 1,
@@ -2524,6 +2541,10 @@
             "added": "pre-v0.10.1",
             "deprecated": false
         },
+        "Feerates.onchain_fee_estimates.unilateral_close_nonanchor_satoshis": {
+            "added": "v23.08",
+            "deprecated": false
+        },
         "Feerates.onchain_fee_estimates.unilateral_close_satoshis": {
             "added": "pre-v0.10.1",
             "deprecated": false
@@ -2580,6 +2601,10 @@
             "added": "pre-v0.10.1",
             "deprecated": false
         },
+        "Feerates.perkb.unilateral_anchor_close": {
+            "added": "v23.08",
+            "deprecated": false
+        },
         "Feerates.perkb.unilateral_close": {
             "added": "pre-v0.10.1",
             "deprecated": false
@@ -2634,6 +2659,10 @@
         },
         "Feerates.perkw.penalty": {
             "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Feerates.perkw.unilateral_anchor_close": {
+            "added": "v23.08",
             "deprecated": false
         },
         "Feerates.perkw.unilateral_close": {
@@ -2756,6 +2785,14 @@
             "added": "pre-v0.10.1",
             "deprecated": false
         },
+        "FundPsbt.nonwrapped": {
+            "added": "v23.02",
+            "deprecated": false
+        },
+        "FundPsbt.opening_anchor_channel": {
+            "added": "v23.08",
+            "deprecated": false
+        },
         "FundPsbt.psbt": {
             "added": "pre-v0.10.1",
             "deprecated": false
@@ -2865,7 +2902,7 @@
             "deprecated": null
         },
         "Getinfo.address[]": {
-            "added": "pre-v0.10.1",
+            "added": "v23.02",
             "deprecated": false
         },
         "Getinfo.address[].address": {
@@ -4608,6 +4645,10 @@
             "added": "pre-v0.10.1",
             "deprecated": "v23.02"
         },
+        "NewAddr.p2tr": {
+            "added": "v23.08",
+            "deprecated": false
+        },
         "Pay": {
             "added": "pre-v0.10.1",
             "deprecated": null
@@ -4710,6 +4751,30 @@
         },
         "Ping.totlen": {
             "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "PreApproveInvoice": {
+            "added": "v23.02",
+            "deprecated": null
+        },
+        "PreApproveInvoice.bolt11": {
+            "added": "v23.02",
+            "deprecated": false
+        },
+        "PreApproveKeysend": {
+            "added": "v23.02",
+            "deprecated": null
+        },
+        "PreApproveKeysend.amount_msat": {
+            "added": "v23.02",
+            "deprecated": false
+        },
+        "PreApproveKeysend.destination": {
+            "added": "v23.02",
+            "deprecated": false
+        },
+        "PreApproveKeysend.payment_hash": {
+            "added": "v23.02",
             "deprecated": false
         },
         "SendCustomMsg": {
@@ -5142,6 +5207,10 @@
         },
         "UtxoPsbt.min_witness_weight": {
             "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "UtxoPsbt.opening_anchor_channel": {
+            "added": "v23.08",
             "deprecated": false
         },
         "UtxoPsbt.psbt": {

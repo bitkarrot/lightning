@@ -656,7 +656,15 @@ static struct command_result *getchaininfo(struct command *cmd,
                                            const char *buf UNUSED,
                                            const jsmntok_t *toks UNUSED)
 {
-	if (!param(cmd, buf, toks, NULL))
+	/* FIXME(vincenzopalazzo): Inside the JSON request,
+         * we have the current height known from Core Lightning. Therefore,
+         * we can attempt to prevent a crash if the 'getchaininfo' function returns
+         * a lower height than the one we already know, by waiting for a short period.
+         * However, I currently don't have a better idea on how to handle this situation. */
+	u32 *height UNUSED;
+	if (!param(cmd, buf, toks,
+		   p_req("last_height", param_number, &height),
+		   NULL))
 		return command_param_failed();
 
 	start_bitcoin_cli(NULL, cmd, process_getblockchaininfo, false,
@@ -675,6 +683,14 @@ static void json_add_feerate(struct json_stream *result, const char *fieldname,
 			     const struct estimatefees_stash *stash,
 			     uint64_t value)
 {
+	/* Anthony Towns reported signet had a 900kbtc fee block, and then
+	 * CLN got upset scanning feerate.  It expects a u32. */
+	if (value > 0xFFFFFFFF) {
+		plugin_log(cmd->plugin, LOG_UNUSUAL,
+			   "Feerate %"PRIu64" is ridiculous: trimming to 32 bites",
+			   value);
+		value = 0xFFFFFFFF;
+	}
 	/* 0 is special, it means "unknown" */
 	if (value && value < stash->perkb_floor) {
 		plugin_log(cmd->plugin, LOG_DBG,
@@ -1117,7 +1133,7 @@ int main(int argc, char *argv[])
 				  "bitcoind RPC host to connect to",
 				  charp_option, &bitcoind->rpcconnect),
 		    plugin_option("bitcoin-rpcport",
-				  "string",
+				  "int",
 				  "bitcoind RPC host's port",
 				  charp_option, &bitcoind->rpcport),
 		    plugin_option("bitcoin-retry-timeout",

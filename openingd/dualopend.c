@@ -359,7 +359,7 @@ static void open_abort(struct state *state,
 	 * status. */
 	peer_billboard(true, errmsg);
 	msg = towire_tx_abort(NULL, &state->channel_id,
-			      (u8 *)tal_dup_arr(errmsg, char, errmsg,
+			      (u8 *)tal_dup_arr(tmpctx, char, errmsg,
 					  strlen(errmsg), 0));
 	peer_write(state->pps, take(msg));
 
@@ -969,8 +969,8 @@ static char *check_balances(const tal_t *ctx,
 
 static bool is_segwit_output(struct wally_tx_output *output)
 {
-	const u8 *wit_prog = wally_tx_output_get_script(tmpctx, output);
-	return is_p2wsh(wit_prog, NULL) || is_p2wpkh(wit_prog, NULL);
+	const u8 *script = wally_tx_output_get_script(tmpctx, output);
+	return is_known_segwit_scripttype(script);
 }
 
 static void set_remote_upfront_shutdown(struct state *state,
@@ -2499,8 +2499,12 @@ static void accepter_start(struct state *state, const u8 *oc2_msg)
 				 state->min_effective_htlc_capacity,
 				 &tx_state->remoteconf,
 				 &tx_state->localconf,
-				 anchors_negotiated(state->our_features,
-						    state->their_features),
+				 feature_negotiated(state->our_features,
+						    state->their_features,
+						    OPT_ANCHOR_OUTPUTS),
+				 feature_negotiated(state->our_features,
+						    state->their_features,
+						    OPT_ANCHORS_ZERO_FEE_HTLC_TX),
 				 &err_reason)) {
 		negotiation_failed(state, "%s", err_reason);
 		return;
@@ -2929,13 +2933,15 @@ static void opener_start(struct state *state, u8 *msg)
 	struct tx_state *tx_state = state->tx_state;
 	struct amount_sat *requested_lease;
 	size_t locktime;
+	u32 nonanchor_feerate, anchor_feerate;
 
 	if (!fromwire_dualopend_opener_init(state, msg,
 					    &tx_state->psbt,
 					    &tx_state->opener_funding,
 					    &state->upfront_shutdown_script[LOCAL],
 					    &state->local_upfront_shutdown_wallet_index,
-					    &state->feerate_per_kw_commitment,
+					    &nonanchor_feerate,
+					    &anchor_feerate,
 					    &tx_state->feerate_per_kw_funding,
 					    &state->channel_flags,
 					    &requested_lease,
@@ -2961,6 +2967,12 @@ static void opener_start(struct state *state, u8 *msg)
 						   state->our_features,
 						   state->their_features);
 	open_tlv->channel_type = state->channel_type->features;
+
+	/* Given channel type, which feerate do we use? */
+	if (channel_type_has_anchors(state->channel_type))
+		state->feerate_per_kw_commitment = anchor_feerate;
+	else
+		state->feerate_per_kw_commitment = nonanchor_feerate;
 
 	if (requested_lease)
 		state->requested_lease = tal_steal(state, requested_lease);
@@ -3297,8 +3309,12 @@ static void opener_start(struct state *state, u8 *msg)
 				 state->min_effective_htlc_capacity,
 				 &tx_state->remoteconf,
 				 &tx_state->localconf,
-				 anchors_negotiated(state->our_features,
-						    state->their_features),
+				 feature_negotiated(state->our_features,
+						    state->their_features,
+						    OPT_ANCHOR_OUTPUTS),
+				 feature_negotiated(state->our_features,
+						    state->their_features,
+						    OPT_ANCHORS_ZERO_FEE_HTLC_TX),
 				 &err_reason)) {
 		negotiation_failed(state, "%s", err_reason);
 		return;
@@ -3607,8 +3623,12 @@ static void rbf_local_start(struct state *state, u8 *msg)
 				 state->min_effective_htlc_capacity,
 				 &tx_state->remoteconf,
 				 &tx_state->localconf,
-				 anchors_negotiated(state->our_features,
-						    state->their_features),
+				 feature_negotiated(state->our_features,
+						    state->their_features,
+						    OPT_ANCHOR_OUTPUTS),
+				 feature_negotiated(state->our_features,
+						    state->their_features,
+						    OPT_ANCHORS_ZERO_FEE_HTLC_TX),
 				 &err_reason)) {
 		open_abort(state, "%s", err_reason);
 		return;
@@ -3745,8 +3765,12 @@ static void rbf_remote_start(struct state *state, const u8 *rbf_msg)
 				 state->min_effective_htlc_capacity,
 				 &tx_state->remoteconf,
 				 &tx_state->localconf,
-				 anchors_negotiated(state->our_features,
-						    state->their_features),
+				 feature_negotiated(state->our_features,
+						    state->their_features,
+						    OPT_ANCHOR_OUTPUTS),
+				 feature_negotiated(state->our_features,
+						    state->their_features,
+						    OPT_ANCHORS_ZERO_FEE_HTLC_TX),
 				 &err_reason)) {
 		negotiation_failed(state, "%s", err_reason);
 		goto free_rbf_ctx;

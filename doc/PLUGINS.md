@@ -99,7 +99,8 @@ example:
       "type": "string",
       "default": "World",
       "description": "What name should I call you?",
-      "deprecated": false
+      "deprecated": false,
+	  "dynamic": false
     }
   ],
   "rpcmethods": [
@@ -143,7 +144,7 @@ example:
 During startup the `options` will be added to the list of command line options that
 `lightningd` accepts. If any `options` "name" is already taken startup will abort. The above will add a `--greeting` option with a
 default value of `World` and the specified description. *Notice that
-currently string, integers, bool, and flag options are supported.*
+currently string, integers, bool, and flag options are supported.*  If an option specifies `dynamic`: `true`, then it should allow a `setvalue` call for that option after initialization.
 
 The `rpcmethods` are methods that will be exposed via `lightningd`'s
 JSON-RPC over Unix-Socket interface, just like the builtin
@@ -207,11 +208,12 @@ There are currently four supported option 'types':
   - string: a string
   - bool: a boolean
   - int: parsed as a signed integer (64-bit)
-  - flag: no-arg flag option. Is boolean under the hood. Defaults to false.
+  - flag: no-arg flag option. Presented as `true` if config specifies it.
 
 In addition, string and int types can specify `"multi": true` to indicate
 they can be specified multiple times.  These will always be represented in
-`init` as a (possibly empty) JSON array.
+`init` as a (possibly empty) JSON array.  "multi" flag types do not make 
+sense.
 
 Nota bene: if a `flag` type option is not set, it will not appear
 in the options set that is passed to the plugin.
@@ -229,7 +231,6 @@ Here's an example option set, as sent in response to `getmanifest`
     {
       "name": "run-hot",
       "type": "flag",
-      "default": None,  // defaults to false
       "description": "If set, overclocks plugin"
     },
     {
@@ -253,11 +254,6 @@ Here's an example option set, as sent in response to `getmanifest`
     }
   ],
 ```
-
-**Note**: `lightningd` command line options are only parsed during startup and their
-values are not remembered when the plugin is stopped or killed.
-For dynamic plugins started with `plugin start`, options can be
-passed as extra arguments to that [command][lightning-plugin].
 
 
 #### Custom notifications
@@ -517,9 +513,11 @@ to a peer is established. `direction` is either `"in"` or `"out"`.
 
 ```json
 {
-  "id": "02f6725f9c1c40333b67faea92fd211c183050f28df32cac3f9d69685fe9665432",
-  "direction": "in",
-  "address": "1.2.3.4:1234"
+  "connect": {
+    "id": "02f6725f9c1c40333b67faea92fd211c183050f28df32cac3f9d69685fe9665432",
+    "direction": "in",
+    "address": "1.2.3.4:1234"
+  }
 }
 ```
 
@@ -530,7 +528,9 @@ to a peer was lost.
 
 ```json
 {
-  "id": "02f6725f9c1c40333b67faea92fd211c183050f28df32cac3f9d69685fe9665432"
+  "disconnect": {
+    "id": "02f6725f9c1c40333b67faea92fd211c183050f28df32cac3f9d69685fe9665432"
+  }
 }
 ```
 
@@ -848,7 +848,7 @@ current accounts (`account_id` matches the `account_id` emitted from
 
 ```json
 {
-    "balance_snapshots": [
+    "balance_snapshot": [
 	{
 	    'node_id': '035d2b1192dfba134e10e540875d366ebc8bc353d5aa766b80c090b39c3a5d885d',
 	    'blockheight': 101,
@@ -888,7 +888,7 @@ throughout the node's life as new blocks appear.
 
 ```json
 {
-    "block": {
+    "block_added": {
       "hash": "000000000000000000034bdb3c01652a0aa8f63d32f949313d55af2509f9d245",
       "height": 753304
     }
@@ -1716,7 +1716,8 @@ data. Each plugin must follow the below specification for `lightningd` to operat
 ### `getchaininfo`
 
 Called at startup, it's used to check the network `lightningd` is operating on and to
-get the sync status of the backend.
+get the sync status of the backend. Optionally, the plugins can use `last_height` to
+make sure that the Bitcoin backend is not behind core lightning.
 
 The plugin must respond to `getchaininfo` with the following fields:
     - `chain` (string), the network name as introduced in bip70

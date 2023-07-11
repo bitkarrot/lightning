@@ -39,9 +39,6 @@ struct gossip_store {
 	 * should it be needed */
 	struct routing_state *rstate;
 
-	/* This is daemon->peers for handling to update_peers_broadcast_index */
-	struct list_head *peers;
-
 	/* Disable compaction if we encounter an error during a prior
 	 * compaction */
 	bool disable_compaction;
@@ -263,8 +260,7 @@ close_old:
 	return 0;
 }
 
-struct gossip_store *gossip_store_new(struct routing_state *rstate,
-				      struct list_head *peers)
+struct gossip_store *gossip_store_new(struct routing_state *rstate)
 {
 	struct gossip_store *gs = tal(rstate, struct gossip_store);
 	gs->count = gs->deleted = 0;
@@ -278,7 +274,6 @@ struct gossip_store *gossip_store_new(struct routing_state *rstate,
 	gs->rstate = rstate;
 	gs->disable_compaction = false;
 	gs->len = sizeof(gs->version);
-	gs->peers = peers;
 
 	tal_add_destructor(gs, gossip_store_destroy);
 
@@ -598,15 +593,27 @@ static u32 delete_by_index(struct gossip_store *gs, u32 index, int type)
 	/* Should never try to overwrite version */
 	assert(index);
 
-#if DEVELOPER
-	const u8 *msg = gossip_store_get(tmpctx, gs, index);
-	assert(fromwire_peektype(msg) == type);
-#endif
+	/* FIXME: debugging a gs->len overrun issue reported in #6270 */
+	if (pread(gs->fd, &hdr, sizeof(hdr), index) != sizeof(hdr)) {
+		status_broken("gossip_store overrun during delete @%u type: %i"
+			      " gs->len: %"PRIu64, index, type, gs->len);
+		return index;
+	}
+	if (index + sizeof(struct gossip_hdr) +
+	    be16_to_cpu(hdr.belen) > gs->len) {
+		status_broken("gossip_store overrun during delete @%u type: %i"
+			      " gs->len: %"PRIu64, index, type, gs->len);
+		return index;
+	}
 
-	if (pread(gs->fd, &hdr, sizeof(hdr), index) != sizeof(hdr))
-		status_failed(STATUS_FAIL_INTERNAL_ERROR,
-			      "Failed reading flags & len to delete @%u: %s",
-			      index, strerror(errno));
+	const u8 *msg = gossip_store_get(tmpctx, gs, index);
+	if(fromwire_peektype(msg) != type) {
+		status_broken("asked to delete type %i @%u but store contains "
+			      "%i (gs->len=%"PRIu64"): %s",
+			      type, index, fromwire_peektype(msg),
+			      gs->len, tal_hex(tmpctx, msg));
+		return index;
+	}
 
 	assert((be16_to_cpu(hdr.beflags) & GOSSIP_STORE_DELETED_BIT) == 0);
 	hdr.beflags |= cpu_to_be16(GOSSIP_STORE_DELETED_BIT);

@@ -9,8 +9,6 @@
 //! this file was generated from
 
 use serde::{Deserialize, Serialize};
-pub use requests::*;
-pub use responses::*;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "method", content = "params")]
@@ -69,6 +67,8 @@ pub enum Request {
 	SignInvoice(requests::SigninvoiceRequest),
 	SignMessage(requests::SignmessageRequest),
 	Stop(requests::StopRequest),
+	PreApproveKeysend(requests::PreapprovekeysendRequest),
+	PreApproveInvoice(requests::PreapproveinvoiceRequest),
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -128,6 +128,8 @@ pub enum Response {
 	SignInvoice(responses::SigninvoiceResponse),
 	SignMessage(responses::SignmessageResponse),
 	Stop(responses::StopResponse),
+	PreApproveKeysend(responses::PreapprovekeysendResponse),
+	PreApproveInvoice(responses::PreapproveinvoiceResponse),
 }
 
 
@@ -365,7 +367,7 @@ pub mod requests {
 	    type Response = super::responses::CreateinvoiceResponse;
 	}
 
-	#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
+	#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 	pub enum DatastoreMode {
 	    #[serde(rename = "must-create")]
 	    MUST_CREATE,
@@ -392,6 +394,19 @@ pub mod requests {
 	        }
 	    }
 	}
+
+	impl ToString for DatastoreMode {
+	    fn to_string(&self) -> String {
+	        match self {
+	            DatastoreMode::MUST_CREATE => "MUST_CREATE",
+	            DatastoreMode::MUST_REPLACE => "MUST_REPLACE",
+	            DatastoreMode::CREATE_OR_REPLACE => "CREATE_OR_REPLACE",
+	            DatastoreMode::MUST_APPEND => "MUST_APPEND",
+	            DatastoreMode::CREATE_OR_APPEND => "CREATE_OR_APPEND",
+	        }.to_string()
+	    }
+	}
+
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct DatastoreRequest {
 	    pub key: Vec<String>,
@@ -474,7 +489,7 @@ pub mod requests {
 	    type Response = super::responses::DelexpiredinvoiceResponse;
 	}
 
-	#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
+	#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 	pub enum DelinvoiceStatus {
 	    #[serde(rename = "paid")]
 	    PAID,
@@ -495,6 +510,17 @@ pub mod requests {
 	        }
 	    }
 	}
+
+	impl ToString for DelinvoiceStatus {
+	    fn to_string(&self) -> String {
+	        match self {
+	            DelinvoiceStatus::PAID => "PAID",
+	            DelinvoiceStatus::EXPIRED => "EXPIRED",
+	            DelinvoiceStatus::UNPAID => "UNPAID",
+	        }.to_string()
+	    }
+	}
+
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct DelinvoiceRequest {
 	    pub label: String,
@@ -619,7 +645,7 @@ pub mod requests {
 	    type Response = super::responses::SendonionResponse;
 	}
 
-	#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
+	#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 	pub enum ListsendpaysStatus {
 	    #[serde(rename = "pending")]
 	    PENDING,
@@ -640,6 +666,17 @@ pub mod requests {
 	        }
 	    }
 	}
+
+	impl ToString for ListsendpaysStatus {
+	    fn to_string(&self) -> String {
+	        match self {
+	            ListsendpaysStatus::PENDING => "PENDING",
+	            ListsendpaysStatus::COMPLETE => "COMPLETE",
+	            ListsendpaysStatus::FAILED => "FAILED",
+	        }.to_string()
+	    }
+	}
+
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct ListsendpaysRequest {
 	    #[serde(skip_serializing_if = "Option::is_none")]
@@ -781,10 +818,12 @@ pub mod requests {
 	    type Response = super::responses::WaitsendpayResponse;
 	}
 
-	#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
+	#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 	pub enum NewaddrAddresstype {
 	    #[serde(rename = "bech32")]
 	    BECH32,
+	    #[serde(rename = "p2tr")]
+	    P2TR,
 	    #[serde(rename = "all")]
 	    ALL,
 	}
@@ -794,11 +833,23 @@ pub mod requests {
 	    fn try_from(c: i32) -> Result<NewaddrAddresstype, anyhow::Error> {
 	        match c {
 	    0 => Ok(NewaddrAddresstype::BECH32),
-	    1 => Ok(NewaddrAddresstype::ALL),
+	    1 => Ok(NewaddrAddresstype::P2TR),
+	    2 => Ok(NewaddrAddresstype::ALL),
 	            o => Err(anyhow::anyhow!("Unknown variant {} for enum NewaddrAddresstype", o)),
 	        }
 	    }
 	}
+
+	impl ToString for NewaddrAddresstype {
+	    fn to_string(&self) -> String {
+	        match self {
+	            NewaddrAddresstype::BECH32 => "BECH32",
+	            NewaddrAddresstype::P2TR => "P2TR",
+	            NewaddrAddresstype::ALL => "ALL",
+	        }.to_string()
+	    }
+	}
+
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct NewaddrRequest {
 	    #[serde(skip_serializing_if = "Option::is_none")]
@@ -883,6 +934,10 @@ pub mod requests {
 	    pub min_witness_weight: Option<u32>,
 	    #[serde(skip_serializing_if = "Option::is_none")]
 	    pub excess_as_change: Option<bool>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub nonwrapped: Option<bool>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub opening_anchor_channel: Option<bool>,
 	}
 
 	impl From<FundpsbtRequest> for Request {
@@ -945,6 +1000,8 @@ pub mod requests {
 	    pub min_witness_weight: Option<u32>,
 	    #[serde(skip_serializing_if = "Option::is_none")]
 	    pub excess_as_change: Option<bool>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub opening_anchor_channel: Option<bool>,
 	}
 
 	impl From<UtxopsbtRequest> for Request {
@@ -1089,7 +1146,7 @@ pub mod requests {
 	    type Response = super::responses::DisconnectResponse;
 	}
 
-	#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
+	#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 	pub enum FeeratesStyle {
 	    #[serde(rename = "perkb")]
 	    PERKB,
@@ -1107,6 +1164,16 @@ pub mod requests {
 	        }
 	    }
 	}
+
+	impl ToString for FeeratesStyle {
+	    fn to_string(&self) -> String {
+	        match self {
+	            FeeratesStyle::PERKB => "PERKB",
+	            FeeratesStyle::PERKW => "PERKW",
+	        }.to_string()
+	    }
+	}
+
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct FeeratesRequest {
 	    // Path `Feerates.style`
@@ -1186,7 +1253,7 @@ pub mod requests {
 	    type Response = super::responses::GetrouteResponse;
 	}
 
-	#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
+	#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 	pub enum ListforwardsStatus {
 	    #[serde(rename = "offered")]
 	    OFFERED,
@@ -1210,6 +1277,18 @@ pub mod requests {
 	        }
 	    }
 	}
+
+	impl ToString for ListforwardsStatus {
+	    fn to_string(&self) -> String {
+	        match self {
+	            ListforwardsStatus::OFFERED => "OFFERED",
+	            ListforwardsStatus::SETTLED => "SETTLED",
+	            ListforwardsStatus::LOCAL_FAILED => "LOCAL_FAILED",
+	            ListforwardsStatus::FAILED => "FAILED",
+	        }.to_string()
+	    }
+	}
+
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct ListforwardsRequest {
 	    #[serde(skip_serializing_if = "Option::is_none")]
@@ -1230,7 +1309,7 @@ pub mod requests {
 	    type Response = super::responses::ListforwardsResponse;
 	}
 
-	#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
+	#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 	pub enum ListpaysStatus {
 	    #[serde(rename = "pending")]
 	    PENDING,
@@ -1251,6 +1330,17 @@ pub mod requests {
 	        }
 	    }
 	}
+
+	impl ToString for ListpaysStatus {
+	    fn to_string(&self) -> String {
+	        match self {
+	            ListpaysStatus::PENDING => "PENDING",
+	            ListpaysStatus::COMPLETE => "COMPLETE",
+	            ListpaysStatus::FAILED => "FAILED",
+	        }.to_string()
+	    }
+	}
+
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct ListpaysRequest {
 	    #[serde(skip_serializing_if = "Option::is_none")]
@@ -1375,6 +1465,42 @@ pub mod requests {
 	    type Response = super::responses::StopResponse;
 	}
 
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct PreapprovekeysendRequest {
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub destination: Option<PublicKey>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub payment_hash: Option<String>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub amount_msat: Option<Amount>,
+	}
+
+	impl From<PreapprovekeysendRequest> for Request {
+	    fn from(r: PreapprovekeysendRequest) -> Self {
+	        Request::PreApproveKeysend(r)
+	    }
+	}
+
+	impl IntoRequest for PreapprovekeysendRequest {
+	    type Response = super::responses::PreapprovekeysendResponse;
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct PreapproveinvoiceRequest {
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub bolt11: Option<String>,
+	}
+
+	impl From<PreapproveinvoiceRequest> for Request {
+	    fn from(r: PreapproveinvoiceRequest) -> Self {
+	        Request::PreApproveInvoice(r)
+	    }
+	}
+
+	impl IntoRequest for PreapproveinvoiceRequest {
+	    type Response = super::responses::PreapproveinvoiceResponse;
+	}
+
 }
 
 
@@ -1393,8 +1519,8 @@ pub mod responses {
 	    pub invoice: String,
 	}
 
-	/// Type of connection
-	#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
+	/// Type of connection (until 23.08, `websocket` was also allowed)
+	#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 	pub enum GetinfoAddressType {
 	    #[serde(rename = "dns")]
 	    DNS,
@@ -1406,8 +1532,6 @@ pub mod responses {
 	    TORV2,
 	    #[serde(rename = "torv3")]
 	    TORV3,
-	    #[serde(rename = "websocket")]
-	    WEBSOCKET,
 	}
 
 	impl TryFrom<i32> for GetinfoAddressType {
@@ -1419,11 +1543,23 @@ pub mod responses {
 	    2 => Ok(GetinfoAddressType::IPV6),
 	    3 => Ok(GetinfoAddressType::TORV2),
 	    4 => Ok(GetinfoAddressType::TORV3),
-	    5 => Ok(GetinfoAddressType::WEBSOCKET),
 	            o => Err(anyhow::anyhow!("Unknown variant {} for enum GetinfoAddressType", o)),
 	        }
 	    }
 	}
+
+	impl ToString for GetinfoAddressType {
+	    fn to_string(&self) -> String {
+	        match self {
+	            GetinfoAddressType::DNS => "DNS",
+	            GetinfoAddressType::IPV4 => "IPV4",
+	            GetinfoAddressType::IPV6 => "IPV6",
+	            GetinfoAddressType::TORV2 => "TORV2",
+	            GetinfoAddressType::TORV3 => "TORV3",
+	        }.to_string()
+	    }
+	}
+
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct GetinfoAddress {
 	    // Path `Getinfo.address[].type`
@@ -1435,10 +1571,12 @@ pub mod responses {
 	}
 
 	/// Type of connection
-	#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
+	#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 	pub enum GetinfoBindingType {
 	    #[serde(rename = "local socket")]
 	    LOCAL_SOCKET,
+	    #[serde(rename = "websocket")]
+	    WEBSOCKET,
 	    #[serde(rename = "ipv4")]
 	    IPV4,
 	    #[serde(rename = "ipv6")]
@@ -1454,14 +1592,29 @@ pub mod responses {
 	    fn try_from(c: i32) -> Result<GetinfoBindingType, anyhow::Error> {
 	        match c {
 	    0 => Ok(GetinfoBindingType::LOCAL_SOCKET),
-	    1 => Ok(GetinfoBindingType::IPV4),
-	    2 => Ok(GetinfoBindingType::IPV6),
-	    3 => Ok(GetinfoBindingType::TORV2),
-	    4 => Ok(GetinfoBindingType::TORV3),
+	    1 => Ok(GetinfoBindingType::WEBSOCKET),
+	    2 => Ok(GetinfoBindingType::IPV4),
+	    3 => Ok(GetinfoBindingType::IPV6),
+	    4 => Ok(GetinfoBindingType::TORV2),
+	    5 => Ok(GetinfoBindingType::TORV3),
 	            o => Err(anyhow::anyhow!("Unknown variant {} for enum GetinfoBindingType", o)),
 	        }
 	    }
 	}
+
+	impl ToString for GetinfoBindingType {
+	    fn to_string(&self) -> String {
+	        match self {
+	            GetinfoBindingType::LOCAL_SOCKET => "LOCAL_SOCKET",
+	            GetinfoBindingType::WEBSOCKET => "WEBSOCKET",
+	            GetinfoBindingType::IPV4 => "IPV4",
+	            GetinfoBindingType::IPV6 => "IPV6",
+	            GetinfoBindingType::TORV2 => "TORV2",
+	            GetinfoBindingType::TORV3 => "TORV3",
+	        }.to_string()
+	    }
+	}
+
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct GetinfoBinding {
 	    // Path `Getinfo.binding[].type`
@@ -1478,7 +1631,8 @@ pub mod responses {
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct GetinfoResponse {
 	    pub id: PublicKey,
-	    pub alias: String,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub alias: Option<String>,
 	    pub color: String,
 	    pub num_peers: u32,
 	    pub num_pending_channels: u32,
@@ -1492,7 +1646,8 @@ pub mod responses {
 	    pub blockheight: u32,
 	    pub network: String,
 	    pub fees_collected_msat: Amount,
-	    pub address: Vec<GetinfoAddress>,
+	    #[serde(skip_serializing_if = "crate::is_none_or_empty")]
+	    pub address: Option<Vec<GetinfoAddress>>,
 	    #[serde(skip_serializing_if = "crate::is_none_or_empty")]
 	    pub binding: Option<Vec<GetinfoBinding>>,
 	    #[serde(skip_serializing_if = "Option::is_none")]
@@ -1512,7 +1667,7 @@ pub mod responses {
 	    }
 	}
 
-	#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
+	#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 	pub enum ListpeersPeersLogType {
 	    #[serde(rename = "SKIPPED")]
 	    SKIPPED,
@@ -1545,6 +1700,21 @@ pub mod responses {
 	        }
 	    }
 	}
+
+	impl ToString for ListpeersPeersLogType {
+	    fn to_string(&self) -> String {
+	        match self {
+	            ListpeersPeersLogType::SKIPPED => "SKIPPED",
+	            ListpeersPeersLogType::BROKEN => "BROKEN",
+	            ListpeersPeersLogType::UNUSUAL => "UNUSUAL",
+	            ListpeersPeersLogType::INFO => "INFO",
+	            ListpeersPeersLogType::DEBUG => "DEBUG",
+	            ListpeersPeersLogType::IO_IN => "IO_IN",
+	            ListpeersPeersLogType::IO_OUT => "IO_OUT",
+	        }.to_string()
+	    }
+	}
+
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct ListpeersPeersLog {
 	    // Path `ListPeers.peers[].log[].type`
@@ -1565,7 +1735,7 @@ pub mod responses {
 	}
 
 	/// the channel state, in particular "CHANNELD_NORMAL" means the channel can be used normally
-	#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
+	#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 	pub enum ListpeersPeersChannelsState {
 	    #[serde(rename = "OPENINGD")]
 	    OPENINGD,
@@ -1610,6 +1780,25 @@ pub mod responses {
 	        }
 	    }
 	}
+
+	impl ToString for ListpeersPeersChannelsState {
+	    fn to_string(&self) -> String {
+	        match self {
+	            ListpeersPeersChannelsState::OPENINGD => "OPENINGD",
+	            ListpeersPeersChannelsState::CHANNELD_AWAITING_LOCKIN => "CHANNELD_AWAITING_LOCKIN",
+	            ListpeersPeersChannelsState::CHANNELD_NORMAL => "CHANNELD_NORMAL",
+	            ListpeersPeersChannelsState::CHANNELD_SHUTTING_DOWN => "CHANNELD_SHUTTING_DOWN",
+	            ListpeersPeersChannelsState::CLOSINGD_SIGEXCHANGE => "CLOSINGD_SIGEXCHANGE",
+	            ListpeersPeersChannelsState::CLOSINGD_COMPLETE => "CLOSINGD_COMPLETE",
+	            ListpeersPeersChannelsState::AWAITING_UNILATERAL => "AWAITING_UNILATERAL",
+	            ListpeersPeersChannelsState::FUNDING_SPEND_SEEN => "FUNDING_SPEND_SEEN",
+	            ListpeersPeersChannelsState::ONCHAIN => "ONCHAIN",
+	            ListpeersPeersChannelsState::DUALOPEND_OPEN_INIT => "DUALOPEND_OPEN_INIT",
+	            ListpeersPeersChannelsState::DUALOPEND_AWAITING_LOCKIN => "DUALOPEND_AWAITING_LOCKIN",
+	        }.to_string()
+	    }
+	}
+
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct ListpeersPeersChannelsFeerate {
 	    pub perkw: u32,
@@ -1647,7 +1836,7 @@ pub mod responses {
 	}
 
 	/// Whether it came from peer, or is going to peer
-	#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
+	#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 	pub enum ListpeersPeersChannelsHtlcsDirection {
 	    #[serde(rename = "in")]
 	    IN,
@@ -1665,6 +1854,16 @@ pub mod responses {
 	        }
 	    }
 	}
+
+	impl ToString for ListpeersPeersChannelsHtlcsDirection {
+	    fn to_string(&self) -> String {
+	        match self {
+	            ListpeersPeersChannelsHtlcsDirection::IN => "IN",
+	            ListpeersPeersChannelsHtlcsDirection::OUT => "OUT",
+	        }.to_string()
+	    }
+	}
+
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct ListpeersPeersChannelsHtlcs {
 	    // Path `ListPeers.peers[].channels[].htlcs[].direction`
@@ -1817,7 +2016,7 @@ pub mod responses {
 	    }
 	}
 
-	#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
+	#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 	pub enum ListfundsOutputsStatus {
 	    #[serde(rename = "unconfirmed")]
 	    UNCONFIRMED,
@@ -1841,6 +2040,18 @@ pub mod responses {
 	        }
 	    }
 	}
+
+	impl ToString for ListfundsOutputsStatus {
+	    fn to_string(&self) -> String {
+	        match self {
+	            ListfundsOutputsStatus::UNCONFIRMED => "UNCONFIRMED",
+	            ListfundsOutputsStatus::CONFIRMED => "CONFIRMED",
+	            ListfundsOutputsStatus::SPENT => "SPENT",
+	            ListfundsOutputsStatus::IMMATURE => "IMMATURE",
+	        }.to_string()
+	    }
+	}
+
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct ListfundsOutputs {
 	    pub txid: String,
@@ -1892,7 +2103,7 @@ pub mod responses {
 	}
 
 	/// status of the payment (could be complete if already sent previously)
-	#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
+	#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 	pub enum SendpayStatus {
 	    #[serde(rename = "pending")]
 	    PENDING,
@@ -1910,6 +2121,16 @@ pub mod responses {
 	        }
 	    }
 	}
+
+	impl ToString for SendpayStatus {
+	    fn to_string(&self) -> String {
+	        match self {
+	            SendpayStatus::PENDING => "PENDING",
+	            SendpayStatus::COMPLETE => "COMPLETE",
+	        }.to_string()
+	    }
+	}
+
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct SendpayResponse {
 	    pub id: u64,
@@ -2041,7 +2262,7 @@ pub mod responses {
 	}
 
 	/// Whether we successfully negotiated a mutual close, closed without them, or discarded not-yet-opened channel
-	#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
+	#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 	pub enum CloseType {
 	    #[serde(rename = "mutual")]
 	    MUTUAL,
@@ -2062,6 +2283,17 @@ pub mod responses {
 	        }
 	    }
 	}
+
+	impl ToString for CloseType {
+	    fn to_string(&self) -> String {
+	        match self {
+	            CloseType::MUTUAL => "MUTUAL",
+	            CloseType::UNILATERAL => "UNILATERAL",
+	            CloseType::UNOPENED => "UNOPENED",
+	        }.to_string()
+	    }
+	}
+
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct CloseResponse {
 	    // Path `Close.type`
@@ -2085,7 +2317,7 @@ pub mod responses {
 	}
 
 	/// Whether they initiated connection or we did
-	#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
+	#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 	pub enum ConnectDirection {
 	    #[serde(rename = "in")]
 	    IN,
@@ -2103,8 +2335,18 @@ pub mod responses {
 	        }
 	    }
 	}
+
+	impl ToString for ConnectDirection {
+	    fn to_string(&self) -> String {
+	        match self {
+	            ConnectDirection::IN => "IN",
+	            ConnectDirection::OUT => "OUT",
+	        }.to_string()
+	    }
+	}
+
 	/// Type of connection (*torv2*/*torv3* only if **direction** is *out*)
-	#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
+	#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 	pub enum ConnectAddressType {
 	    #[serde(rename = "local socket")]
 	    LOCAL_SOCKET,
@@ -2131,6 +2373,19 @@ pub mod responses {
 	        }
 	    }
 	}
+
+	impl ToString for ConnectAddressType {
+	    fn to_string(&self) -> String {
+	        match self {
+	            ConnectAddressType::LOCAL_SOCKET => "LOCAL_SOCKET",
+	            ConnectAddressType::IPV4 => "IPV4",
+	            ConnectAddressType::IPV6 => "IPV6",
+	            ConnectAddressType::TORV2 => "TORV2",
+	            ConnectAddressType::TORV3 => "TORV3",
+	        }.to_string()
+	    }
+	}
+
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct ConnectAddress {
 	    // Path `Connect.address.type`
@@ -2165,7 +2420,7 @@ pub mod responses {
 	}
 
 	/// Whether it has been paid, or can no longer be paid
-	#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
+	#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 	pub enum CreateinvoiceStatus {
 	    #[serde(rename = "paid")]
 	    PAID,
@@ -2186,6 +2441,17 @@ pub mod responses {
 	        }
 	    }
 	}
+
+	impl ToString for CreateinvoiceStatus {
+	    fn to_string(&self) -> String {
+	        match self {
+	            CreateinvoiceStatus::PAID => "PAID",
+	            CreateinvoiceStatus::EXPIRED => "EXPIRED",
+	            CreateinvoiceStatus::UNPAID => "UNPAID",
+	        }.to_string()
+	    }
+	}
+
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct CreateinvoiceResponse {
 	    pub label: String,
@@ -2302,7 +2568,7 @@ pub mod responses {
 	}
 
 	/// State of invoice
-	#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
+	#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 	pub enum DelinvoiceStatus {
 	    #[serde(rename = "paid")]
 	    PAID,
@@ -2323,6 +2589,17 @@ pub mod responses {
 	        }
 	    }
 	}
+
+	impl ToString for DelinvoiceStatus {
+	    fn to_string(&self) -> String {
+	        match self {
+	            DelinvoiceStatus::PAID => "PAID",
+	            DelinvoiceStatus::EXPIRED => "EXPIRED",
+	            DelinvoiceStatus::UNPAID => "UNPAID",
+	        }.to_string()
+	    }
+	}
+
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct DelinvoiceResponse {
 	    pub label: String,
@@ -2412,7 +2689,7 @@ pub mod responses {
 	}
 
 	/// Whether it's paid, unpaid or unpayable
-	#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
+	#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 	pub enum ListinvoicesInvoicesStatus {
 	    #[serde(rename = "unpaid")]
 	    UNPAID,
@@ -2433,6 +2710,17 @@ pub mod responses {
 	        }
 	    }
 	}
+
+	impl ToString for ListinvoicesInvoicesStatus {
+	    fn to_string(&self) -> String {
+	        match self {
+	            ListinvoicesInvoicesStatus::UNPAID => "UNPAID",
+	            ListinvoicesInvoicesStatus::PAID => "PAID",
+	            ListinvoicesInvoicesStatus::EXPIRED => "EXPIRED",
+	        }.to_string()
+	    }
+	}
+
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct ListinvoicesInvoices {
 	    pub label: String,
@@ -2479,7 +2767,7 @@ pub mod responses {
 	}
 
 	/// status of the payment (could be complete if already sent previously)
-	#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
+	#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 	pub enum SendonionStatus {
 	    #[serde(rename = "pending")]
 	    PENDING,
@@ -2497,6 +2785,16 @@ pub mod responses {
 	        }
 	    }
 	}
+
+	impl ToString for SendonionStatus {
+	    fn to_string(&self) -> String {
+	        match self {
+	            SendonionStatus::PENDING => "PENDING",
+	            SendonionStatus::COMPLETE => "COMPLETE",
+	        }.to_string()
+	    }
+	}
+
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct SendonionResponse {
 	    pub id: u64,
@@ -2535,7 +2833,7 @@ pub mod responses {
 	}
 
 	/// status of the payment
-	#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
+	#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 	pub enum ListsendpaysPaymentsStatus {
 	    #[serde(rename = "pending")]
 	    PENDING,
@@ -2556,6 +2854,17 @@ pub mod responses {
 	        }
 	    }
 	}
+
+	impl ToString for ListsendpaysPaymentsStatus {
+	    fn to_string(&self) -> String {
+	        match self {
+	            ListsendpaysPaymentsStatus::PENDING => "PENDING",
+	            ListsendpaysPaymentsStatus::FAILED => "FAILED",
+	            ListsendpaysPaymentsStatus::COMPLETE => "COMPLETE",
+	        }.to_string()
+	    }
+	}
+
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct ListsendpaysPayments {
 	    pub id: u64,
@@ -2645,7 +2954,7 @@ pub mod responses {
 	}
 
 	/// status of payment
-	#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
+	#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 	pub enum PayStatus {
 	    #[serde(rename = "complete")]
 	    COMPLETE,
@@ -2666,6 +2975,17 @@ pub mod responses {
 	        }
 	    }
 	}
+
+	impl ToString for PayStatus {
+	    fn to_string(&self) -> String {
+	        match self {
+	            PayStatus::COMPLETE => "COMPLETE",
+	            PayStatus::PENDING => "PENDING",
+	            PayStatus::FAILED => "FAILED",
+	        }.to_string()
+	    }
+	}
+
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct PayResponse {
 	    pub payment_preimage: Secret,
@@ -2693,8 +3013,8 @@ pub mod responses {
 	    }
 	}
 
-	/// Type of connection
-	#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
+	/// Type of connection (until 23.08, `websocket` was also allowed)
+	#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 	pub enum ListnodesNodesAddressesType {
 	    #[serde(rename = "dns")]
 	    DNS,
@@ -2706,8 +3026,6 @@ pub mod responses {
 	    TORV2,
 	    #[serde(rename = "torv3")]
 	    TORV3,
-	    #[serde(rename = "websocket")]
-	    WEBSOCKET,
 	}
 
 	impl TryFrom<i32> for ListnodesNodesAddressesType {
@@ -2719,11 +3037,23 @@ pub mod responses {
 	    2 => Ok(ListnodesNodesAddressesType::IPV6),
 	    3 => Ok(ListnodesNodesAddressesType::TORV2),
 	    4 => Ok(ListnodesNodesAddressesType::TORV3),
-	    5 => Ok(ListnodesNodesAddressesType::WEBSOCKET),
 	            o => Err(anyhow::anyhow!("Unknown variant {} for enum ListnodesNodesAddressesType", o)),
 	        }
 	    }
 	}
+
+	impl ToString for ListnodesNodesAddressesType {
+	    fn to_string(&self) -> String {
+	        match self {
+	            ListnodesNodesAddressesType::DNS => "DNS",
+	            ListnodesNodesAddressesType::IPV4 => "IPV4",
+	            ListnodesNodesAddressesType::IPV6 => "IPV6",
+	            ListnodesNodesAddressesType::TORV2 => "TORV2",
+	            ListnodesNodesAddressesType::TORV3 => "TORV3",
+	        }.to_string()
+	    }
+	}
+
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct ListnodesNodesAddresses {
 	    // Path `ListNodes.nodes[].addresses[].type`
@@ -2766,7 +3096,7 @@ pub mod responses {
 	}
 
 	/// Whether it's paid or expired
-	#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
+	#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 	pub enum WaitanyinvoiceStatus {
 	    #[serde(rename = "paid")]
 	    PAID,
@@ -2784,6 +3114,16 @@ pub mod responses {
 	        }
 	    }
 	}
+
+	impl ToString for WaitanyinvoiceStatus {
+	    fn to_string(&self) -> String {
+	        match self {
+	            WaitanyinvoiceStatus::PAID => "PAID",
+	            WaitanyinvoiceStatus::EXPIRED => "EXPIRED",
+	        }.to_string()
+	    }
+	}
+
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct WaitanyinvoiceResponse {
 	    pub label: String,
@@ -2820,7 +3160,7 @@ pub mod responses {
 	}
 
 	/// Whether it's paid or expired
-	#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
+	#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 	pub enum WaitinvoiceStatus {
 	    #[serde(rename = "paid")]
 	    PAID,
@@ -2838,6 +3178,16 @@ pub mod responses {
 	        }
 	    }
 	}
+
+	impl ToString for WaitinvoiceStatus {
+	    fn to_string(&self) -> String {
+	        match self {
+	            WaitinvoiceStatus::PAID => "PAID",
+	            WaitinvoiceStatus::EXPIRED => "EXPIRED",
+	        }.to_string()
+	    }
+	}
+
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct WaitinvoiceResponse {
 	    pub label: String,
@@ -2874,7 +3224,7 @@ pub mod responses {
 	}
 
 	/// status of the payment
-	#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
+	#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 	pub enum WaitsendpayStatus {
 	    #[serde(rename = "complete")]
 	    COMPLETE,
@@ -2889,6 +3239,15 @@ pub mod responses {
 	        }
 	    }
 	}
+
+	impl ToString for WaitsendpayStatus {
+	    fn to_string(&self) -> String {
+	        match self {
+	            WaitsendpayStatus::COMPLETE => "COMPLETE",
+	        }.to_string()
+	    }
+	}
+
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct WaitsendpayResponse {
 	    pub id: u64,
@@ -2931,6 +3290,8 @@ pub mod responses {
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct NewaddrResponse {
 	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub p2tr: Option<String>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
 	    pub bech32: Option<String>,
 	    #[deprecated]
 	    #[serde(rename = "p2sh-segwit")]
@@ -2968,7 +3329,7 @@ pub mod responses {
 	}
 
 	/// status of payment
-	#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
+	#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 	pub enum KeysendStatus {
 	    #[serde(rename = "complete")]
 	    COMPLETE,
@@ -2983,6 +3344,15 @@ pub mod responses {
 	        }
 	    }
 	}
+
+	impl ToString for KeysendStatus {
+	    fn to_string(&self) -> String {
+	        match self {
+	            KeysendStatus::COMPLETE => "COMPLETE",
+	        }.to_string()
+	    }
+	}
+
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct KeysendResponse {
 	    pub payment_preimage: Secret,
@@ -3161,7 +3531,7 @@ pub mod responses {
 	}
 
 	/// the channel state, in particular "CHANNELD_NORMAL" means the channel can be used normally
-	#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
+	#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 	pub enum ListpeerchannelsChannelsState {
 	    #[serde(rename = "OPENINGD")]
 	    OPENINGD,
@@ -3206,6 +3576,25 @@ pub mod responses {
 	        }
 	    }
 	}
+
+	impl ToString for ListpeerchannelsChannelsState {
+	    fn to_string(&self) -> String {
+	        match self {
+	            ListpeerchannelsChannelsState::OPENINGD => "OPENINGD",
+	            ListpeerchannelsChannelsState::CHANNELD_AWAITING_LOCKIN => "CHANNELD_AWAITING_LOCKIN",
+	            ListpeerchannelsChannelsState::CHANNELD_NORMAL => "CHANNELD_NORMAL",
+	            ListpeerchannelsChannelsState::CHANNELD_SHUTTING_DOWN => "CHANNELD_SHUTTING_DOWN",
+	            ListpeerchannelsChannelsState::CLOSINGD_SIGEXCHANGE => "CLOSINGD_SIGEXCHANGE",
+	            ListpeerchannelsChannelsState::CLOSINGD_COMPLETE => "CLOSINGD_COMPLETE",
+	            ListpeerchannelsChannelsState::AWAITING_UNILATERAL => "AWAITING_UNILATERAL",
+	            ListpeerchannelsChannelsState::FUNDING_SPEND_SEEN => "FUNDING_SPEND_SEEN",
+	            ListpeerchannelsChannelsState::ONCHAIN => "ONCHAIN",
+	            ListpeerchannelsChannelsState::DUALOPEND_OPEN_INIT => "DUALOPEND_OPEN_INIT",
+	            ListpeerchannelsChannelsState::DUALOPEND_AWAITING_LOCKIN => "DUALOPEND_AWAITING_LOCKIN",
+	        }.to_string()
+	    }
+	}
+
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct ListpeerchannelsChannelsFeerate {
 	    #[serde(skip_serializing_if = "Option::is_none")]
@@ -3253,7 +3642,7 @@ pub mod responses {
 	}
 
 	/// Whether it came from peer, or is going to peer
-	#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
+	#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 	pub enum ListpeerchannelsChannelsHtlcsDirection {
 	    #[serde(rename = "in")]
 	    IN,
@@ -3271,6 +3660,16 @@ pub mod responses {
 	        }
 	    }
 	}
+
+	impl ToString for ListpeerchannelsChannelsHtlcsDirection {
+	    fn to_string(&self) -> String {
+	        match self {
+	            ListpeerchannelsChannelsHtlcsDirection::IN => "IN",
+	            ListpeerchannelsChannelsHtlcsDirection::OUT => "OUT",
+	        }.to_string()
+	    }
+	}
+
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct ListpeerchannelsChannelsHtlcs {
 	    #[serde(skip_serializing_if = "Option::is_none")]
@@ -3421,7 +3820,7 @@ pub mod responses {
 	}
 
 	/// What caused the channel to close
-	#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
+	#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 	pub enum ListclosedchannelsClosedchannelsClose_cause {
 	    #[serde(rename = "unknown")]
 	    UNKNOWN,
@@ -3451,6 +3850,20 @@ pub mod responses {
 	        }
 	    }
 	}
+
+	impl ToString for ListclosedchannelsClosedchannelsClose_cause {
+	    fn to_string(&self) -> String {
+	        match self {
+	            ListclosedchannelsClosedchannelsClose_cause::UNKNOWN => "UNKNOWN",
+	            ListclosedchannelsClosedchannelsClose_cause::LOCAL => "LOCAL",
+	            ListclosedchannelsClosedchannelsClose_cause::USER => "USER",
+	            ListclosedchannelsClosedchannelsClose_cause::REMOTE => "REMOTE",
+	            ListclosedchannelsClosedchannelsClose_cause::PROTOCOL => "PROTOCOL",
+	            ListclosedchannelsClosedchannelsClose_cause::ONCHAIN => "ONCHAIN",
+	        }.to_string()
+	    }
+	}
+
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct ListclosedchannelsClosedchannels {
 	    #[serde(skip_serializing_if = "Option::is_none")]
@@ -3506,7 +3919,7 @@ pub mod responses {
 	}
 
 	/// the address type (if known)
-	#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
+	#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 	pub enum DecodepayFallbacksType {
 	    #[serde(rename = "P2PKH")]
 	    P2PKH,
@@ -3530,6 +3943,18 @@ pub mod responses {
 	        }
 	    }
 	}
+
+	impl ToString for DecodepayFallbacksType {
+	    fn to_string(&self) -> String {
+	        match self {
+	            DecodepayFallbacksType::P2PKH => "P2PKH",
+	            DecodepayFallbacksType::P2SH => "P2SH",
+	            DecodepayFallbacksType::P2WPKH => "P2WPKH",
+	            DecodepayFallbacksType::P2WSH => "P2WSH",
+	        }.to_string()
+	    }
+	}
+
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct DecodepayFallbacks {
 	    // Path `DecodePay.fallbacks[].type`
@@ -3585,7 +4010,7 @@ pub mod responses {
 	}
 
 	/// what kind of object it decoded to
-	#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
+	#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 	pub enum DecodeType {
 	    #[serde(rename = "bolt12 offer")]
 	    BOLT12_OFFER,
@@ -3612,6 +4037,19 @@ pub mod responses {
 	        }
 	    }
 	}
+
+	impl ToString for DecodeType {
+	    fn to_string(&self) -> String {
+	        match self {
+	            DecodeType::BOLT12_OFFER => "BOLT12_OFFER",
+	            DecodeType::BOLT12_INVOICE => "BOLT12_INVOICE",
+	            DecodeType::BOLT12_INVOICE_REQUEST => "BOLT12_INVOICE_REQUEST",
+	            DecodeType::BOLT11_INVOICE => "BOLT11_INVOICE",
+	            DecodeType::RUNE => "RUNE",
+	        }.to_string()
+	    }
+	}
+
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct DecodeOffer_paths {
 	    pub first_node_id: PublicKey,
@@ -3836,6 +4274,8 @@ pub mod responses {
 	    pub mutual_close: Option<u32>,
 	    #[serde(skip_serializing_if = "Option::is_none")]
 	    pub unilateral_close: Option<u32>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub unilateral_anchor_close: Option<u32>,
 	    #[deprecated]
 	    #[serde(skip_serializing_if = "Option::is_none")]
 	    pub delayed_to_us: Option<u32>,
@@ -3870,6 +4310,8 @@ pub mod responses {
 	    pub mutual_close: Option<u32>,
 	    #[serde(skip_serializing_if = "Option::is_none")]
 	    pub unilateral_close: Option<u32>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub unilateral_anchor_close: Option<u32>,
 	    #[deprecated]
 	    #[serde(skip_serializing_if = "Option::is_none")]
 	    pub delayed_to_us: Option<u32>,
@@ -3885,6 +4327,8 @@ pub mod responses {
 	    pub opening_channel_satoshis: u64,
 	    pub mutual_close_satoshis: u64,
 	    pub unilateral_close_satoshis: u64,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub unilateral_close_nonanchor_satoshis: Option<u64>,
 	    pub htlc_timeout_satoshis: u64,
 	    pub htlc_success_satoshis: u64,
 	}
@@ -3936,7 +4380,7 @@ pub mod responses {
 	}
 
 	/// The features understood by the destination node
-	#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
+	#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 	pub enum GetrouteRouteStyle {
 	    #[serde(rename = "tlv")]
 	    TLV,
@@ -3951,6 +4395,15 @@ pub mod responses {
 	        }
 	    }
 	}
+
+	impl ToString for GetrouteRouteStyle {
+	    fn to_string(&self) -> String {
+	        match self {
+	            GetrouteRouteStyle::TLV => "TLV",
+	        }.to_string()
+	    }
+	}
+
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct GetrouteRoute {
 	    pub id: PublicKey,
@@ -3979,7 +4432,7 @@ pub mod responses {
 	}
 
 	/// still ongoing, completed, failed locally, or failed after forwarding
-	#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
+	#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 	pub enum ListforwardsForwardsStatus {
 	    #[serde(rename = "offered")]
 	    OFFERED,
@@ -4003,8 +4456,20 @@ pub mod responses {
 	        }
 	    }
 	}
+
+	impl ToString for ListforwardsForwardsStatus {
+	    fn to_string(&self) -> String {
+	        match self {
+	            ListforwardsForwardsStatus::OFFERED => "OFFERED",
+	            ListforwardsForwardsStatus::SETTLED => "SETTLED",
+	            ListforwardsForwardsStatus::LOCAL_FAILED => "LOCAL_FAILED",
+	            ListforwardsForwardsStatus::FAILED => "FAILED",
+	        }.to_string()
+	    }
+	}
+
 	/// Either a legacy onion format or a modern tlv format
-	#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
+	#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 	pub enum ListforwardsForwardsStyle {
 	    #[serde(rename = "legacy")]
 	    LEGACY,
@@ -4022,6 +4487,16 @@ pub mod responses {
 	        }
 	    }
 	}
+
+	impl ToString for ListforwardsForwardsStyle {
+	    fn to_string(&self) -> String {
+	        match self {
+	            ListforwardsForwardsStyle::LEGACY => "LEGACY",
+	            ListforwardsForwardsStyle::TLV => "TLV",
+	        }.to_string()
+	    }
+	}
+
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct ListforwardsForwards {
 	    pub in_channel: ShortChannelId,
@@ -4060,7 +4535,7 @@ pub mod responses {
 	}
 
 	/// status of the payment
-	#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
+	#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 	pub enum ListpaysPaysStatus {
 	    #[serde(rename = "pending")]
 	    PENDING,
@@ -4081,6 +4556,17 @@ pub mod responses {
 	        }
 	    }
 	}
+
+	impl ToString for ListpaysPaysStatus {
+	    fn to_string(&self) -> String {
+	        match self {
+	            ListpaysPaysStatus::PENDING => "PENDING",
+	            ListpaysPaysStatus::FAILED => "FAILED",
+	            ListpaysPaysStatus::COMPLETE => "COMPLETE",
+	        }.to_string()
+	    }
+	}
+
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct ListpaysPays {
 	    pub payment_hash: Sha256,
@@ -4231,6 +4717,36 @@ pub mod responses {
 	    fn try_from(response: Response) -> Result<Self, Self::Error> {
 	        match response {
 	            Response::Stop(response) => Ok(response),
+	            _ => Err(TryFromResponseError)
+	        }
+	    }
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct PreapprovekeysendResponse {
+	}
+
+	impl TryFrom<Response> for PreapprovekeysendResponse {
+	    type Error = super::TryFromResponseError;
+
+	    fn try_from(response: Response) -> Result<Self, Self::Error> {
+	        match response {
+	            Response::PreApproveKeysend(response) => Ok(response),
+	            _ => Err(TryFromResponseError)
+	        }
+	    }
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct PreapproveinvoiceResponse {
+	}
+
+	impl TryFrom<Response> for PreapproveinvoiceResponse {
+	    type Error = super::TryFromResponseError;
+
+	    fn try_from(response: Response) -> Result<Self, Self::Error> {
+	        match response {
+	            Response::PreApproveInvoice(response) => Ok(response),
 	            _ => Err(TryFromResponseError)
 	        }
 	    }

@@ -9,7 +9,7 @@ from pyln.testing.utils import (
     wait_for, TailableProc, env, mine_funding_to_announce
 )
 from utils import (
-    account_balance, scriptpubkey_addr, check_coin_moves, anchor_expected
+    account_balance, scriptpubkey_addr, check_coin_moves
 )
 from ephemeral_port_reserve import reserve
 
@@ -636,7 +636,7 @@ def test_withdraw_misc(node_factory, bitcoind, chainparams):
         {'type': 'chain_mvt', 'credit_msat': 2000000000, 'debit_msat': 0, 'tags': ['deposit']},
         {'type': 'chain_mvt', 'credit_msat': 2000000000, 'debit_msat': 0, 'tags': ['deposit']},
         {'type': 'chain_mvt', 'credit_msat': 2000000000, 'debit_msat': 0, 'tags': ['deposit']},
-        {'type': 'chain_mvt', 'credit_msat': 11957603000, 'debit_msat': 0, 'tags': ['deposit']},
+        {'type': 'chain_mvt', 'credit_msat': 11956163000, 'debit_msat': 0, 'tags': ['deposit']},
     ]
 
     check_coin_moves(l1, 'external', external_moves, chainparams)
@@ -721,46 +721,39 @@ def test_address(node_factory):
     ret = l2.rpc.connect(l1.info['id'], l1.daemon.opts['bind-addr'])
     assert ret['address'] == {'type': 'local socket', 'socket': l1.daemon.opts['bind-addr']}
 
-    # 'addr' with local socket works too.
-    l1.stop()
-    del l1.daemon.opts['bind-addr']
-    l1.daemon.opts['addr'] = os.path.join(l1.daemon.lightning_dir, TEST_NETWORK, "sock")
-    # start expects a port, so we open-code here.
-    l1.daemon.start()
-
-    l2 = node_factory.get_node()
-    l2.rpc.connect(l1.info['id'], l1.daemon.opts['addr'])
-
 
 def test_listconfigs(node_factory, bitcoind, chainparams):
     # Make extremely long entry, check it works
     for deprecated in (True, False):
         l1 = node_factory.get_node(options={'log-prefix': 'lightning1-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
-                                            'allow-deprecated-apis': deprecated})
+                                            'allow-deprecated-apis': deprecated,
+                                            'wumbo': None})
 
-        configs = l1.rpc.listconfigs()
-        # See utils.py
-        assert configs['allow-deprecated-apis'] == deprecated
-        assert configs['network'] == chainparams['name']
-        assert configs['ignore-fee-limits'] is False
-        assert configs['log-prefix'] == 'lightning1-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...'
+        configs = l1.rpc.listconfigs()['configs']
+        # See utils.py for these values
+        for name, valfield, val in (('allow-deprecated-apis', 'value_bool', deprecated),
+                                    ('network', 'value_str', chainparams['name']),
+                                    ('ignore-fee-limits', 'value_bool', False),
+                                    ('log-prefix', 'value_str', 'lightning1-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')):
+            c = configs[name]
+            assert c['source'] == 'cmdline'
+            assert c[valfield] == val
+            assert 'plugin' not in c
 
         # These are aliases, but we don't print the (unofficial!) wumbo.
         assert 'wumbo' not in configs
-        assert configs['large-channels'] is False
+        assert configs['large-channels']['set'] is True
+        assert configs['large-channels']['source'] == 'cmdline'
 
-        # Test one at a time.
+        # Test modern ones!
         for c in configs.keys():
-            if c.startswith('#') or c.startswith('plugins') or c == 'important-plugins':
-                continue
-            oneconfig = l1.rpc.listconfigs(config=c)
-            assert(oneconfig[c] == configs[c])
+            oneconfig = l1.rpc.listconfigs(config=c)['configs']
+            assert oneconfig[c] == configs[c]
 
 
 def test_listconfigs_plugins(node_factory, bitcoind, chainparams):
-    l1 = node_factory.get_node()
+    l1 = node_factory.get_node(options={'allow-deprecated-apis': True})
 
-    # assert that we have pay plugin and that plugins have a name and path
     configs = l1.rpc.listconfigs()
     assert configs['important-plugins']
     assert len([p for p in configs['important-plugins'] if p['name'] == "pay"]) == 1
@@ -1514,9 +1507,14 @@ def test_ipv4_and_ipv6(node_factory):
     not DEVELOPER or DEPRECATED_APIS, "Without DEVELOPER=1 we snap to "
     "FEERATE_FLOOR on testnets, and we test the new API."
 )
-def test_feerates(node_factory):
-    l1 = node_factory.get_node(options={'log-level': 'io',
-                                        'dev-no-fake-fees': True}, start=False)
+@pytest.mark.parametrize("anchors", [False, True])
+def test_feerates(node_factory, anchors):
+    opts = {'log-level': 'io',
+            'dev-no-fake-fees': True}
+    if anchors:
+        opts['experimental-anchors'] = None
+
+    l1 = node_factory.get_node(options=opts, start=False)
     l1.daemon.rpcproxy.mock_rpc('estimatesmartfee', {
         'error': {"errors": ["Insufficient data or no feerate found"], "blocks": 0}
     })
@@ -1635,10 +1633,14 @@ def test_feerates(node_factory):
                                                'feerate': 5000,
                                                'smoothed_feerate': 5000}]
 
-    assert len(feerates['onchain_fee_estimates']) == 5
+    assert len(feerates['onchain_fee_estimates']) == 6
     assert feerates['onchain_fee_estimates']['opening_channel_satoshis'] == feerates['perkw']['opening'] * 702 // 1000
     assert feerates['onchain_fee_estimates']['mutual_close_satoshis'] == feerates['perkw']['mutual_close'] * 673 // 1000
-    assert feerates['onchain_fee_estimates']['unilateral_close_satoshis'] == feerates['perkw']['unilateral_close'] * 598 // 1000
+    if anchors:
+        assert feerates['onchain_fee_estimates']['unilateral_close_satoshis'] == feerates['perkw']['unilateral_anchor_close'] * 1112 // 1000
+    else:
+        assert feerates['onchain_fee_estimates']['unilateral_close_satoshis'] == feerates['perkw']['unilateral_close'] * 598 // 1000
+    assert feerates['onchain_fee_estimates']['unilateral_close_nonanchor_satoshis'] == feerates['perkw']['unilateral_close'] * 598 // 1000
     # htlc resolution currently uses 6 block estimate
     htlc_feerate = [f['feerate'] for f in feerates['perkw']['estimates'] if f['blockcount'] == 6][0]
     htlc_timeout_cost = feerates["onchain_fee_estimates"]["htlc_timeout_satoshis"]
@@ -1650,13 +1652,9 @@ def test_feerates(node_factory):
         assert feerate['perkw']
         assert 'perkb' not in feerate
 
-    if anchor_expected(l1):
-        # option_anchor_outputs
-        assert htlc_timeout_cost == htlc_feerate * 666 // 1000
-        assert htlc_success_cost == htlc_feerate * 706 // 1000
-    else:
-        assert htlc_timeout_cost == htlc_feerate * 663 // 1000
-        assert htlc_success_cost == htlc_feerate * 703 // 1000
+    # These are always the non-zero-fee-anchors values.
+    assert htlc_timeout_cost == htlc_feerate * 663 // 1000
+    assert htlc_success_cost == htlc_feerate * 703 // 1000
 
 
 def test_logging(node_factory):
@@ -1706,8 +1704,19 @@ def test_logging(node_factory):
                                      .format(l2.daemon.lightning_dir),
                                      '-H',
                                      'listconfigs']).decode('utf-8').splitlines()
-    assert 'log-file=logfile1' in lines
-    assert 'log-file=logfile2' in lines
+    # Arrays get split awkwardly by -H!
+    assert 'log-file=values_str=logfile1' in lines
+    assert 'logfile2' in lines
+
+    # Flat mode is better!
+    lines = subprocess.check_output(['cli/lightning-cli',
+                                     '--network={}'.format(TEST_NETWORK),
+                                     '--lightning-dir={}'
+                                     .format(l2.daemon.lightning_dir),
+                                     '-F',
+                                     'listconfigs']).decode('utf-8').splitlines()
+    assert 'configs.log-file.values_str[0]=logfile1' in lines
+    assert 'configs.log-file.values_str[1]=logfile2' in lines
 
 
 @unittest.skipIf(VALGRIND,
@@ -1743,8 +1752,8 @@ def test_configfile_before_chdir(node_factory):
     # Update executable to point to right place
     l1.daemon.executable = os.path.join(olddir, l1.daemon.executable)
     l1.start()
-    assert l1.rpc.listconfigs()['always-use-proxy']
-    assert l1.rpc.listconfigs()['proxy'] == '127.0.0.1:100'
+    assert l1.rpc.listconfigs()['configs']['always-use-proxy'] == {'source': os.path.abspath(config) + ":1", 'value_bool': True}
+    assert l1.rpc.listconfigs()['configs']['proxy'] == {'source': os.path.abspath(config) + ":2", 'value_str': '127.0.0.1:100'}
     os.chdir(olddir)
 
 
@@ -1945,16 +1954,20 @@ def test_bitcoind_fail_first(node_factory, bitcoind):
 
 
 @unittest.skipIf(TEST_NETWORK == 'liquid-regtest', "Fees on elements are different")
-def test_bitcoind_feerate_floor(node_factory, bitcoind):
+@pytest.mark.parametrize("anchors", [False, True])
+def test_bitcoind_feerate_floor(node_factory, bitcoind, anchors):
     """Don't return a feerate less than minrelaytxfee/mempoolminfee."""
-    l1 = node_factory.get_node()
+    opts = {}
+    if anchors:
+        opts['experimental-anchors'] = None
+    l1 = node_factory.get_node(options=opts)
 
-    anchors = anchor_expected(l1)
     assert l1.rpc.feerates('perkb') == {
         "perkb": {
             "opening": 30000,
             "mutual_close": 15000,
             "unilateral_close": 44000,
+            'unilateral_anchor_close': 15000,
             "penalty": 30000,
             "min_acceptable": 7500,
             "max_acceptable": 600000,
@@ -1975,9 +1988,11 @@ def test_bitcoind_feerate_floor(node_factory, bitcoind):
         "onchain_fee_estimates": {
             "opening_channel_satoshis": 5265,
             "mutual_close_satoshis": 2523,
-            "unilateral_close_satoshis": 6578,
-            "htlc_timeout_satoshis": 7326 if anchors else 7293,
-            "htlc_success_satoshis": 7766 if anchors else 7733,
+            "unilateral_close_satoshis": 4170 if anchors else 6578,
+            "unilateral_close_nonanchor_satoshis": 6578,
+            # These are always the non-anchor versions!
+            "htlc_timeout_satoshis": 7293,
+            "htlc_success_satoshis": 7733,
         }
     }
 
@@ -1992,6 +2007,9 @@ def test_bitcoind_feerate_floor(node_factory, bitcoind):
             "opening": 30000,
             # This has increased (rounded up)
             "mutual_close": 20004,
+            # This has increased (rounded up)
+            "unilateral_anchor_close": 20004,
+            # This has increased (rounded up)
             "unilateral_close": 44000,
             "penalty": 30000,
             # This has increased (rounded up)
@@ -2015,9 +2033,10 @@ def test_bitcoind_feerate_floor(node_factory, bitcoind):
             "opening_channel_satoshis": 5265,
             # This increases too
             "mutual_close_satoshis": 3365,
-            "unilateral_close_satoshis": 6578,
-            "htlc_timeout_satoshis": 7326 if anchors else 7293,
-            "htlc_success_satoshis": 7766 if anchors else 7733,
+            "unilateral_close_satoshis": 5561 if anchors else 6578,
+            "unilateral_close_nonanchor_satoshis": 6578,
+            "htlc_timeout_satoshis": 7293,
+            "htlc_success_satoshis": 7733,
         }
     }
 
@@ -2033,6 +2052,8 @@ def test_bitcoind_feerate_floor(node_factory, bitcoind):
             "opening": 30004,
             # This has increased (rounded up!)
             "mutual_close": 30004,
+            # This has increased (rounded up!)
+            "unilateral_anchor_close": 30004,
             "unilateral_close": 44000,
             # This has increased (rounded up!)
             "penalty": 30004,
@@ -2059,9 +2080,11 @@ def test_bitcoind_feerate_floor(node_factory, bitcoind):
             "opening_channel_satoshis": 5265,
             # This increases too
             "mutual_close_satoshis": 5048,
-            "unilateral_close_satoshis": 6578,
-            "htlc_timeout_satoshis": 7326 if anchors else 7293,
-            "htlc_success_satoshis": 7766 if anchors else 7733,
+            # This increases too (anchors uses min(100blocks,5 sat/vB))
+            "unilateral_close_satoshis": 8341 if anchors else 6578,
+            "unilateral_close_nonanchor_satoshis": 6578,
+            "htlc_timeout_satoshis": 7293,
+            "htlc_success_satoshis": 7733,
         }
     }
 
@@ -2164,7 +2187,7 @@ def test_relative_config_dir(node_factory):
     os.chdir('/'.join(root_dir))
     l1.daemon.executable = os.path.join(initial_dir, l1.daemon.executable)
     l1.start()
-    assert os.path.isabs(l1.rpc.listconfigs()["lightning-dir"])
+    assert os.path.isabs(l1.rpc.listconfigs()['configs']["lightning-dir"]['value_str'])
     l1.stop()
     os.chdir(initial_dir)
 
@@ -2241,7 +2264,7 @@ def test_include(node_factory):
     l1.daemon.opts['conf'] = os.path.join(subdir, "conf1")
     l1.start()
 
-    assert l1.rpc.listconfigs('alias')['alias'] == 'conf2'
+    assert l1.rpc.listconfigs('alias')['configs']['alias'] == {'source': os.path.join(subdir, "conf2") + ":1", 'value_str': 'conf2'}
 
 
 def test_config_in_subdir(node_factory, chainparams):
@@ -2253,7 +2276,7 @@ def test_config_in_subdir(node_factory, chainparams):
         f.write('alias=test_config_in_subdir')
     l1.start()
 
-    assert l1.rpc.listconfigs('alias')['alias'] == 'test_config_in_subdir'
+    assert l1.rpc.listconfigs('alias')['configs']['alias'] == {'source': os.path.join(subdir, "config") + ":1", 'value_str': 'test_config_in_subdir'}
 
     l1.stop()
 
@@ -2263,7 +2286,7 @@ def test_config_in_subdir(node_factory, chainparams):
 
     out = subprocess.run(['lightningd/lightningd',
                           '--lightning-dir={}'.format(l1.daemon.opts.get("lightning-dir"))],
-                         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                         stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=TIMEOUT)
     assert out.returncode == 1
     assert "conf: not permitted in configuration files" in out.stderr.decode('utf-8')
 
@@ -2282,7 +2305,7 @@ def test_config_in_subdir(node_factory, chainparams):
                           '--lightning-dir={}'.format(l1.daemon.opts.get("lightning-dir"))],
                          stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     assert out.returncode == 1
-    assert "network: not permitted in network-specific configuration files" in out.stderr.decode('utf-8')
+    assert "network={}: not permitted in network-specific configuration files".format(network) in out.stderr.decode('utf-8')
 
     # lightning-dir only allowed if we explicitly use --conf
     os.unlink(os.path.join(subdir, "config"))
@@ -2293,7 +2316,7 @@ def test_config_in_subdir(node_factory, chainparams):
                           '--lightning-dir={}'.format(l1.daemon.opts.get("lightning-dir"))],
                          stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     assert out.returncode == 1
-    assert "lightning-dir: not permitted in implicit configuration files" in out.stderr.decode('utf-8')
+    assert "lightning-dir={}/test: not permitted in implicit configuration files".format(l1.daemon.opts.get("lightning-dir")) in out.stderr.decode('utf-8')
 
     l1.daemon.opts['conf'] = os.path.join(l1.daemon.opts.get("lightning-dir"), "config")
     l1.start()
@@ -2690,7 +2713,13 @@ def test_restorefrompeer(node_factory, bitcoind):
     l1.start()
     assert l1.daemon.is_in_log('Server started with public key')
 
-    l1.rpc.connect(l2.info['id'], 'localhost', l2.port)
+    # If this happens fast enough, connect fails with "disconnected
+    # during connection"
+    try:
+        l1.rpc.connect(l2.info['id'], 'localhost', l2.port)
+    except RpcError as err:
+        assert "disconnected during connection" in err.error
+
     l1.daemon.wait_for_log('peer_in WIRE_YOUR_PEER_STORAGE')
 
     assert l1.rpc.restorefrompeer()['stubs'][0] == _['channel_id']
@@ -2933,7 +2962,7 @@ def test_notimestamp_logging(node_factory):
     l1.start()
     assert l1.daemon.logs[0].startswith("DEBUG")
 
-    assert l1.rpc.listconfigs()['log-timestamps'] is False
+    assert l1.rpc.listconfigs()['configs']['log-timestamps']['value_bool'] is False
 
 
 def test_getlog(node_factory):
@@ -2959,7 +2988,7 @@ def test_log_filter(node_factory):
 
 def test_force_feerates(node_factory):
     l1 = node_factory.get_node(options={'force-feerates': 1111})
-    assert l1.rpc.listconfigs()['force-feerates'] == '1111'
+    assert l1.rpc.listconfigs()['configs']['force-feerates']['value_str'] == '1111'
 
     # Note that estimates are still valid here, despite "force-feerates"
     estimates = [{"blockcount": 2,
@@ -2979,6 +3008,7 @@ def test_force_feerates(node_factory):
         "opening": 1111,
         "mutual_close": 1111,
         "unilateral_close": 1111,
+        "unilateral_anchor_close": 1111,
         "penalty": 1111,
         "min_acceptable": 1875,
         "max_acceptable": 150000,
@@ -2989,11 +3019,12 @@ def test_force_feerates(node_factory):
     l1.daemon.opts['force-feerates'] = '1111/2222'
     l1.start()
 
-    assert l1.rpc.listconfigs()['force-feerates'] == '1111/2222'
+    assert l1.rpc.listconfigs()['configs']['force-feerates']['value_str'] == '1111/2222'
     assert l1.rpc.feerates('perkw')['perkw'] == {
         "opening": 1111,
         "mutual_close": 2222,
         "unilateral_close": 2222,
+        "unilateral_anchor_close": 2222,
         "penalty": 2222,
         "min_acceptable": 1875,
         "max_acceptable": 150000,
@@ -3004,11 +3035,12 @@ def test_force_feerates(node_factory):
     l1.daemon.opts['force-feerates'] = '1111/2222/3333/4444/5555/6666'
     l1.start()
 
-    assert l1.rpc.listconfigs()['force-feerates'] == '1111/2222/3333/4444/5555/6666'
+    assert l1.rpc.listconfigs()['configs']['force-feerates']['value_str'] == '1111/2222/3333/4444/5555/6666'
     assert l1.rpc.feerates('perkw')['perkw'] == {
         "opening": 1111,
         "mutual_close": 2222,
         "unilateral_close": 3333,
+        "unilateral_anchor_close": 3333,
         "penalty": 6666,
         "min_acceptable": 1875,
         "max_acceptable": 150000,
@@ -3392,3 +3424,98 @@ def test_fast_shutdown(node_factory):
         except ConnectionRefusedError:
             continue
         break
+
+
+def test_setconfig(node_factory, bitcoind):
+    l1, l2 = node_factory.line_graph(2, fundchannel=False)
+    configfile = os.path.join(l2.daemon.opts.get("lightning-dir"), TEST_NETWORK, 'config')
+
+    assert (l2.rpc.listconfigs('min-capacity-sat')['configs']
+            == {'min-capacity-sat':
+                {'source': 'default',
+                 'value_int': 10000,
+                 'dynamic': True}})
+
+    with pytest.raises(RpcError, match='requires a value'):
+        l2.rpc.setconfig('min-capacity-sat')
+
+    with pytest.raises(RpcError, match='requires a value'):
+        l2.rpc.setconfig(config='min-capacity-sat')
+
+    with pytest.raises(RpcError, match='is not a number'):
+        l2.rpc.setconfig(config='min-capacity-sat', val="abcd")
+
+    ret = l2.rpc.setconfig(config='min-capacity-sat', val=500000)
+    assert ret == {'config':
+                   {'config': 'min-capacity-sat',
+                    'source': '{}:2'.format(configfile),
+                    'value_int': 500000,
+                    'dynamic': True}}
+
+    with open(configfile, 'r') as f:
+        lines = f.read().splitlines()
+        timeline = lines[0]
+        assert lines[0].startswith('# Inserted by setconfig ')
+        assert lines[1] == 'min-capacity-sat=500000'
+        assert len(lines) == 2
+
+    # Now we need to meet minumum
+    with pytest.raises(RpcError, match='which is below 500000sat'):
+        l1.fundchannel(l2, 400000)
+
+    l1.fundchannel(l2, 10**6)
+    txid = l1.rpc.close(l2.info['id'])['txid']
+    # Make sure we're completely closed!
+    bitcoind.generate_block(1, wait_for_mempool=txid)
+    sync_blockheight(bitcoind, [l1, l2])
+
+    # It's persistent!
+    l2.restart()
+
+    assert (l2.rpc.listconfigs('min-capacity-sat')['configs']
+            == {'min-capacity-sat':
+                {'source': '{}:2'.format(configfile),
+                 'value_int': 500000,
+                 'dynamic': True}})
+
+    # Still need to meet minumum
+    l1.connect(l2)
+    with pytest.raises(RpcError, match='which is below 500000sat'):
+        l1.fundchannel(l2, 400000)
+
+    # Now, changing again will comment that one out!
+    ret = l2.rpc.setconfig(config='min-capacity-sat', val=400000)
+    assert ret == {'config':
+                   {'config': 'min-capacity-sat',
+                    'source': '{}:2'.format(configfile),
+                    'value_int': 400000,
+                    'dynamic': True}}
+
+    with open(configfile, 'r') as f:
+        lines = f.read().splitlines()
+        assert lines[0].startswith('# Inserted by setconfig ')
+        # It will have changed timestamp since last time!
+        assert lines[0] != timeline
+        assert lines[1] == 'min-capacity-sat=400000'
+        assert len(lines) == 2
+
+    # If it's not set by setconfig, it will comment it out instead.
+    l2.stop()
+
+    with open(configfile, 'w') as f:
+        f.write('min-capacity-sat=500000\n')
+
+    l2.start()
+    ret = l2.rpc.setconfig(config='min-capacity-sat', val=400000)
+    assert ret == {'config':
+                   {'config': 'min-capacity-sat',
+                    'source': '{}:3'.format(configfile),
+                    'value_int': 400000,
+                    'dynamic': True}}
+
+    with open(configfile, 'r') as f:
+        lines = f.read().splitlines()
+        assert lines[0].startswith('# setconfig commented out: min-capacity-sat=500000')
+        assert lines[1].startswith('# Inserted by setconfig ')
+        assert lines[2] == 'min-capacity-sat=400000'
+        assert len(lines) == 3

@@ -106,6 +106,9 @@ struct lightningd {
 	/* The directory to find all the subdaemons. */
 	const char *daemon_dir;
 
+	/* Are deprecated APIs enabled? */
+	bool deprecated_apis;
+
 	/* If we told to run in the background, this is our parent fd, otherwise
 	 * -1. */
 	int daemon_parent_fd;
@@ -128,6 +131,8 @@ struct lightningd {
 	char *config_filename;
 	/* Configuration settings. */
 	struct config config;
+	/* Where each configuration setting came from */
+	struct configvar **configvars;
 
 	/* This log_book is owned by all the struct logs */
 	struct log_book *log_book;
@@ -262,7 +267,7 @@ struct lightningd {
 
 #if DEVELOPER
 	/* If we want to debug a subdaemon/plugin. */
-	const char *dev_debug_subprocess;
+	char *dev_debug_subprocess;
 
 	/* If we have --dev-no-plugin-checksum */
 	bool dev_no_plugin_checksum;
@@ -363,6 +368,9 @@ struct lightningd {
 
 	/* --experimental-upgrade-protocol */
 	bool experimental_upgrade_protocol;
+
+	/* For anchors: how much do we keep for spending close txs? */
+	struct amount_sat emergency_sat;
 };
 
 /* Turning this on allows a tal allocation to return NULL, rather than aborting.

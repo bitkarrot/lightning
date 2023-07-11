@@ -49,21 +49,6 @@ struct channel_state_param {
 	const enum channel_state_bucket state;
 };
 
-/* Implement db_fatal, as a wrapper around fatal.
- * We use a ifndef block so that it can get be
- * implemented in a test file first, if necessary */
-#ifndef DB_FATAL
-#define DB_FATAL
-void db_fatal(const char *fmt, ...)
-{
-	va_list ap;
-
-	va_start(ap, fmt);
-	fatal_vfmt(fmt, ap);
-	va_end(ap);
-}
-#endif /* DB_FATAL */
-
 /* These go in db, so values cannot change (we can't put this into
  * lightningd/channel_state.h since it confuses cdump!) */
 static enum state_change state_change_in_db(enum state_change s)
@@ -189,7 +174,7 @@ static bool wallet_add_utxo(struct wallet *w, struct utxo *utxo,
 			db_bind_pubkey(stmt, 8, utxo->close_info->commitment_point);
 		else
 			db_bind_null(stmt, 8);
-		db_bind_int(stmt, 9, utxo->close_info->option_anchor_outputs);
+		db_bind_int(stmt, 9, utxo->close_info->option_anchors);
 	} else {
 		db_bind_null(stmt, 6);
 		db_bind_null(stmt, 7);
@@ -239,7 +224,7 @@ static struct utxo *wallet_stmt2output(const tal_t *ctx, struct db_stmt *stmt)
 			= db_col_optional(utxo->close_info, stmt,
 					  "commitment_point",
 					  pubkey);
-		utxo->close_info->option_anchor_outputs
+		utxo->close_info->option_anchors
 			= db_col_int(stmt, "option_anchor_outputs");
 		utxo->close_info->csv = db_col_int(stmt, "csv_lock");
 	} else {
@@ -519,9 +504,11 @@ static bool deep_enough(u32 maxheight, const struct utxo *utxo,
 			u32 current_blockheight)
 {
 	if (utxo->close_info
-	    && utxo->close_info->option_anchor_outputs) {
-		/* All option_anchor_output close_infos
-		 * have a csv of at least 1 */
+	    && utxo->close_info->option_anchors) {
+		/* BOLT #3:
+		 * If `option_anchors` applies to the commitment transaction, the
+		 * `to_remote` output is encumbered by a one block csv lock.
+		 */
 		if (!utxo->blockheight)
 			return false;
 
@@ -602,6 +589,69 @@ struct utxo *wallet_find_utxo(const tal_t *ctx, struct wallet *w,
 	return utxo;
 }
 
+
+bool wallet_has_funds(struct wallet *w,
+		      const struct utxo **excludes,
+		      u32 current_blockheight,
+		      struct amount_sat sats)
+{
+	struct db_stmt *stmt;
+	struct amount_sat total = AMOUNT_SAT(0);
+
+	stmt = db_prepare_v2(w->db, SQL("SELECT"
+					"  prev_out_tx"
+					", prev_out_index"
+					", value"
+					", type"
+					", status"
+					", keyindex"
+					", channel_id"
+					", peer_id"
+					", commitment_point"
+					", option_anchor_outputs"
+					", confirmation_height"
+					", spend_height"
+					", scriptpubkey "
+					", reserved_til"
+					", csv_lock"
+					", is_in_coinbase"
+					" FROM outputs"
+					" WHERE status = ?"
+					" OR (status = ? AND reserved_til <= ?)"));
+	db_bind_int(stmt, 0, output_status_in_db(OUTPUT_STATE_AVAILABLE));
+	db_bind_int(stmt, 1, output_status_in_db(OUTPUT_STATE_RESERVED));
+	db_bind_u64(stmt, 2, current_blockheight);
+
+	db_query_prepared(stmt);
+	while (db_step(stmt)) {
+		struct utxo *utxo = wallet_stmt2output(tmpctx, stmt);
+
+		if (excluded(excludes, utxo)
+ 		    || !deep_enough(-1U, utxo, current_blockheight)) {
+			continue;
+		}
+
+		/* Overflow Should Not Happen */
+		if (!amount_sat_add(&total, total, utxo->amount)) {
+			db_fatal(w->db, "Invalid value for %s: %s",
+				 type_to_string(tmpctx,
+						struct bitcoin_outpoint,
+						&utxo->outpoint),
+				 fmt_amount_sat(tmpctx, utxo->amount));
+		}
+
+		/* If we've found enough, answer is yes. */
+		if (amount_sat_greater_eq(total, sats)) {
+			tal_free(stmt);
+			return true;
+		}
+	}
+
+	/* Insufficient funds! */
+	tal_free(stmt);
+	return false;
+}
+
 bool wallet_add_onchaind_utxo(struct wallet *w,
 			      const struct bitcoin_outpoint *outpoint,
 			      const u8 *scriptpubkey,
@@ -658,7 +708,8 @@ bool wallet_add_onchaind_utxo(struct wallet *w,
 	else
 		db_bind_null(stmt, 8);
 
-	db_bind_int(stmt, 9, channel_has(channel, OPT_ANCHOR_OUTPUTS));
+	db_bind_int(stmt, 9,
+		    channel_type_has_anchors(channel->type));
 	db_bind_int(stmt, 10, blockheight);
 
 	/* spendheight */
@@ -683,6 +734,8 @@ bool wallet_can_spend(struct wallet *w, const u8 *script,
 		*output_is_p2sh = true;
 	else if (is_p2wpkh(script, NULL))
 		*output_is_p2sh = false;
+	else if (is_p2tr(script, NULL))
+		*output_is_p2sh = false;
 	else
 		return false;
 
@@ -700,6 +753,18 @@ bool wallet_can_spend(struct wallet *w, const u8 *script,
 			tal_free(s);
 			s = p2sh;
 		}
+		if (scripteq(s, script)) {
+			/* If we found a used key in the keyscan_gap we should
+			 * remember that. */
+			if (i > bip32_max_index)
+				db_set_intvar(w->db, "bip32_max_index", i);
+			tal_free(s);
+			*index = i;
+			return true;
+		}
+		tal_free(s);
+		/* Try taproot output now */
+		s = scriptpubkey_p2tr_derkey(w, ext.pub_key);
 		if (scripteq(s, script)) {
 			/* If we found a used key in the keyscan_gap we should
 			 * remember that. */
@@ -852,14 +917,14 @@ static bool wallet_shachain_load(struct wallet *wallet, u64 id,
 
 static struct peer *wallet_peer_load(struct wallet *w, const u64 dbid)
 {
-	const char *addrstr;
+	const char *addrstr, *err;
 	struct peer *peer = NULL;
 	struct node_id id;
 	struct wireaddr_internal addr;
 	struct db_stmt *stmt;
 
 	stmt = db_prepare_v2(
-	    w->db, SQL("SELECT id, node_id, address FROM peers WHERE id=?;"));
+	    w->db, SQL("SELECT id, node_id, address, feature_bits FROM peers WHERE id=?;"));
 	db_bind_u64(stmt, 0, dbid);
 	db_query_prepared(stmt);
 
@@ -869,6 +934,7 @@ static struct peer *wallet_peer_load(struct wallet *w, const u64 dbid)
 	if (db_col_is_null(stmt, "node_id")) {
 		db_col_ignore(stmt, "address");
 		db_col_ignore(stmt, "id");
+		db_col_ignore(stmt, "feature_bits");
 		goto done;
 	}
 
@@ -876,16 +942,17 @@ static struct peer *wallet_peer_load(struct wallet *w, const u64 dbid)
 
 	/* This can happen for peers last seen on Torv2! */
 	addrstr = db_col_strdup(tmpctx, stmt, "address");
-	if (!parse_wireaddr_internal(addrstr, &addr, chainparams_get_ln_port(chainparams),
-				     false, false, true, NULL)) {
-		log_unusual(w->log, "Unparsable peer address %s: replacing",
-			    addrstr);
-		parse_wireaddr_internal("127.0.0.1:1", &addr, chainparams_get_ln_port(chainparams),
-					false, false, true, NULL);
+	err = parse_wireaddr_internal(tmpctx, addrstr, chainparams_get_ln_port(chainparams), true, &addr);
+	if (err) {
+		log_unusual(w->log, "Unparsable peer address %s (%s): replacing",
+			    addrstr, err);
+		err = parse_wireaddr_internal(tmpctx, "127.0.0.1:1", chainparams_get_ln_port(chainparams),
+					      false, &addr);
+		assert(!err);
 	}
 
 	/* FIXME: save incoming in db! */
-	peer = new_peer(w->ld, db_col_u64(stmt, "id"), &id, &addr, false);
+	peer = new_peer(w->ld, db_col_u64(stmt, "id"), &id, &addr, db_col_arr(stmt, stmt, "feature_bits", u8), false);
 
 done:
 	tal_free(stmt);
@@ -894,7 +961,7 @@ done:
 
 static struct bitcoin_signature *
 wallet_htlc_sigs_load(const tal_t *ctx, struct wallet *w, u64 channelid,
-		      bool option_anchor_outputs)
+		      bool option_anchors)
 {
 	struct db_stmt *stmt;
 	struct bitcoin_signature *htlc_sigs = tal_arr(ctx, struct bitcoin_signature, 0);
@@ -914,7 +981,7 @@ wallet_htlc_sigs_load(const tal_t *ctx, struct wallet *w, u64 channelid,
 		 *   transaction, `SIGHASH_SINGLE|SIGHASH_ANYONECANPAY` is
 		 *   used as described in [BOLT #5]
 		 */
-		if (option_anchor_outputs)
+		if (option_anchors)
 			sig.sighash_type = SIGHASH_SINGLE|SIGHASH_ANYONECANPAY;
 		else
 			sig.sighash_type = SIGHASH_ALL;
@@ -1201,7 +1268,7 @@ wallet_stmt2inflight(struct wallet *w, struct db_stmt *stmt,
 	if (!db_col_is_null(stmt, "last_tx")) {
 		last_tx = db_col_psbt_to_tx(tmpctx, stmt, "last_tx");
 		if (!last_tx)
-			db_fatal("Failed to decode inflight psbt %s",
+			db_fatal(w->db, "Failed to decode inflight psbt %s",
 				 tal_hex(tmpctx, db_col_arr(tmpctx, stmt,
 							    "last_tx", u8)));
 	} else
@@ -1487,7 +1554,7 @@ static struct channel *wallet_stmt2channel(struct wallet *w, struct db_stmt *stm
 	if (!db_col_is_null(stmt, "last_tx")) {
 		last_tx = db_col_psbt_to_tx(tmpctx, stmt, "last_tx");
 		if (!last_tx)
-			db_fatal("Failed to decode channel %s psbt %s",
+			db_fatal(w->db, "Failed to decode channel %s psbt %s",
 				 type_to_string(tmpctx, struct channel_id, &cid),
 				 tal_hex(tmpctx, db_col_arr(tmpctx, stmt,
 							    "last_tx", u8)));
@@ -1524,8 +1591,7 @@ static struct channel *wallet_stmt2channel(struct wallet *w, struct db_stmt *stm
 			   &last_sig,
 			   wallet_htlc_sigs_load(tmpctx, w,
 						 db_col_u64(stmt, "id"),
-						 channel_type_has(type, OPT_ANCHOR_OUTPUTS)
-						 || channel_type_has(type, OPT_ANCHORS_ZERO_FEE_HTLC_TX)),
+						 channel_type_has_anchors(type)),
 			   &channel_info,
 			   take(fee_states),
 			   remote_shutdown_scriptpubkey,
@@ -2270,21 +2336,23 @@ static void wallet_peer_save(struct wallet *w, struct peer *peer)
 		peer_set_dbid(peer, db_col_u64(stmt, "id"));
 		tal_free(stmt);
 
-		/* Since we're at it update the wireaddr */
+		/* Since we're at it update the wireaddr, feature bits */
 		stmt = db_prepare_v2(
-		    w->db, SQL("UPDATE peers SET address = ? WHERE id = ?"));
+		    w->db, SQL("UPDATE peers SET address = ?, feature_bits = ? WHERE id = ?"));
 		db_bind_text(stmt, 0, addr);
-		db_bind_u64(stmt, 1, peer->dbid);
+		db_bind_talarr(stmt, 1, peer->their_features);
+		db_bind_u64(stmt, 2, peer->dbid);
 		db_exec_prepared_v2(take(stmt));
 
 	} else {
 		/* Unknown peer, create it from scratch */
 		tal_free(stmt);
 		stmt = db_prepare_v2(w->db,
-				     SQL("INSERT INTO peers (node_id, address) VALUES (?, ?);")
+				     SQL("INSERT INTO peers (node_id, address, feature_bits) VALUES (?, ?, ?);")
 			);
 		db_bind_node_id(stmt, 0, &peer->id);
 		db_bind_text(stmt, 1,addr);
+		db_bind_talarr(stmt, 2, peer->their_features);
 		db_exec_prepared_v2(stmt);
 		peer_set_dbid(peer, db_last_insert_id_v2(take(stmt)));
 	}
@@ -4568,7 +4636,7 @@ struct amount_msat wallet_total_forward_fees(struct wallet *w)
 
 	deleted = amount_msat(db_get_intvar(w->db, "deleted_forward_fees", 0));
 	if (!amount_msat_add(&total, total, deleted))
-		db_fatal("Adding forward fees %s + %s overflowed",
+		db_fatal(w->db, "Adding forward fees %s + %s overflowed",
 			 type_to_string(tmpctx, struct amount_msat, &total),
 			 type_to_string(tmpctx, struct amount_msat, &deleted));
 
@@ -4809,11 +4877,7 @@ bool wallet_forward_delete(struct wallet *w,
 struct wallet_transaction *wallet_transactions_get(struct wallet *w, const tal_t *ctx)
 {
 	struct db_stmt *stmt;
-	struct wallet_transaction *cur = NULL, *txs = tal_arr(ctx, struct wallet_transaction, 0);
-	struct bitcoin_txid last;
-
-	/* Make sure we can check for changing txids */
-	memset(&last, 0, sizeof(last));
+	struct wallet_transaction *txs = tal_arr(ctx, struct wallet_transaction, 0);
 
 	stmt = db_prepare_v2(
 	    w->db,
@@ -4822,82 +4886,31 @@ struct wallet_transaction *wallet_transactions_get(struct wallet *w, const tal_t
 		", t.rawtx"
 		", t.blockheight"
 		", t.txindex"
-		", a.location"
-		", a.idx as ann_idx"
-		", a.type as annotation_type"
-		", c.scid"
 		" FROM"
 		"  transactions t LEFT JOIN"
-		"  transaction_annotations a ON (a.txid = t.id) LEFT JOIN"
-		"  channels c ON (a.channel = c.id) "
+		"  channels c ON (t.channel_id = c.id) "
 		"ORDER BY t.blockheight, t.txindex ASC"));
 	db_query_prepared(stmt);
 
 	while (db_step(stmt)) {
-		struct bitcoin_txid curtxid;
-		db_col_txid(stmt, "t.id", &curtxid);
+		struct wallet_transaction *cur;
 
-		/* If this is a new entry, allocate it in the array and set
-		 * the common fields (all fields from the transactions table. */
-		if (!bitcoin_txid_eq(&last, &curtxid)) {
-			last = curtxid;
-			tal_resize(&txs, tal_count(txs) + 1);
-			cur = &txs[tal_count(txs) - 1];
-			db_col_txid(stmt, "t.id", &cur->id);
-			cur->tx = db_col_tx(txs, stmt, "t.rawtx");
-			cur->rawtx = db_col_arr(txs, stmt, "t.rawtx", u8);
-			/* TX may be unconfirmed. */
-			if (!db_col_is_null(stmt, "t.blockheight")) {
-				cur->blockheight
-					= db_col_int(stmt, "t.blockheight");
-				if (!db_col_is_null(stmt, "t.txindex")) {
-					cur->txindex
-						= db_col_int(stmt, "t.txindex");
-				} else {
-					cur->txindex = 0;
-				}
+		tal_resize(&txs, tal_count(txs) + 1);
+		cur = &txs[tal_count(txs) - 1];
+		db_col_txid(stmt, "t.id", &cur->id);
+		cur->tx = db_col_tx(txs, stmt, "t.rawtx");
+		cur->rawtx = db_col_arr(txs, stmt, "t.rawtx", u8);
+		if (!db_col_is_null(stmt, "t.blockheight")) {
+			cur->blockheight = db_col_int(stmt, "t.blockheight");
+			if (!db_col_is_null(stmt, "t.txindex")) {
+				cur->txindex = db_col_int(stmt, "t.txindex");
 			} else {
-				db_col_ignore(stmt, "t.txindex");
-				cur->blockheight = 0;
 				cur->txindex = 0;
 			}
-			cur->output_annotations = tal_arrz(txs, struct tx_annotation, cur->tx->wtx->num_outputs);
-			cur->input_annotations = tal_arrz(txs, struct tx_annotation, cur->tx->wtx->num_inputs);
-		}
-
-		/* This should always be set by the above if-statement,
-		 * otherwise we have a txid of all 0x00 bytes... */
-		assert(cur != NULL);
-
-		/* Check if we have any annotations. If there are none the
-		 * fields are all set to null */
-		if (!db_col_is_null(stmt, "a.location")) {
-			enum wallet_tx_annotation_type loc
-				= db_col_int(stmt, "a.location");
-			int idx = db_col_int(stmt, "ann_idx");
-			struct tx_annotation *ann;
-
-			/* Select annotation from array to fill in. */
-			switch (loc) {
-			case OUTPUT_ANNOTATION:
-				ann = &cur->output_annotations[idx];
-				goto got_ann;
-			case INPUT_ANNOTATION:
-				ann = &cur->input_annotations[idx];
-				goto got_ann;
-			}
-			fatal("Transaction annotations are only available for inputs and outputs. Value %d", loc);
-
-		got_ann:
-			ann->type = db_col_int(stmt, "annotation_type");
-			if (!db_col_is_null(stmt, "c.scid"))
-				db_col_short_channel_id(stmt, "c.scid", &ann->channel);
-			else
-				ann->channel.u64 = 0;
 		} else {
-			db_col_ignore(stmt, "ann_idx");
-			db_col_ignore(stmt, "annotation_type");
-			db_col_ignore(stmt, "c.scid");
+			db_col_ignore(stmt, "t.txindex");
+			cur->blockheight = 0;
+			cur->txindex = 0;
 		}
 	}
 	tal_free(stmt);

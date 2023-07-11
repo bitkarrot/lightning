@@ -448,6 +448,7 @@ static void get_words(struct words **words) {
 	if (errno == ERANGE || (errno != 0 && val == 0) || endptr == selected || val < 0 || val >= ARRAY_SIZE(languages))
         errx(ERROR_USAGE, "Invalid language selection, select one from the list [0-6].");
 
+	free(selected);
 	bip39_get_wordlist(languages[val].abbr, words);
 }
 
@@ -557,7 +558,7 @@ static int dumponchaindescriptors(const char *hsm_secret_path, const char *old_p
 	if (bip32_key_to_base58(&master_extkey, BIP32_FLAG_KEY_PUBLIC, &enc_xpub) != WALLY_OK)
 		errx(ERROR_LIBWALLY, "Can't encode xpub");
 
-	/* Now we format the descriptor strings (we only ever create P2WPKH and
+	/* Now we format the descriptor strings (we only ever create P2TR, P2WPKH, and
 	 * P2SH-P2WPKH outputs). */
 
 	descriptor = tal_fmt(NULL, "wpkh(%s/0/0/*)", enc_xpub);
@@ -569,6 +570,12 @@ static int dumponchaindescriptors(const char *hsm_secret_path, const char *old_p
 	descriptor = tal_fmt(NULL, "sh(wpkh(%s/0/0/*))", enc_xpub);
 	if (!descriptor_checksum(descriptor, strlen(descriptor), &checksum))
 		errx(ERROR_LIBWALLY, "Can't derive descriptor checksum for sh(wpkh)");
+	printf("%s#%s\n", descriptor, checksum.csum);
+	tal_free(descriptor);
+
+	descriptor = tal_fmt(NULL, "tr(%s/0/0/*)", enc_xpub);
+	if (!descriptor_checksum(descriptor, strlen(descriptor), &checksum))
+		errx(ERROR_LIBWALLY, "Can't derive descriptor checksum for tr");
 	printf("%s#%s\n", descriptor, checksum.csum);
 	tal_free(descriptor);
 
@@ -610,6 +617,8 @@ static int check_hsm(const char *hsm_secret_path)
 		errx(ERROR_KEYDERIV, "resulting hsm_secret did not match");
 
 	printf("OK\n");
+
+	free(passphrase);
 	return 0;
 }
 

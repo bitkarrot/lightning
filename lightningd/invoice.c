@@ -258,7 +258,7 @@ static const u8 *hook_gives_failmsg(const tal_t *ctx,
 		return failmsg;
 	}
 
-	if (!deprecated_apis)
+	if (!ld->deprecated_apis)
 		return NULL;
 
 	t = json_get_member(buffer, toks, "failure_code");
@@ -1530,7 +1530,7 @@ static struct command_result *json_decodepay(struct command *cmd,
 
 	if (!param(cmd, buffer, params,
 		   p_req("bolt11", param_string, &str),
-		   p_opt("description", param_string, &desc),
+		   p_opt("description", param_escaped_string, &desc),
 		   NULL))
 		return command_param_failed();
 

@@ -54,20 +54,6 @@ char *tal_hex(const tal_t *ctx, const tal_t *data);
 /* Allocate and fill a buffer with the data of this hex string. */
 u8 *tal_hexdata(const tal_t *ctx, const void *str, size_t len);
 
-/* Macro to set memberptr in tal object outer to point to tal object obj,
- * if it isn't NULL.
- * The 0*sizeof() checks that *memberptr = obj is valid */
-#define set_softref(outer, memberptr, obj)				\
-	set_softref_((outer), sizeof(*(outer)) + 0*sizeof(*(memberptr) = obj), \
-		     (void **)(memberptr), (obj))
-
-/* Macro to clear a (set) softref ptr to NULL  */
-#define clear_softref(outer, memberptr)					\
-	clear_softref_((outer), sizeof(*(outer)), (void **)(memberptr))
-
-void set_softref_(const tal_t *outer, size_t outersize, void **ptr, tal_t *obj);
-void clear_softref_(const tal_t *outer, size_t outersize, void **ptr);
-
 /* Note: p is never a complex expression, otherwise this multi-evaluates! */
 #define tal_arr_expand(p, s)						\
 	do {								\
@@ -123,10 +109,10 @@ void tal_wally_end(const tal_t *parent);
 /* ... or this if you want to reparent onto something which is
  * allocated by libwally here.  Fixes up this from_wally obj to have a
  * proper tal_name, too! */
-#define tal_wally_end_onto(parent, from_wally, type)			\
-	tal_wally_end_onto_((parent),					\
-			    (from_wally) + 0*sizeof((from_wally) == (type *)0), \
-			    stringify(type))
+#define tal_wally_end_onto(parent, from_wally, type)                           \
+	tal_wally_end_onto_(                                                   \
+	    (parent), (from_wally),                                            \
+	    &stringify(type)[0 * sizeof((from_wally) == (type *)0)])
 void tal_wally_end_onto_(const tal_t *parent,
 			 tal_t *from_wally,
 			 const char *from_wally_name);

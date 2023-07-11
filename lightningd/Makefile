@@ -1,6 +1,7 @@
 #! /usr/bin/make
 
 LIGHTNINGD_SRC :=				\
+	lightningd/anchorspend.c		\
 	lightningd/bitcoind.c			\
 	lightningd/chaintopology.c		\
 	lightningd/channel.c			\
@@ -40,6 +41,7 @@ LIGHTNINGD_SRC :=				\
 	lightningd/watch.c
 
 LIGHTNINGD_SRC_NOHDR :=				\
+	lightningd/configs.c			\
 	lightningd/datastore.c			\
 	lightningd/ping.c			\
 	lightningd/offer.c			\
@@ -85,6 +87,7 @@ LIGHTNINGD_COMMON_OBJS :=			\
 	common/channel_type.o			\
 	common/coin_mvt.o			\
 	common/configdir.o			\
+	common/configvar.o			\
 	common/daemon.o				\
 	common/derive_basepoints.o		\
 	common/ecdh_hsmd.o			\

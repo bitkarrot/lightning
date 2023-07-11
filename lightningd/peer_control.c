@@ -37,6 +37,7 @@
 #include <gossipd/gossipd_wiregen.h>
 #include <hsmd/hsmd_wiregen.h>
 #include <inttypes.h>
+#include <lightningd/anchorspend.h>
 #include <lightningd/bitcoind.h>
 #include <lightningd/chaintopology.h>
 #include <lightningd/channel.h>
@@ -76,13 +77,6 @@ static void destroy_peer(struct peer *peer)
 		peer_dbid_map_del(peer->ld->peers_by_dbid, peer);
 }
 
-static void peer_update_features(struct peer *peer,
-				 const u8 *their_features TAKES)
-{
-	tal_free(peer->their_features);
-	peer->their_features = tal_dup_talarr(peer, u8, their_features);
-}
-
 void peer_set_dbid(struct peer *peer, u64 dbid)
 {
 	assert(!peer->dbid);
@@ -94,6 +88,7 @@ void peer_set_dbid(struct peer *peer, u64 dbid)
 struct peer *new_peer(struct lightningd *ld, u64 dbid,
 		      const struct node_id *id,
 		      const struct wireaddr_internal *addr,
+		      const u8 *their_features,
 		      bool connected_incoming)
 {
 	/* We are owned by our channels, and freed manually by destroy_channel */
@@ -106,12 +101,16 @@ struct peer *new_peer(struct lightningd *ld, u64 dbid,
 	peer->addr = *addr;
 	peer->connected_incoming = connected_incoming;
 	peer->remote_addr = NULL;
-	peer->their_features = NULL;
 	list_head_init(&peer->channels);
 	peer->direction = node_id_idx(&peer->ld->id, &peer->id);
 	peer->connected = PEER_DISCONNECTED;
 	peer->last_connect_attempt.ts.tv_sec
 		= peer->last_connect_attempt.ts.tv_nsec = 0;
+	if (their_features)
+		peer->their_features = tal_dup_talarr(peer, u8, their_features);
+	else
+		peer->their_features = NULL;
+
 #if DEVELOPER
 	peer->ignore_htlcs = false;
 #endif
@@ -218,6 +217,15 @@ u8 *p2wpkh_for_keyidx(const tal_t *ctx, struct lightningd *ld, u64 keyidx)
 	return scriptpubkey_p2wpkh(ctx, &shutdownkey);
 }
 
+u8 *p2tr_for_keyidx(const tal_t *ctx, struct lightningd *ld, u64 keyidx)
+{
+	struct pubkey shutdownkey;
+
+	bip32_pubkey(ld, &shutdownkey, keyidx);
+
+	return scriptpubkey_p2tr(ctx, &shutdownkey);
+}
+
 static void sign_last_tx(struct channel *channel,
 			 struct bitcoin_tx *last_tx,
 			 struct bitcoin_signature *last_sig)
@@ -268,6 +276,20 @@ bool invalid_last_tx(const struct bitcoin_tx *tx)
 #endif
 }
 
+static bool commit_tx_send_finished(struct channel *channel,
+				    const struct bitcoin_tx *tx,
+				    bool success,
+				    const char *err,
+				    struct anchor_details *adet)
+{
+	/* We might want to boost immediately! */
+	if (success)
+		commit_tx_boost(channel, &tx, adet);
+
+	/* Keep trying! */
+	return false;
+}
+
 static void sign_and_send_last(struct lightningd *ld,
 			       struct channel *channel,
 			       const char *cmd_id,
@@ -275,15 +297,19 @@ static void sign_and_send_last(struct lightningd *ld,
 			       struct bitcoin_signature *last_sig)
 {
 	struct bitcoin_txid txid;
+	struct anchor_details *adet;
 
 	sign_last_tx(channel, last_tx, last_sig);
 	bitcoin_txid(last_tx, &txid);
 	wallet_transaction_add(ld->wallet, last_tx->wtx, 0, 0);
 
+	/* Remember anchor information for commit_tx_boost */
+	adet = create_anchor_details(NULL, channel, last_tx);
+
 	/* Keep broadcasting until we say stop (can fail due to dup,
 	 * if they beat us to the broadcast). */
-	broadcast_tx(ld->topology, channel, last_tx, cmd_id, false, 0, NULL,
-		     NULL, NULL);
+	broadcast_tx(ld->topology, channel, last_tx, cmd_id, false, 0,
+		     commit_tx_send_finished, commit_tx_boost, take(adet));
 
 	remove_sig(last_tx);
 }
@@ -456,7 +482,8 @@ static void json_add_htlcs(struct lightningd *ld,
 				htlc_state_name(hin->hstate));
 		if (htlc_is_trimmed(REMOTE, hin->msat, local_feerate,
 				    channel->our_config.dust_limit, LOCAL,
-				    channel_has(channel, OPT_ANCHOR_OUTPUTS)))
+				    channel_has(channel, OPT_ANCHOR_OUTPUTS),
+				    channel_has(channel, OPT_ANCHORS_ZERO_FEE_HTLC_TX)))
 			json_add_bool(response, "local_trimmed", true);
 		if (hin->status != NULL)
 			json_add_string(response, "status", hin->status);
@@ -479,7 +506,8 @@ static void json_add_htlcs(struct lightningd *ld,
 				htlc_state_name(hout->hstate));
 		if (htlc_is_trimmed(LOCAL, hout->msat, local_feerate,
 				    channel->our_config.dust_limit, LOCAL,
-				    channel_has(channel, OPT_ANCHOR_OUTPUTS)))
+				    channel_has(channel, OPT_ANCHOR_OUTPUTS),
+				    channel_has(channel, OPT_ANCHORS_ZERO_FEE_HTLC_TX)))
 			json_add_bool(response, "local_trimmed", true);
 		json_object_end(response);
 	}
@@ -503,6 +531,7 @@ static struct amount_sat commit_txfee(const struct channel *channel,
 	struct amount_sat dust_limit;
 	struct amount_sat fee;
 	bool option_anchor_outputs = channel_has(channel, OPT_ANCHOR_OUTPUTS);
+	bool option_anchors_zero_fee_htlc_tx = channel_has(channel, OPT_ANCHORS_ZERO_FEE_HTLC_TX);
 
 	if (side == LOCAL)
 		dust_limit = channel->our_config.dust_limit;
@@ -511,7 +540,7 @@ static struct amount_sat commit_txfee(const struct channel *channel,
 
 	/* Assume we tried to add "amount" */
 	if (!htlc_is_trimmed(side, amount, feerate, dust_limit, side,
-			     option_anchor_outputs))
+			     option_anchor_outputs, option_anchors_zero_fee_htlc_tx))
 		num_untrimmed_htlcs++;
 
 	for (hin = htlc_in_map_first(ld->htlcs_in, &ini);
@@ -520,7 +549,7 @@ static struct amount_sat commit_txfee(const struct channel *channel,
 		if (hin->key.channel != channel)
 			continue;
 		if (!htlc_is_trimmed(!side, hin->msat, feerate, dust_limit,
-				     side, option_anchor_outputs))
+				     side, option_anchor_outputs, option_anchors_zero_fee_htlc_tx))
 			num_untrimmed_htlcs++;
 	}
 	for (hout = htlc_out_map_first(ld->htlcs_out, &outi);
@@ -529,7 +558,7 @@ static struct amount_sat commit_txfee(const struct channel *channel,
 		if (hout->key.channel != channel)
 			continue;
 		if (!htlc_is_trimmed(side, hout->msat, feerate, dust_limit,
-				     side, option_anchor_outputs))
+				     side, option_anchor_outputs, option_anchors_zero_fee_htlc_tx))
 			num_untrimmed_htlcs++;
 	}
 
@@ -546,9 +575,9 @@ static struct amount_sat commit_txfee(const struct channel *channel,
 	 *   predictability between implementations.
 	*/
 	fee = commit_tx_base_fee(2 * feerate, num_untrimmed_htlcs + 1,
-				 option_anchor_outputs);
+				 option_anchor_outputs, option_anchors_zero_fee_htlc_tx);
 
-	if (option_anchor_outputs) {
+	if (option_anchor_outputs || option_anchors_zero_fee_htlc_tx) {
 		/* BOLT #3:
 		 * If `option_anchors` applies to the commitment
 		 * transaction, also subtract two times the fixed anchor size
@@ -852,6 +881,8 @@ static void json_add_channel(struct lightningd *ld,
 		json_add_string(response, NULL, "option_static_remotekey");
 	if (channel_has(channel, OPT_ANCHOR_OUTPUTS))
 		json_add_string(response, NULL, "option_anchor_outputs");
+	if (channel_has(channel, OPT_ANCHORS_ZERO_FEE_HTLC_TX))
+		json_add_string(response, NULL, "option_anchors_zero_fee_htlc_tx");
 	if (channel_has(channel, OPT_ZEROCONF))
 		json_add_string(response, NULL, "option_zeroconf");
 	if (channel_has(channel, OPT_SCID_ALIAS))
@@ -1360,7 +1391,6 @@ static void update_remote_addr(struct lightningd *ld,
 	case ADDR_TYPE_TOR_V2_REMOVED:
 	case ADDR_TYPE_TOR_V3:
 	case ADDR_TYPE_DNS:
-	case ADDR_TYPE_WEBSOCKET:
 		break;
 	}
 }
@@ -1404,7 +1434,11 @@ void peer_connected(struct lightningd *ld, const u8 *msg)
 	peer = peer_by_id(ld, &id);
 	if (!peer)
 		peer = new_peer(ld, 0, &id, &hook_payload->addr,
-				hook_payload->incoming);
+				their_features, hook_payload->incoming);
+	else {
+		tal_free(peer->their_features);
+		peer->their_features = tal_dup_talarr(peer, u8, their_features);
+	}
 
 	/* We track this, because messages can race between connectd and us.
 	 * For example, we could tell it to attach a subd, but it's actually
@@ -1424,7 +1458,6 @@ void peer_connected(struct lightningd *ld, const u8 *msg)
 	if (peer->remote_addr)
 		tal_free(peer->remote_addr);
 	peer->remote_addr = NULL;
-	peer_update_features(peer, their_features);
 	hook_payload->peer_id = id;
 
 	/* If there's a connect command, use its id as basis for hook id */
@@ -1943,9 +1976,6 @@ static void json_add_peer(struct lightningd *ld,
 		num_channels++;
 	json_add_num(response, "num_channels", num_channels);
 
-	/* If it's not connected, features are unreliable: we don't
-	 * store them in the database, and they would only reflect
-	 * their features *last* time they connected. */
 	if (p->connected == PEER_CONNECTED) {
 		json_array_start(response, "netaddr");
 		json_add_string(response, NULL,
@@ -1957,9 +1987,12 @@ static void json_add_peer(struct lightningd *ld,
 		if (p->remote_addr)
 			json_add_string(response, "remote_addr",
 					fmt_wireaddr(response, p->remote_addr));
-		json_add_hex_talarr(response, "features", p->their_features);
 	}
-	if (deprecated_apis) {
+
+	/* Note: If !PEER_CONNECTED, peer may use different features on reconnect */
+	json_add_hex_talarr(response, "features", p->their_features);
+
+	if (ld->deprecated_apis) {
 		json_array_start(response, "channels");
 		json_add_uncommitted_channel(response, p->uncommitted_channel, NULL);
 
@@ -2318,11 +2351,9 @@ static struct command_result *json_disconnect(struct command *cmd,
 				    channel_state_name(channel));
 	}
 
-	/* If it's not already disconnecting, tell connectd to disconnect */
-	if (peer->connected == PEER_CONNECTED)
-		subd_send_msg(peer->ld->connectd,
-			      take(towire_connectd_discard_peer(NULL, &peer->id,
-								peer->connectd_counter)));
+	subd_send_msg(peer->ld->connectd,
+		      take(towire_connectd_discard_peer(NULL, &peer->id,
+							peer->connectd_counter)));
 
 	/* Connectd tells us when it's finally disconnected */
 	dc = tal(cmd, struct disconnect_command);

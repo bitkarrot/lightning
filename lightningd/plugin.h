@@ -125,29 +125,19 @@ struct plugins {
 #endif /* DEVELOPER */
 };
 
-/* The value of a plugin option, which can have different types.
- * The presence of the integer and boolean values will depend of
- * the option type, but the string value will always be filled.
- */
-struct plugin_opt_value {
-	char *as_str;
-	s64 as_int;
-	bool as_bool;
-};
-
 /**
  * Simple storage for plugin options inbetween registering them on the
  * command line and passing them off to the plugin
  */
 struct plugin_opt {
+	struct plugin *plugin;
+	/* off plugin->plugin_opts */
 	struct list_node list;
+	/* includes -- prefix! */
 	const char *name;
-	const char *type;
 	const char *description;
-	struct plugin_opt_value **values;
-	/* Might be NULL if no default */
-	struct plugin_opt_value *def;
-	bool multi;
+	/* NULL if no default */
+	const char *def;
 	bool deprecated;
 };
 
@@ -367,4 +357,21 @@ struct log *plugin_get_log(struct plugin *plugin);
 void plugins_set_builtin_plugins_dir(struct plugins *plugins,
 				     const char *dir);
 
+/* Is this option for a plugin? */
+bool is_plugin_opt(const struct opt_table *ot);
+
+/* Add this field if this ot is owned by a plugin */
+void json_add_config_plugin(struct json_stream *stream,
+			    const struct plugins *plugins,
+			    const char *fieldname,
+			    const struct opt_table *ot);
+
+/* Attempt to setconfig an option in a plugin.  Calls success or fail, may be async! */
+struct command_result *plugin_set_dynamic_opt(struct command *cmd,
+					      const struct opt_table *ot,
+					      const char *val,
+					      struct command_result *(*success)
+					      (struct command *,
+					       const struct opt_table *,
+					       const char *));
 #endif /* LIGHTNING_LIGHTNINGD_PLUGIN_H */

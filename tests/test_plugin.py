@@ -68,7 +68,7 @@ def test_option_passthrough(node_factory, directory):
         ], capture_output=True, check=True).stderr.decode('utf-8')
 
         # first come first serve
-        assert("error starting plugin '{}': option name '--greeting' is already taken".format(plugin_path2) in err_out)
+        assert("error starting plugin '{}': option name 'greeting' is already taken".format(plugin_path2) in err_out)
 
 
 def test_option_types(node_factory):
@@ -113,34 +113,46 @@ def test_option_types(node_factory):
     # the node should fail after start, and we get a stderr msg
     n.daemon.start(wait_for_initialized=False, stderr_redir=True)
     assert n.daemon.wait() == 1
-    wait_for(lambda: n.daemon.is_in_stderr('bool_opt: ! does not parse as type bool'))
+    wait_for(lambda: n.daemon.is_in_stderr("--bool_opt=!: Invalid argument '!'"))
 
     # What happens if we give it a bad int-option?
     n = node_factory.get_node(options={
         'plugin': plugin_path,
         'str_opt': 'ok',
         'int_opt': 'notok',
-        'bool_opt': 1,
+        'bool_opt': True,
     }, may_fail=True, start=False)
 
     # the node should fail after start, and we get a stderr msg
     n.daemon.start(wait_for_initialized=False, stderr_redir=True)
     assert n.daemon.wait() == 1
-    assert n.daemon.is_in_stderr('--int_opt: notok does not parse as type int')
+    assert n.daemon.is_in_stderr("--int_opt=notok: 'notok' is not a number")
+
+    # We no longer allow '1' or '0' as boolean options
+    n = node_factory.get_node(options={
+        'plugin': plugin_path,
+        'str_opt': 'ok',
+        'bool_opt': '1',
+    }, may_fail=True, start=False)
+
+    # the node should fail after start, and we get a stderr msg
+    n.daemon.start(wait_for_initialized=False, stderr_redir=True)
+    assert n.daemon.wait() == 1
+    assert n.daemon.is_in_stderr("--bool_opt=1: boolean plugin arguments must be true or false")
 
     # Flag opts shouldn't allow any input
     n = node_factory.get_node(options={
         'plugin': plugin_path,
         'str_opt': 'ok',
         'int_opt': 11,
-        'bool_opt': 1,
+        'bool_opt': True,
         'flag_opt': True,
     }, may_fail=True, start=False)
 
     # the node should fail after start, and we get a stderr msg
     n.daemon.start(wait_for_initialized=False, stderr_redir=True)
     assert n.daemon.wait() == 1
-    assert n.daemon.is_in_stderr("--flag_opt: doesn't allow an argument")
+    assert n.daemon.is_in_stderr("--flag_opt=True: doesn't allow an argument")
 
     n = node_factory.get_node(options={
         'plugin': plugin_path,
@@ -351,7 +363,7 @@ def test_plugin_disable(node_factory):
     n = node_factory.get_node(options={'disable-plugin':
                                        ['something-else.py', 'helloworld.py']})
 
-    assert n.rpc.listconfigs()['disable-plugin'] == ['something-else.py', 'helloworld.py']
+    assert n.rpc.listconfigs()['configs']['disable-plugin'] == {'values_str': ['something-else.py', 'helloworld.py'], 'sources': ['cmdline', 'cmdline']}
 
 
 def test_plugin_hook(node_factory, executor):
@@ -453,7 +465,13 @@ def test_plugin_connected_hook_chaining(node_factory):
     ])
     assert len(l1.rpc.listpeers(l2id)['peers']) == 1
 
-    l3.connect(l1)
+    # If reject happens fast enough, connect fails with "disconnected
+    # during connection"
+    try:
+        l3.connect(l1)
+    except RpcError as err:
+        assert "disconnected during connection" in err.error
+
     l1.daemon.wait_for_logs([
         f"peer_connected_logger_a {l3id}",
         f"{l3id} is in reject list"
@@ -1560,7 +1578,7 @@ def test_libplugin(node_factory):
     with pytest.raises(RpcError, match=r"Deprecated command.*testrpc-deprecated"):
         l1.rpc.help('testrpc-deprecated')
 
-    assert 'somearg-deprecated' not in str(l1.rpc.listconfigs())
+    assert 'somearg-deprecated' not in str(l1.rpc.listconfigs()['configs'])
 
     l1.stop()
     l1.daemon.opts["somearg-deprecated"] = "test_opt"
@@ -1568,7 +1586,7 @@ def test_libplugin(node_factory):
     l1.daemon.start(wait_for_initialized=False, stderr_redir=True)
     # Will exit with failure code.
     assert l1.daemon.wait() == 1
-    assert l1.daemon.is_in_stderr(r"somearg-deprecated: deprecated option")
+    assert l1.daemon.is_in_stderr(r"somearg-deprecated=test_opt: deprecated option")
 
     del l1.daemon.opts["somearg-deprecated"]
     l1.start()
@@ -1747,7 +1765,7 @@ def test_bcli(node_factory, bitcoind, chainparams):
     assert 'feerate_floor' in estimates
     assert [f['blocks'] for f in estimates['feerates']] == [2, 6, 12, 100]
 
-    resp = l1.rpc.call("getchaininfo")
+    resp = l1.rpc.call("getchaininfo", {"last_height": 0})
     assert resp["chain"] == chainparams['name']
     for field in ["headercount", "blockcount", "ibd"]:
         assert field in resp
@@ -2428,12 +2446,11 @@ def test_dynamic_args(node_factory):
     l1.rpc.plugin_start(plugin_path, greeting='Test arg parsing')
 
     assert l1.rpc.call("hello") == "Test arg parsing world"
-    plugin = only_one([p for p in l1.rpc.listconfigs()['plugins'] if p['path'] == plugin_path])
-    assert plugin['options']['greeting'] == 'Test arg parsing'
+    assert l1.rpc.listconfigs('greeting')['configs']['greeting']['value_str'] == 'Test arg parsing'
+    assert l1.rpc.listconfigs('greeting')['configs']['greeting']['plugin'] == plugin_path
 
     l1.rpc.plugin_stop(plugin_path)
-
-    assert [p for p in l1.rpc.listconfigs()['plugins'] if p['path'] == plugin_path] == []
+    assert 'greeting' not in l1.rpc.listconfigs()['configs']
 
 
 def test_pyln_request_notify(node_factory):
@@ -2520,7 +2537,7 @@ def test_custom_notification_topics(node_factory):
 
     # The plugin just dist what previously was a fatal mistake (emit
     # an unknown notification), make sure we didn't kill it.
-    assert 'custom_notifications.py' in [p['name'] for p in l1.rpc.listconfigs()['plugins']]
+    assert str(plugin) in [p['name'] for p in l1.rpc.plugin_list()['plugins']]
 
 
 def test_restart_on_update(node_factory):
@@ -2980,6 +2997,58 @@ def test_commando_listrunes(node_factory):
     assert not_our_rune['our_rune'] is False
 
 
+def test_commando_rune_pay_amount(node_factory):
+    l1, l2 = node_factory.line_graph(2)
+
+    # This doesn't really work, since amount_msat is illegal if invoice
+    # includes an amount, and runes aren't smart enough to decode bolt11!
+    rune = l1.rpc.commando_rune(restrictions=[['method=pay'],
+                                              ['pnameamountmsat<10000']])['rune']
+    inv1 = l2.rpc.invoice(amount_msat=12300, label='inv1', description='description1')['bolt11']
+    inv2 = l2.rpc.invoice(amount_msat='any', label='inv2', description='description2')['bolt11']
+
+    # Rune requires amount_msat!
+    with pytest.raises(RpcError, match='Not authorized:'):
+        l2.rpc.commando(peer_id=l1.info['id'],
+                        rune=rune,
+                        method='pay',
+                        params={'bolt11': inv1})
+
+    # As a named parameter!
+    with pytest.raises(RpcError, match='Not authorized:'):
+        l2.rpc.commando(peer_id=l1.info['id'],
+                        rune=rune,
+                        method='pay',
+                        params=[inv1])
+
+    # Can't get around it this way!
+    with pytest.raises(RpcError, match='Not authorized:'):
+        l2.rpc.commando(peer_id=l1.info['id'],
+                        rune=rune,
+                        method='pay',
+                        params=[inv2, 12000])
+
+    # Nor this way, using a string!
+    with pytest.raises(RpcError, match='Not authorized:'):
+        l2.rpc.commando(peer_id=l1.info['id'],
+                        rune=rune,
+                        method='pay',
+                        params={'bolt11': inv2, 'amount_msat': '10000sat'})
+
+    # Too much!
+    with pytest.raises(RpcError, match='Not authorized:'):
+        l2.rpc.commando(peer_id=l1.info['id'],
+                        rune=rune,
+                        method='pay',
+                        params={'bolt11': inv2, 'amount_msat': 12000})
+
+    # This works
+    l2.rpc.commando(peer_id=l1.info['id'],
+                    rune=rune,
+                    method='pay',
+                    params={'bolt11': inv2, 'amount_msat': 9999})
+
+
 def test_commando_blacklist(node_factory):
     l1, l2 = node_factory.get_nodes(2)
 
@@ -3061,6 +3130,7 @@ def test_commando_blacklist(node_factory):
     assert blacklisted_rune is True
 
 
+@pytest.mark.slow_test
 def test_commando_stress(node_factory, executor):
     """Stress test to slam commando with many large queries"""
     nodes = node_factory.get_nodes(5)
@@ -3117,8 +3187,7 @@ def test_commando_badrune(node_factory):
 
 
 def test_autoclean(node_factory):
-    l1, l2, l3 = node_factory.line_graph(3, opts={'autoclean-cycle': 10,
-                                                  'may_reconnect': True},
+    l1, l2, l3 = node_factory.line_graph(3, opts={'may_reconnect': True},
                                          wait_for_announce=True)
 
     # Under valgrind in CI, it can 50 seconds between creating invoice
@@ -3137,9 +3206,11 @@ def test_autoclean(node_factory):
     inv4 = l3.rpc.invoice(amount_msat=12300, label='inv4', description='description4', expiry=2000)
     inv5 = l3.rpc.invoice(amount_msat=12300, label='inv5', description='description5', expiry=2000)
 
-    l3.stop()
-    l3.daemon.opts['autoclean-expiredinvoices-age'] = 2
-    l3.start()
+    # It must be an integer!
+    with pytest.raises(RpcError, match=r'is not a number'):
+        l3.rpc.setconfig('autoclean-expiredinvoices-age', 'xxx')
+
+    l3.rpc.setconfig('autoclean-expiredinvoices-age', 2)
     assert l3.rpc.autoclean_status()['autoclean']['expiredinvoices']['enabled'] is True
     assert l3.rpc.autoclean_status()['autoclean']['expiredinvoices']['age'] == 2
 
@@ -3148,6 +3219,8 @@ def test_autoclean(node_factory):
     assert len(l3.rpc.listinvoices('inv1')['invoices']) == 1
     assert len(l3.rpc.listinvoices('inv2')['invoices']) == 1
     assert l3.rpc.listinvoices('inv1')['invoices'][0]['description'] == 'description1'
+
+    l3.rpc.setconfig('autoclean-cycle', 10)
 
     # First it expires.
     wait_for(lambda: only_one(l3.rpc.listinvoices('inv1')['invoices'])['status'] == 'expired')
@@ -3163,9 +3236,7 @@ def test_autoclean(node_factory):
     assert l3.rpc.autoclean_status()['autoclean']['expiredinvoices']['cleaned'] == 1
 
     # Disabling works
-    l3.stop()
-    l3.daemon.opts['autoclean-expiredinvoices-age'] = 0
-    l3.start()
+    l3.rpc.setconfig('autoclean-expiredinvoices-age', 0)
     assert l3.rpc.autoclean_status()['autoclean']['expiredinvoices']['enabled'] is False
     assert 'age' not in l3.rpc.autoclean_status()['autoclean']['expiredinvoices']
 
@@ -3186,9 +3257,7 @@ def test_autoclean(node_factory):
     assert 'age' not in l3.rpc.autoclean_status()['autoclean']['expiredinvoices']
 
     # Now enable: they will get autocleaned
-    l3.stop()
-    l3.daemon.opts['autoclean-expiredinvoices-age'] = 2
-    l3.start()
+    l3.rpc.setconfig('autoclean-expiredinvoices-age', 2)
     wait_for(lambda: len(l3.rpc.listinvoices()['invoices']) == 2)
     assert l3.rpc.autoclean_status()['autoclean']['expiredinvoices']['cleaned'] == 3
 
@@ -3203,9 +3272,7 @@ def test_autoclean(node_factory):
 
     assert l3.rpc.autoclean_status()['autoclean']['paidinvoices']['enabled'] is False
     assert l3.rpc.autoclean_status()['autoclean']['paidinvoices']['cleaned'] == 0
-    l3.stop()
-    l3.daemon.opts['autoclean-paidinvoices-age'] = 1
-    l3.start()
+    l3.rpc.setconfig('autoclean-paidinvoices-age', 1)
     assert l3.rpc.autoclean_status()['autoclean']['paidinvoices']['enabled'] is True
 
     wait_for(lambda: l3.rpc.listinvoices()['invoices'] == [])
@@ -3214,17 +3281,14 @@ def test_autoclean(node_factory):
 
     assert only_one(l1.rpc.listpays(inv5['bolt11'])['pays'])['status'] == 'failed'
     assert only_one(l1.rpc.listpays(inv4['bolt11'])['pays'])['status'] == 'complete'
-    l1.stop()
-    l1.daemon.opts['autoclean-failedpays-age'] = 1
-    l1.start()
+    l1.rpc.setconfig('autoclean-failedpays-age', 1)
+    l1.rpc.setconfig('autoclean-cycle', 5)
 
     wait_for(lambda: l1.rpc.listpays(inv5['bolt11'])['pays'] == [])
     assert l1.rpc.autoclean_status()['autoclean']['failedpays']['cleaned'] == 1
     assert l1.rpc.autoclean_status()['autoclean']['succeededpays']['cleaned'] == 0
 
-    l1.stop()
-    l1.daemon.opts['autoclean-succeededpays-age'] = 2
-    l1.start()
+    l1.rpc.setconfig('autoclean-succeededpays-age', 2)
     wait_for(lambda: l1.rpc.listpays(inv4['bolt11'])['pays'] == [])
     assert l1.rpc.listsendpays() == {'payments': []}
 
@@ -3234,9 +3298,8 @@ def test_autoclean(node_factory):
     assert len(l2.rpc.listforwards()['forwards']) == 2
 
     # Clean failed ones.
-    l2.stop()
-    l2.daemon.opts['autoclean-failedforwards-age'] = 2
-    l2.start()
+    l2.rpc.setconfig('autoclean-cycle', 5)
+    l2.rpc.setconfig('autoclean-failedforwards-age', 2)
     wait_for(lambda: l2.rpc.listforwards(status='failed')['forwards'] == [])
 
     assert len(l2.rpc.listforwards(status='settled')['forwards']) == 1
@@ -3246,9 +3309,7 @@ def test_autoclean(node_factory):
     amt_before = l2.rpc.getinfo()['fees_collected_msat']
 
     # Clean succeeded ones
-    l2.stop()
-    l2.daemon.opts['autoclean-succeededforwards-age'] = 2
-    l2.start()
+    l2.rpc.setconfig('autoclean-succeededforwards-age', 2)
     wait_for(lambda: l2.rpc.listforwards(status='settled')['forwards'] == [])
     assert l2.rpc.listforwards() == {'forwards': []}
     assert l2.rpc.autoclean_status()['autoclean']['failedforwards']['cleaned'] == 1
@@ -4144,3 +4205,46 @@ def test_sql_deprecated(node_factory, bitcoind):
 
     #  ret = l1.rpc.sql("SELECT funding_local_msat, funding_remote_msat FROM peerchannels;")
     #  assert ret == {'rows': []}
+
+
+def test_plugin_persist_option(node_factory):
+    """test that options from config file get remembered across plugin stop/start"""
+    plugin_path = os.path.join(os.getcwd(), 'contrib/plugins/helloworld.py')
+
+    l1 = node_factory.get_node(options={"plugin": plugin_path,
+                                        "greeting": "Static option"})
+    assert l1.rpc.call("hello") == "Static option world"
+    c = l1.rpc.listconfigs('greeting')['configs']['greeting']
+    assert c['source'] == "cmdline"
+    assert c['value_str'] == "Static option"
+    assert c['plugin'] == plugin_path
+    l1.rpc.plugin_stop(plugin_path)
+    assert 'greeting' not in l1.rpc.listconfigs()['configs']
+
+    # Restart works
+    l1.rpc.plugin_start(plugin_path)
+    c = l1.rpc.listconfigs('greeting')['configs']['greeting']
+    assert c['source'] == "cmdline"
+    assert c['value_str'] == "Static option"
+    assert c['plugin'] == plugin_path
+    assert l1.rpc.call("hello") == "Static option world"
+    l1.rpc.plugin_stop(plugin_path)
+    assert 'greeting' not in l1.rpc.listconfigs()['configs']
+
+    # This overrides!
+    l1.rpc.plugin_start(plugin_path, greeting="Dynamic option")
+    c = l1.rpc.listconfigs('greeting')['configs']['greeting']
+    assert c['source'] == "pluginstart"
+    assert c['value_str'] == "Dynamic option"
+    assert c['plugin'] == plugin_path
+    assert l1.rpc.call("hello") == "Dynamic option world"
+    l1.rpc.plugin_stop(plugin_path)
+    assert 'greeting' not in l1.rpc.listconfigs()['configs']
+
+    # Now restored!
+    l1.rpc.plugin_start(plugin_path)
+    c = l1.rpc.listconfigs('greeting')['configs']['greeting']
+    assert c['source'] == "cmdline"
+    assert c['value_str'] == "Static option"
+    assert c['plugin'] == plugin_path
+    assert l1.rpc.call("hello") == "Static option world"
