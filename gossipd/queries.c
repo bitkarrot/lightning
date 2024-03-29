@@ -8,7 +8,6 @@
 #include <common/decode_array.h>
 #include <common/gossmap.h>
 #include <common/status.h>
-#include <common/type_to_string.h>
 #include <common/wire_error.h>
 #include <gossipd/gossip_store.h>
 #include <gossipd/gossipd.h>
@@ -38,7 +37,7 @@ static u8 *encoding_start(const tal_t *ctx, bool prepend_encoding)
 
 /* Marshal a single short_channel_id */
 static void encoding_add_short_channel_id(u8 **encoded,
-					  const struct short_channel_id *scid)
+					  struct short_channel_id scid)
 {
 	towire_short_channel_id(encoded, scid);
 }
@@ -115,7 +114,7 @@ bool query_short_channel_ids(struct daemon *daemon,
 		 *   ascending order.
 		 */
 		assert(i == 0 || scids[i].u64 > scids[i-1].u64);
-		encoding_add_short_channel_id(&encoded, &scids[i]);
+		encoding_add_short_channel_id(&encoded, scids[i]);
 	}
 
 	if (!encoding_end(encoded, max_encoded_bytes)) {
@@ -205,7 +204,7 @@ const u8 *handle_query_short_channel_ids(struct peer *peer, const u8 *msg)
 	if (!bitcoin_blkid_eq(&chainparams->genesis_blockhash, &chain)) {
 		status_peer_debug(&peer->id,
 				  "sent query_short_channel_ids chainhash %s",
-				  type_to_string(tmpctx, struct bitcoin_blkid, &chain));
+				  fmt_bitcoin_blkid(tmpctx, &chain));
 		return towire_reply_short_channel_ids_end(peer, &chain, 0);
 	}
 
@@ -291,7 +290,7 @@ static void send_reply_channel_range(struct peer *peer,
 
 	/* Encode them all */
 	for (size_t i = 0; i < num_scids; i++)
-		encoding_add_short_channel_id(&encoded_scids, &scids[i]);
+		encoding_add_short_channel_id(&encoded_scids, scids[i]);
 	encoding_end(encoded_scids, tal_bytelen(encoded_scids));
 
 	if (tstamps) {
@@ -507,8 +506,8 @@ static struct short_channel_id *gather_range(const tal_t *ctx,
 		}
 
 		scid = gossmap_chan_scid(gossmap, chan);
-		if (short_channel_id_blocknum(&scid) < first_blocknum
-		    || short_channel_id_blocknum(&scid) > end_block) {
+		if (short_channel_id_blocknum(scid) < first_blocknum
+		    || short_channel_id_blocknum(scid) > end_block) {
 			continue;
 		}
 
@@ -565,8 +564,8 @@ static void queue_channel_ranges(struct peer *peer,
 			n = limit;
 
 			/* ... and reduce to a block boundary. */
-			while (short_channel_id_blocknum(&scids[off + n - 1])
-			       == short_channel_id_blocknum(&scids[off + limit])) {
+			while (short_channel_id_blocknum(scids[off + n - 1])
+			       == short_channel_id_blocknum(scids[off + limit])) {
 				/* We assume one block doesn't have limit #
 				 * channels.  If it does, we have to violate
 				 * spec and send over multiple blocks. */
@@ -574,7 +573,7 @@ static void queue_channel_ranges(struct peer *peer,
 					status_broken("reply_channel_range: "
 						      "could not fit %zu scids for %u!",
 						      limit,
-						      short_channel_id_blocknum(&scids[off + n - 1]));
+						      short_channel_id_blocknum(scids[off + n - 1]));
 					n = limit;
 					break;
 				}
@@ -582,7 +581,7 @@ static void queue_channel_ranges(struct peer *peer,
 			}
 			/* Get *next* channel, add num blocks */
 			this_num_blocks
-				= short_channel_id_blocknum(&scids[off + n])
+				= short_channel_id_blocknum(scids[off + n])
 				- first_blocknum;
 		} else
 			/* Last one must end with correct total */
@@ -633,8 +632,7 @@ const u8 *handle_query_channel_range(struct peer *peer, const u8 *msg)
 	if (!bitcoin_blkid_eq(&chainparams->genesis_blockhash, &chain_hash)) {
 		status_peer_debug(&peer->id,
 				  "query_channel_range with chainhash %s",
-				  type_to_string(tmpctx, struct bitcoin_blkid,
-						 &chain_hash));
+				  fmt_bitcoin_blkid(tmpctx, &chain_hash));
 		u8 *end = towire_reply_channel_range(NULL, &chain_hash, first_blocknum,
 		                                     number_of_blocks, false, NULL, NULL);
 		queue_peer_msg(peer->daemon, &peer->id, take(end));

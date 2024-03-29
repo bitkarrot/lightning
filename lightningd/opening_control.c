@@ -13,7 +13,6 @@
 #include <common/json_param.h>
 #include <common/memleak.h>
 #include <common/scb_wiregen.h>
-#include <common/type_to_string.h>
 #include <connectd/connectd_wiregen.h>
 #include <errno.h>
 #include <hsmd/permissions.h>
@@ -34,7 +33,6 @@
 
 void json_add_uncommitted_channel(struct json_stream *response,
 				  const struct uncommitted_channel *uc,
-				  /* Only set for listpeerchannels */
 				  const struct peer *peer)
 {
 	struct amount_msat total, ours;
@@ -47,12 +45,10 @@ void json_add_uncommitted_channel(struct json_stream *response,
 		return;
 
 	json_object_start(response, NULL);
-	if (peer) {
-		json_add_node_id(response, "peer_id", &peer->id);
-		json_add_bool(response, "peer_connected", peer->connected == PEER_CONNECTED);
-		if (uc->fc->channel_type)
+	json_add_node_id(response, "peer_id", &peer->id);
+	json_add_bool(response, "peer_connected", peer->connected == PEER_CONNECTED);
+	if (uc->fc->channel_type)
 			json_add_channel_type(response, "channel_type", uc->fc->channel_type);
-	}
 	json_add_string(response, "state", "OPENINGD");
 	json_add_string(response, "owner", "lightning_openingd");
 	json_add_string(response, "opener", "local");
@@ -132,10 +128,8 @@ wallet_commit_channel(struct lightningd *ld,
 	if (uc->fc) {
 		if (!amount_sat_sub_msat(&our_msat, funding_sats, push)) {
 			log_broken(uc->log, "push %s exceeds funding %s",
-				   type_to_string(tmpctx, struct amount_msat,
-						  &push),
-				   type_to_string(tmpctx, struct amount_sat,
-						  &funding_sats));
+				   fmt_amount_msat(tmpctx, push),
+				   fmt_amount_sat(tmpctx, funding_sats));
 			return NULL;
 		}
 		local_funding = funding_sats;
@@ -307,7 +301,7 @@ static void funding_success(struct channel *channel)
 
 	response = json_stream_success(cmd);
 	json_add_string(response, "channel_id",
-			type_to_string(tmpctx, struct channel_id,
+			fmt_channel_id(tmpctx,
 				       &channel->cid));
 	json_add_bool(response, "commitments_secured", true);
 	was_pending(command_success(cmd, response));
@@ -424,7 +418,7 @@ static void opening_funder_finished(struct subd *openingd, const u8 *resp,
 	peer_fd = new_peer_fd_arr(resp, fds);
 
 	log_debug(ld->log,
-		  "%s", type_to_string(tmpctx, struct pubkey,
+		  "%s", fmt_pubkey(tmpctx,
 				       &channel_info.remote_per_commit));
 
 	/* Saved with channel to disk */
@@ -551,7 +545,7 @@ static void opening_fundee_finished(struct subd *openingd,
 	}
 
 	log_debug(channel->log, "Watching funding tx %s",
-		  type_to_string(reply, struct bitcoin_txid,
+		  fmt_bitcoin_txid(reply,
 				 &channel->funding.txid));
 
 	channel_watch_funding(ld, channel);
@@ -819,8 +813,7 @@ openchannel_hook_deserialize(struct openchannel_hook_payload *payload,
 		log_debug(openingd->ld->log,
 			  "Setting reserve=%s for this channel as requested by "
 			  "the openchannel hook",
-			  type_to_string(tmpctx, struct amount_sat,
-					 payload->uc->reserve));
+			  fmt_amount_sat(tmpctx, *payload->uc->reserve));
 	}
 
 	return true;
@@ -1061,8 +1054,7 @@ static struct command_result *json_fundchannel_complete(struct command *cmd,
 				    " should be %s",
 				    funding_psbt->outputs
 				    [*funding_txout_num].amount,
-				    type_to_string(tmpctx, struct amount_sat,
-						   &fc->funding_sats));
+				    fmt_amount_sat(tmpctx, fc->funding_sats));
 
 	funding_txid = tal(cmd, struct bitcoin_txid);
 	psbt_txid(NULL, funding_psbt, funding_txid, NULL);
@@ -1190,8 +1182,8 @@ static struct command_result *json_fundchannel_start(struct command *cmd,
 		return command_fail(cmd, FUND_CANNOT_AFFORD,
 				    "Requested to push_msat of %s is greater than "
 				    "available funding amount %s",
-				    type_to_string(tmpctx, struct amount_msat, push_msat),
-				    type_to_string(tmpctx, struct amount_sat, amount));
+				    fmt_amount_msat(tmpctx, *push_msat),
+				    fmt_amount_sat(tmpctx, *amount));
 
 	fc->funding_sats = *amount;
 	if (!feerate_non_anchor) {
@@ -1279,8 +1271,8 @@ static struct command_result *json_fundchannel_start(struct command *cmd,
 	    && amount_sat_greater(*amount, chainparams->max_funding))
 		return command_fail(cmd, FUND_MAX_EXCEEDED,
 				    "Amount exceeded %s",
-				    type_to_string(tmpctx, struct amount_sat,
-						   &chainparams->max_funding));
+				    fmt_amount_sat(tmpctx,
+						   chainparams->max_funding));
 
 	if (command_check_only(cmd))
 		return command_check_done(cmd);
@@ -1290,7 +1282,7 @@ static struct command_result *json_fundchannel_start(struct command *cmd,
 	if (!*announce_channel) {
 		fc->channel_flags &= ~CHANNEL_FLAGS_ANNOUNCE_CHANNEL;
 		log_info(peer->ld->log, "Will open private channel with node %s",
-			type_to_string(fc, struct node_id, id));
+			fmt_node_id(fc, id));
 	}
 
 	peer->uncommitted_channel->fc = tal_steal(peer->uncommitted_channel, fc);
@@ -1397,7 +1389,7 @@ static struct channel *stub_chan(struct command *cmd,
 	if (peer) {
 		if (find_channel_by_id(peer, &cid)) {
 			log_debug(cmd->ld->log, "channel %s already exists!",
-				  type_to_string(tmpctx, struct channel_id, &cid));
+				  fmt_channel_id(tmpctx, &cid));
 			return NULL;
 		}
 	} else {
@@ -1423,10 +1415,8 @@ static struct channel *stub_chan(struct command *cmd,
 			   ,sig);
 
 	if (!pubkey_from_der(tal_hexdata(cmd,
-					 type_to_string(tmpctx,
-                                                        struct node_id,
-                                                        &nodeid),
-                                                        66),
+					 fmt_node_id(tmpctx, &nodeid),
+					 66),
 					 33,
 					 &pk))
 	{

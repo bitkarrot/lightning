@@ -1,7 +1,6 @@
 #include "config.h"
 #include <common/bolt11.h>
 #include <common/json_parse.h>
-#include <common/type_to_string.h>
 #include <gossipd/gossipd_wiregen.h>
 #include <lightningd/channel.h>
 #include <lightningd/lightningd.h>
@@ -9,10 +8,10 @@
 #include <lightningd/routehint.h>
 
 static bool scid_in_arr(const struct short_channel_id *scidarr,
-			const struct short_channel_id *scid)
+			struct short_channel_id scid)
 {
 	for (size_t i = 0; i < tal_count(scidarr); i++)
-		if (short_channel_id_eq(&scidarr[i], scid))
+		if (short_channel_id_eq(scidarr[i], scid))
 			return true;
 
 	return false;
@@ -94,24 +93,19 @@ routehint_candidates(const tal_t *ctx,
 		}
 
 		/* Note: listincoming returns real scid or local alias if no real scid. */
-		candidate.c = any_channel_by_scid(ld, &r->short_channel_id, true);
+		candidate.c = any_channel_by_scid(ld, r->short_channel_id, true);
 		if (!candidate.c) {
 			log_debug(ld->log, "%s: channel not found in peer %s",
-				  type_to_string(tmpctx,
-						 struct short_channel_id,
-						 &r->short_channel_id),
-				  type_to_string(tmpctx,
-						 struct node_id,
-						 &r->pubkey));
+				  fmt_short_channel_id(tmpctx, r->short_channel_id),
+				  fmt_node_id(tmpctx, &r->pubkey));
 			continue;
 		}
 
 		/* Check channel is in CHANNELD_NORMAL or CHANNELD_AWAITING_SPLICE */
 		if (!channel_state_can_add_htlc(candidate.c->state)) {
 			log_debug(ld->log, "%s: abnormal channel",
-				  type_to_string(tmpctx,
-						 struct short_channel_id,
-						 &r->short_channel_id));
+				  fmt_short_channel_id(tmpctx,
+						       r->short_channel_id));
 			continue;
 		}
 
@@ -153,21 +147,19 @@ routehint_candidates(const tal_t *ctx,
 		if (hints) {
 			log_debug(ld->log, "We have hints!");
 			/* Allow specification by alias, too */
-			if (!scid_in_arr(hints, &r->short_channel_id)
+			if (!scid_in_arr(hints, r->short_channel_id)
 			    && (!candidate.c->alias[REMOTE]
-				|| !scid_in_arr(hints, candidate.c->alias[REMOTE]))) {
+				|| !scid_in_arr(hints, *candidate.c->alias[REMOTE]))) {
 				log_debug(ld->log, "scid %s not in hints",
-					  type_to_string(tmpctx,
-							 struct short_channel_id,
-							 &r->short_channel_id));
+					  fmt_short_channel_id(tmpctx,
+							       r->short_channel_id));
 				continue;
 			}
 			/* If they give us a hint, we use even if capacity 0 */
 		} else if (amount_msat_eq(capacity, AMOUNT_MSAT(0))) {
 			log_debug(ld->log, "%s: deadend",
-				  type_to_string(tmpctx,
-						 struct short_channel_id,
-						 &r->short_channel_id));
+				  fmt_short_channel_id(tmpctx,
+						       r->short_channel_id));
 			if (!amount_msat_add(deadend_capacity,
 					     *deadend_capacity,
 					     candidate.capacity))
@@ -178,9 +170,8 @@ routehint_candidates(const tal_t *ctx,
 		/* Is it offline? */
 		if (candidate.c->owner == NULL) {
 			log_debug(ld->log, "%s: offline",
-				  type_to_string(tmpctx,
-						 struct short_channel_id,
-						 &r->short_channel_id));
+				  fmt_short_channel_id(tmpctx,
+						       r->short_channel_id));
 			if (!amount_msat_add(offline_capacity,
 					     *offline_capacity,
 					     candidate.capacity))
@@ -196,9 +187,8 @@ routehint_candidates(const tal_t *ctx,
 		if (channel_has(candidate.c, OPT_SCID_ALIAS)) {
 			if (!candidate.c->alias[REMOTE]) {
 				log_debug(ld->log, "%s: no remote alias (yet?)",
-					  type_to_string(tmpctx,
-							 struct short_channel_id,
-							 &r->short_channel_id));
+					  fmt_short_channel_id(tmpctx,
+							       r->short_channel_id));
 				continue;
 			}
 			r->short_channel_id = *candidate.c->alias[REMOTE];
@@ -218,9 +208,8 @@ routehint_candidates(const tal_t *ctx,
 			} else {
 				/* Haven't got remote alias yet?  Can't use ut. */
 				log_debug(ld->log, "%s: no alias",
-					  type_to_string(tmpctx,
-							 struct short_channel_id,
-						 &r->short_channel_id));
+					  fmt_short_channel_id(tmpctx,
+							       r->short_channel_id));
 				continue;
 			}
 		}
@@ -228,35 +217,33 @@ routehint_candidates(const tal_t *ctx,
 		/* OK, finish it and append to one of the arrays. */
 		if (is_public) {
 			log_debug(ld->log, "%s: added to public",
-				  type_to_string(tmpctx,
-						 struct short_channel_id,
-						 &r->short_channel_id));
+				  fmt_short_channel_id(tmpctx,
+						       r->short_channel_id));
 			candidate.r = tal_steal(candidates, r);
 			tal_arr_expand(&candidates, candidate);
 			if (!amount_msat_add(avail_capacity,
 					     *avail_capacity,
 					     candidate.capacity)) {
 				fatal("Overflow summing pub capacities %s + %s",
-				      type_to_string(tmpctx, struct amount_msat,
-						     avail_capacity),
-				      type_to_string(tmpctx, struct amount_msat,
-						     &candidate.capacity));
+				      fmt_amount_msat(tmpctx,
+						      *avail_capacity),
+				      fmt_amount_msat(tmpctx,
+						      candidate.capacity));
 			}
 		} else {
 			log_debug(ld->log, "%s: added to private",
-				  type_to_string(tmpctx,
-						 struct short_channel_id,
-						 &r->short_channel_id));
+				  fmt_short_channel_id(tmpctx,
+						       r->short_channel_id));
 			candidate.r = tal_steal(privcandidates, r);
 			tal_arr_expand(&privcandidates, candidate);
 			if (!amount_msat_add(private_capacity,
 					     *private_capacity,
 					     candidate.capacity)) {
 				fatal("Overflow summing priv capacities %s + %s",
-				      type_to_string(tmpctx, struct amount_msat,
-						     private_capacity),
-				      type_to_string(tmpctx, struct amount_msat,
-						     &candidate.capacity));
+				      fmt_amount_msat(tmpctx,
+						      *private_capacity),
+				      fmt_amount_msat(tmpctx,
+						      candidate.capacity));
 			}
 		}
 	}

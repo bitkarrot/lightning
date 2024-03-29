@@ -9,7 +9,6 @@
 #include <common/onionreply.h>
 #include <common/route.h>
 #include <common/timeout.h>
-#include <common/type_to_string.h>
 #include <lightningd/chaintopology.h>
 #include <lightningd/channel.h>
 #include <lightningd/invoice.h>
@@ -182,7 +181,7 @@ json_add_routefail_info(struct json_stream *js,
 		json_add_node_id(js, "erring_node", erring_node);
 
 	if (erring_channel != NULL) {
-		json_add_short_channel_id(js, "erring_channel", erring_channel);
+		json_add_short_channel_id(js, "erring_channel", *erring_channel);
 		json_add_num(js, "erring_direction", channel_dir);
 	}
 
@@ -343,7 +342,7 @@ static struct routing_failure*
 immediate_routing_failure(const tal_t *ctx,
 			  const struct lightningd *ld,
 			  enum onion_wire failcode,
-			  const struct short_channel_id *channel0,
+			  struct short_channel_id channel0,
 			  const struct node_id *dstid)
 {
 	struct routing_failure *routing_failure;
@@ -356,7 +355,7 @@ immediate_routing_failure(const tal_t *ctx,
 	routing_failure->erring_node =
 	    tal_dup(routing_failure, struct node_id, &ld->id);
 	routing_failure->erring_channel =
-	    tal_dup(routing_failure, struct short_channel_id, channel0);
+	    tal_dup(routing_failure, struct short_channel_id, &channel0);
 	routing_failure->channel_dir = node_id_idx(&ld->id, dstid);
 	routing_failure->msg = NULL;
 
@@ -524,8 +523,7 @@ void payment_failed(struct lightningd *ld, const struct htlc_out *hout,
 		log_unusual(hout->key.channel->log,
 			    "No payment for %s:"
 			    " was this an old database?",
-			    type_to_string(tmpctx, struct sha256,
-					   &hout->payment_hash));
+			    fmt_sha256(tmpctx, &hout->payment_hash));
 		return;
 	}
 #else
@@ -645,8 +643,7 @@ static struct command_result *wait_payment(struct lightningd *ld,
 				    "Never attempted payment part %"PRIu64
 				    " for '%s'",
 				    partid,
-				    type_to_string(tmpctx, struct sha256,
-						   payment_hash));
+				    fmt_sha256(tmpctx, payment_hash));
 	}
 
 	log_debug(cmd->ld->log, "Payment part %"PRIu64"/%"PRIu64"/%"PRIu64" status %u",
@@ -757,14 +754,12 @@ static struct command_result *check_invoice_request_usage(struct command *cmd,
 					 NULL, &status))
 		return command_fail(cmd, PAY_INVOICE_REQUEST_INVALID,
 				    "Unknown invoice_request %s",
-				    type_to_string(tmpctx, struct sha256,
-						   local_invreq_id));
+				    fmt_sha256(tmpctx, local_invreq_id));
 
 	if (!offer_status_active(status))
 		return command_fail(cmd, PAY_INVOICE_REQUEST_INVALID,
 				    "Inactive invoice_request %s",
-				    type_to_string(tmpctx, struct sha256,
-						   local_invreq_id));
+				    fmt_sha256(tmpctx, local_invreq_id));
 
 	if (!offer_status_single(status))
 		return NULL;
@@ -782,16 +777,14 @@ static struct command_result *check_invoice_request_usage(struct command *cmd,
 			return command_fail(cmd, PAY_INVOICE_REQUEST_INVALID,
 					    "Single-use invoice_request already paid"
 					    " with %s",
-					    type_to_string(tmpctx, struct sha256,
-							   &payment
-							   ->payment_hash));
+					    fmt_sha256(tmpctx,
+						       &payment->payment_hash));
 		case PAYMENT_PENDING:
 			return command_fail(cmd, PAY_INVOICE_REQUEST_INVALID,
 					    "Single-use invoice_request already"
 					    " in progress with %s",
-					    type_to_string(tmpctx, struct sha256,
-							   &payment
-							   ->payment_hash));
+					    fmt_sha256(tmpctx,
+						       &payment->payment_hash));
 		case PAYMENT_FAILED:
 			break;
 		}
@@ -804,11 +797,11 @@ static struct channel *
 find_channel_for_htlc_add(struct lightningd *ld,
 			  struct command *cmd,
 			  const struct node_id *node,
-			  const struct short_channel_id *scid_or_alias,
+			  struct short_channel_id scid_or_alias,
 			  const struct amount_msat *amount)
 {
 	struct channel *channel;
-	const struct short_channel_id *scid;
+	struct short_channel_id scid;
 	struct peer *peer = peer_by_id(ld, node);
 	if (!peer)
 		return NULL;
@@ -823,12 +816,8 @@ find_channel_for_htlc_add(struct lightningd *ld,
 		goto found;
 	}
 
-	/* We used to ignore scid: now all-zero means "any" */
-	if (!channel
-	    && (memeqzero(scid_or_alias, sizeof(*scid_or_alias))
-		|| command_deprecated_in_ok(cmd,
-					    "channel.ignored",
-					    "v0.12", "v24.02"))) {
+	/* All-zero means "any" */
+	if (!channel && memeqzero(&scid_or_alias, sizeof(scid_or_alias))) {
 		list_for_each(&peer->channels, channel, list) {
 			if (channel_state_can_add_htlc(channel->state) &&
 			    amount_msat_greater(channel->our_msat, *amount)) {
@@ -838,18 +827,18 @@ find_channel_for_htlc_add(struct lightningd *ld,
 	}
 
 	log_debug(ld->log, "No channel found for selector %s (%s)",
-		  short_channel_id_to_str(tmpctx, scid_or_alias),
-		  type_to_string(tmpctx, struct amount_msat, amount));
+		  fmt_short_channel_id(tmpctx, scid_or_alias),
+		  fmt_amount_msat(tmpctx, *amount));
 	return NULL;
 
 found:
 	scid = channel_scid_or_local_alias(channel);
 	log_debug(
 	    ld->log, "Selected channel %s (%s) for selector %s (%s)",
-	    short_channel_id_to_str(tmpctx, scid),
-	    type_to_string(tmpctx, struct amount_msat, &channel->our_msat),
-	    short_channel_id_to_str(tmpctx, scid_or_alias),
-	    type_to_string(tmpctx, struct amount_msat, amount));
+	    fmt_short_channel_id(tmpctx, scid),
+	    fmt_amount_msat(tmpctx, channel->our_msat),
+	    fmt_short_channel_id(tmpctx, scid_or_alias),
+	    fmt_amount_msat(tmpctx, *amount));
 
 	return channel;
 }
@@ -880,8 +869,7 @@ static struct command_result *check_progress(struct lightningd *ld,
 
 		payment = payment_get_details(tmpctx, stmt);
 		log_debug(ld->log, "Payment: %s %s",
-			  type_to_string(tmpctx, struct amount_msat,
-					 &payment->msatoshi),
+			  fmt_amount_msat(tmpctx, payment->msatoshi),
 			  payment->status == PAYMENT_COMPLETE ? "COMPLETE"
 			  : payment->status == PAYMENT_PENDING ? "PENDING"
 			  : "FAILED");
@@ -899,20 +887,18 @@ static struct command_result *check_progress(struct lightningd *ld,
 				return command_fail(cmd, PAY_RHASH_ALREADY_USED,
 						    "Already succeeded "
 						    "with amount %s (not %s)",
-						    type_to_string(tmpctx,
-								   struct amount_msat,
-								   &payment->msatoshi),
-						    type_to_string(tmpctx,
-								   struct amount_msat, &msat));
+						    fmt_amount_msat(tmpctx,
+								    payment->msatoshi),
+						    fmt_amount_msat(tmpctx,
+								    msat));
 			}
 			if (payment->destination && destination
 			    && !node_id_eq(payment->destination,
 					   destination)) {
 				return command_fail(cmd, PAY_RHASH_ALREADY_USED,
 						    "Already succeeded to %s",
-						    type_to_string(tmpctx,
-								   struct node_id,
-								   payment->destination));
+						    fmt_node_id(tmpctx,
+								payment->destination));
 			}
 			return sendpay_success(cmd, payment);
 
@@ -944,19 +930,17 @@ static struct command_result *check_progress(struct lightningd *ld,
 					return command_fail(cmd, PAY_RHASH_ALREADY_USED,
 						    "Already pending "
 						    "with amount %s (not %s)",
-						    type_to_string(tmpctx,
-								   struct amount_msat,
-								   &payment->msatoshi),
-						    type_to_string(tmpctx,
-								   struct amount_msat, &msat));
+						    fmt_amount_msat(tmpctx,
+								    payment->msatoshi),
+						    fmt_amount_msat(tmpctx,
+								    msat));
 				}
 				if (payment->destination && destination
 				    && !node_id_eq(payment->destination,
 						   destination)) {
 					return command_fail(cmd, PAY_RHASH_ALREADY_USED,
 							    "Already pending to %s",
-							    type_to_string(tmpctx,
-									   struct node_id,
+							    fmt_node_id(tmpctx,
 									   payment->destination));
 				}
 				return json_sendpay_in_progress(cmd, payment);
@@ -968,12 +952,10 @@ static struct command_result *check_progress(struct lightningd *ld,
 				tal_free(stmt);
 				return command_fail(cmd, JSONRPC2_INVALID_PARAMS,
 						    "msatoshi was previously %s, now %s",
-						    type_to_string(tmpctx,
-								   struct amount_msat,
-								   &payment->total_msat),
-						    type_to_string(tmpctx,
-								   struct amount_msat,
-								   &total_msat));
+						    fmt_amount_msat(tmpctx,
+								    payment->total_msat),
+						    fmt_amount_msat(tmpctx,
+								    total_msat));
 			}
 
 			if (!amount_msat_add(&msat_already_pending,
@@ -983,12 +965,10 @@ static struct command_result *check_progress(struct lightningd *ld,
 				return command_fail(cmd, LIGHTNINGD,
 						    "Internal amount overflow!"
 						    " %s + %s",
-						    type_to_string(tmpctx,
-								   struct amount_msat,
-								   &msat_already_pending),
-						    type_to_string(tmpctx,
-								   struct amount_msat,
-								   &payment->msatoshi));
+						    fmt_amount_msat(tmpctx,
+								    msat_already_pending),
+						    fmt_amount_msat(tmpctx,
+								    payment->msatoshi));
 			}
 			break;
 
@@ -1009,7 +989,7 @@ static struct command_result *check_progress(struct lightningd *ld,
 			    "groupid=%" PRIu64 ", partid=%" PRIu64
 			    ". Either change the partid, or wait for the "
 			    "payment to complete and start a new group.",
-			    type_to_string(tmpctx, struct sha256, rhash), group,
+			    fmt_sha256(tmpctx, rhash), group,
 			    partid);
 		}
 	}
@@ -1030,10 +1010,9 @@ static struct command_result *check_progress(struct lightningd *ld,
 	    && amount_msat_greater_eq(msat_already_pending, total_msat)) {
 		return command_fail(cmd, PAY_IN_PROGRESS,
 				    "Already have %s of %s payments in progress",
-				    type_to_string(tmpctx, struct amount_msat,
-						   &msat_already_pending),
-				    type_to_string(tmpctx, struct amount_msat,
-						   &total_msat));
+				    fmt_amount_msat(tmpctx,
+						    msat_already_pending),
+				    fmt_amount_msat(tmpctx, total_msat));
 	}
 
 	return NULL;
@@ -1079,7 +1058,7 @@ send_payment_core(struct lightningd *ld,
 		return ret;
 
 	channel = find_channel_for_htlc_add(ld, cmd, &first_hop->node_id,
-					    &first_hop->scid, &msat);
+					    first_hop->scid, &msat);
 	if (!channel) {
 		struct json_stream *data
 			= json_stream_fail(cmd, PAY_TRY_OTHER_ROUTE,
@@ -1500,7 +1479,7 @@ static struct command_result *self_payment(struct lightningd *ld,
 
 	log_info(ld->log, "Self-resolved invoice '%s' with amount %s",
 		 inv->label->s,
-		 type_to_string(tmpctx, struct amount_msat, &msat));
+		 fmt_amount_msat(tmpctx, msat));
 	notify_invoice_payment(ld, msat, &inv->r, inv->label, NULL);
 
 	/* Now resolve the payment */
@@ -1574,10 +1553,8 @@ static struct command_result *json_sendpay(struct command *cmd,
 				    "Do not specify msatoshi (%s) without"
 				    " partid: if you do, it must be exactly"
 				    " the final amount (%s)",
-				    type_to_string(tmpctx, struct amount_msat,
-						   msat),
-				    type_to_string(tmpctx, struct amount_msat,
-						   &final_amount));
+				    fmt_amount_msat(tmpctx, *msat),
+				    fmt_amount_msat(tmpctx, final_amount));
 
 	/* For MPP, the total we send must *exactly* equal the amount
 	 * we promise to send (msatoshi).  So no single payment can be
@@ -1587,12 +1564,8 @@ static struct command_result *json_sendpay(struct command *cmd,
 			return command_fail(cmd, JSONRPC2_INVALID_PARAMS,
 					    "Final amount %s is greater than"
 					    " %s, despite MPP",
-					    type_to_string(tmpctx,
-							   struct amount_msat,
-							   &final_amount),
-					    type_to_string(tmpctx,
-							   struct amount_msat,
-							   msat));
+					    fmt_amount_msat(tmpctx, final_amount),
+					    fmt_amount_msat(tmpctx, *msat));
 	}
 
 	if (*partid && !payment_secret)
@@ -1677,7 +1650,7 @@ static u64 sendpay_index_inc(struct lightningd *ld,
 				    "=partid", tal_fmt(tmpctx, "%"PRIu64, partid),
 				    "=groupid", tal_fmt(tmpctx, "%"PRIu64, groupid),
 				    "payment_hash",
-				    type_to_string(tmpctx, struct sha256, payment_hash),
+				    fmt_sha256(tmpctx, payment_hash),
 				    NULL);
 }
 
@@ -1879,7 +1852,7 @@ static struct command_result *json_delpay(struct command *cmd,
 	stmt = payments_by_hash(cmd->ld->wallet, payment_hash);
 	if (!stmt)
 		return command_fail(cmd, PAY_NO_SUCH_PAYMENT, "Unknown payment with payment_hash: %s",
-				    type_to_string(tmpctx, struct sha256, payment_hash));
+				    fmt_sha256(tmpctx, payment_hash));
 
 	payments = tal_arr(cmd, const struct wallet_payment *, 0);
 	for (; stmt; stmt = payments_next(cmd->ld->wallet, stmt)) {
@@ -1899,7 +1872,7 @@ static struct command_result *json_delpay(struct command *cmd,
 	if (tal_count(payments) == 0) {
 		if (found_status)
 			return command_fail(cmd, PAY_NO_SUCH_PAYMENT, "Payment with hash %s has %s status but it different from the one provided %s",
-				type_to_string(tmpctx, struct sha256, payment_hash),
+				fmt_sha256(tmpctx, payment_hash),
 				payment_status_to_string(*found_status),
 				payment_status_to_string(*status));
 

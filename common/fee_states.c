@@ -3,7 +3,6 @@
 #include <ccan/cast/cast.h>
 #include <ccan/tal/str/str.h>
 #include <common/fee_states.h>
-#include <common/type_to_string.h>
 #include <wire/wire.h>
 
 /* If we're the finder, it's like an HTLC we added, if they are, it's like
@@ -157,8 +156,8 @@ bool fee_states_valid(const struct fee_states *fee_states, enum side opener)
 	return fee_states->feerate[last_fee_state(opener)] != NULL;
 }
 
-static const char *fmt_fee_states(const tal_t *ctx,
-				  const struct fee_states *fee_states)
+char *fmt_fee_states(const tal_t *ctx,
+		     const struct fee_states *fee_states)
 {
 	char *ret = tal_strdup(ctx, "{");
 	for (enum htlc_state i = 0; i < ARRAY_SIZE(fee_states->feerate); i++) {
@@ -170,4 +169,3 @@ static const char *fmt_fee_states(const tal_t *ctx,
 	tal_append_fmt(&ret, " }");
 	return ret;
 }
-REGISTER_TYPE_TO_STRING(fee_states, fmt_fee_states);

@@ -4,7 +4,7 @@
 #include <bitcoin/pubkey.h>
 #include <ccan/mem/mem.h>
 #include <ccan/str/hex/hex.h>
-#include <common/type_to_string.h>
+#include <common/utils.h>
 #include <wire/wire.h>
 
 #ifndef SUPERVERBOSE
@@ -62,16 +62,15 @@ bool pubkey_from_hexstr(const char *derstr, size_t slen, struct pubkey *key)
 	return pubkey_from_der(der, dlen, key);
 }
 
-char *pubkey_to_hexstr(const tal_t *ctx, const struct pubkey *key)
+char *fmt_pubkey(const tal_t *ctx, const struct pubkey *key)
 {
 	unsigned char der[PUBKEY_CMPR_LEN];
 
 	pubkey_to_der(der, key);
 	return tal_hexstr(ctx, der, sizeof(der));
 }
-REGISTER_TYPE_TO_STRING(pubkey, pubkey_to_hexstr);
 
-static char *secp256k1_pubkey_to_hexstr(const tal_t *ctx, const secp256k1_pubkey *key)
+char *fmt_secp256k1_pubkey(const tal_t *ctx, const secp256k1_pubkey *key)
 {
 	unsigned char der[PUBKEY_CMPR_LEN];
 	size_t outlen = sizeof(der);
@@ -81,7 +80,6 @@ static char *secp256k1_pubkey_to_hexstr(const tal_t *ctx, const secp256k1_pubkey
 	assert(outlen == sizeof(der));
 	return tal_hexstr(ctx, der, sizeof(der));
 }
-REGISTER_TYPE_TO_STRING(secp256k1_pubkey, secp256k1_pubkey_to_hexstr);
 
 int pubkey_cmp(const struct pubkey *a, const struct pubkey *b)
 {

@@ -12,7 +12,6 @@
 #include <common/memleak.h>
 #include <common/timeout.h>
 #include <common/trace.h>
-#include <common/type_to_string.h>
 #include <db/exec.h>
 #include <lightningd/bitcoind.h>
 #include <lightningd/chaintopology.h>
@@ -246,7 +245,7 @@ static void broadcast_done(struct bitcoind *bitcoind,
 		    bitcoind->ld->topology->log,
 		    "Not adding %s to list of outgoing transactions, already "
 		    "present",
-		    type_to_string(tmpctx, struct bitcoin_txid, &otx->txid));
+		    fmt_bitcoin_txid(tmpctx, &otx->txid));
 		tal_free(otx);
 		return;
 	}
@@ -288,7 +287,7 @@ void broadcast_tx_(const tal_t *ctx,
 	 * we have block N-1! */
 	if (get_block_height(topo) + 1 < otx->minblock) {
 		log_debug(topo->log, "Deferring broadcast of txid %s until block %u",
-			  type_to_string(tmpctx, struct bitcoin_txid, &otx->txid),
+			  fmt_bitcoin_txid(tmpctx, &otx->txid),
 			  otx->minblock - 1);
 
 		/* For continual rebroadcasting, until channel freed. */
@@ -299,7 +298,7 @@ void broadcast_tx_(const tal_t *ctx,
 	}
 
 	log_debug(topo->log, "Broadcasting txid %s%s%s",
-		  type_to_string(tmpctx, struct bitcoin_txid, &otx->txid),
+		  fmt_bitcoin_txid(tmpctx, &otx->txid),
 		  cmd_id ? " for " : "", cmd_id ? cmd_id : "");
 
 	wallet_transaction_add(topo->ld->wallet, tx->wtx, 0, 0);
@@ -322,12 +321,8 @@ static enum watch_result closeinfo_txid_confirmed(struct lightningd *ld,
 		bitcoin_txid(tx, &txid2);
 		if (!bitcoin_txid_eq(txid, &txid2)) {
 			fatal("Txid for %s is not %s",
-			      type_to_string(tmpctx,
-					     struct bitcoin_tx,
-					     tx),
-			      type_to_string(tmpctx,
-					     struct bitcoin_txid,
-					     txid));
+			      fmt_bitcoin_tx(tmpctx, tx),
+			      fmt_bitcoin_txid(tmpctx, txid));
 		}
 	}
 
@@ -708,18 +703,6 @@ static struct command_result *json_feerates(struct command *cmd,
 	if (rate)
 		json_add_num(response, "penalty",
 			     feerate_to_style(rate, *style));
-	if (command_deprecated_out_ok(cmd, "delayed_to_us", "v23.05", "v24.02")) {
-		rate = delayed_to_us_feerate(topo);
-		if (rate)
-			json_add_num(response, "delayed_to_us",
-				     feerate_to_style(rate, *style));
-	}
-	if (command_deprecated_out_ok(cmd, "htlc_resolution", "v23.05", "v24.02")) {
-		rate = htlc_resolution_feerate(topo);
-		if (rate)
-			json_add_num(response, "htlc_resolution",
-				     feerate_to_style(rate, *style));
-	}
 
 	json_add_u64(response, "min_acceptable",
 		     feerate_to_style(feerate_min(cmd->ld, NULL), *style));
@@ -910,7 +893,7 @@ static void record_wallet_spend(struct lightningd *ld,
 	utxo = wallet_utxo_get(tmpctx, ld->wallet, outpoint);
 	if (!utxo) {
 		log_broken(ld->log, "No record of utxo %s",
-			   type_to_string(tmpctx, struct bitcoin_outpoint,
+			   fmt_bitcoin_outpoint(tmpctx,
 					  outpoint));
 		return;
 	}
@@ -935,7 +918,7 @@ static void topo_update_spends(struct chain_topology *topo, struct block *b)
 
 			bitcoin_tx_input_get_outpoint(tx, j, &outpoint);
 
-			if (wallet_outpoint_spend(topo->ld->wallet, tmpctx,
+			if (wallet_outpoint_spend(tmpctx, topo->ld->wallet,
 						  b->height, &outpoint))
 				record_wallet_spend(topo->ld, &outpoint,
 						    &b->txids[i], b->height);
@@ -1015,7 +998,7 @@ static struct block *new_block(struct chain_topology *topo,
 	bitcoin_block_blkid(blk, &b->blkid);
 	log_debug(topo->log, "Adding block %u: %s",
 		  height,
-		  type_to_string(tmpctx, struct bitcoin_blkid, &b->blkid));
+		  fmt_bitcoin_blkid(tmpctx, &b->blkid));
 	assert(!block_map_get(topo->block_map, &b->blkid));
 	b->next = NULL;
 	b->prev = NULL;
@@ -1039,7 +1022,7 @@ static void remove_tip(struct chain_topology *topo)
 
 	log_debug(topo->log, "Removing stale block %u: %s",
 			  topo->tip->height,
-			  type_to_string(tmpctx, struct bitcoin_blkid, &b->blkid));
+			  fmt_bitcoin_blkid(tmpctx, &b->blkid));
 
 	/* Move tip back one. */
 	topo->tip = b->prev;
@@ -1047,7 +1030,7 @@ static void remove_tip(struct chain_topology *topo)
 	if (!topo->tip)
 		fatal("Initial block %u (%s) reorganized out!",
 		      b->height,
-		      type_to_string(tmpctx, struct bitcoin_blkid, &b->blkid));
+		      fmt_bitcoin_blkid(tmpctx, &b->blkid));
 
 	txs = wallet_transactions_by_height(b, topo->ld->wallet, b->height);
 	n = tal_count(txs);

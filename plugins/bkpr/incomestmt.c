@@ -4,7 +4,6 @@
 #include <common/coin_mvt.h>
 #include <common/json_parse_simple.h>
 #include <common/json_stream.h>
-#include <common/type_to_string.h>
 #include <db/bindings.h>
 #include <db/common.h>
 #include <db/exec.h>
@@ -628,14 +627,13 @@ static void koinly_entry(const tal_t *ctx, FILE *csvf, struct income_event *ev)
 	/* TxHash */
 	if (ev->txid)
 		fprintf(csvf, "%s",
-			type_to_string(ctx, struct bitcoin_txid, ev->txid));
+			fmt_bitcoin_txid(ctx, ev->txid));
 	else if (ev->payment_id)
 		fprintf(csvf, "%s",
-			type_to_string(ctx, struct sha256, ev->payment_id));
+			fmt_sha256(ctx, ev->payment_id));
 	else if (ev->outpoint)
 		fprintf(csvf, "%s",
-			type_to_string(ctx, struct bitcoin_outpoint,
-				       ev->outpoint));
+			fmt_bitcoin_outpoint(ctx, ev->outpoint));
 }
 
 static void harmony_header(FILE *csvf)
@@ -738,20 +736,19 @@ static void harmony_entry(const tal_t *ctx, FILE *csvf, struct income_event *ev)
 	 * We don't have a standard 'txid' for every event though */
 	if (ev->txid)
 		fprintf(csvf, "%s",
-			type_to_string(ctx, struct bitcoin_txid, ev->txid));
+			fmt_bitcoin_txid(ctx, ev->txid));
 	else if (ev->payment_id)
 		fprintf(csvf, "%s",
-			type_to_string(ctx, struct sha256, ev->payment_id));
+			fmt_sha256(ctx, ev->payment_id));
 	else if (ev->outpoint)
 		fprintf(csvf, "%s",
-			type_to_string(ctx, struct bitcoin_outpoint,
-				       ev->outpoint));
+			fmt_bitcoin_outpoint(ctx, ev->outpoint));
 	fprintf(csvf, ",");
 
 	/* ",Order ID"  payment hash, if any */
 	if (ev->payment_id)
 		fprintf(csvf, "%s",
-			type_to_string(ctx, struct sha256, ev->payment_id));
+			fmt_sha256(ctx, ev->payment_id));
 	fprintf(csvf, ",");
 
 	/* ",Account" */
@@ -761,8 +758,7 @@ static void harmony_entry(const tal_t *ctx, FILE *csvf, struct income_event *ev)
 	/* ",Network ID"  outpoint */
 	if (ev->outpoint)
 		fprintf(csvf, "%s",
-			type_to_string(ctx, struct bitcoin_outpoint,
-				       ev->outpoint));
+			fmt_bitcoin_outpoint(ctx, ev->outpoint));
 	fprintf(csvf, ",");
 
 	/* ",Note"  description (may be NULL) */

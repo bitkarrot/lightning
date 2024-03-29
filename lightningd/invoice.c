@@ -16,7 +16,6 @@
 #include <common/overflows.h>
 #include <common/random_select.h>
 #include <common/timeout.h>
-#include <common/type_to_string.h>
 #include <db/exec.h>
 #include <errno.h>
 #include <hsmd/hsmd_wiregen.h>
@@ -247,7 +246,7 @@ static const u8 *hook_gives_failmsg(const tal_t *ctx,
 {
 	const jsmntok_t *resulttok;
 	const jsmntok_t *t;
-	unsigned int val;
+	const u8 *failmsg;
 
 	/* No plugin registered on hook at all? */
 	if (!buffer)
@@ -265,49 +264,16 @@ static const u8 *hook_gives_failmsg(const tal_t *ctx,
 	}
 
 	t = json_get_member(buffer, toks, "failure_message");
-	if (t) {
-		const u8 *failmsg = json_tok_bin_from_hex(ctx, buffer, t);
-		if (!failmsg)
-			fatal("Invalid invoice_payment_hook failure_message: %.*s",
-			      toks[0].end - toks[1].start, buffer);
-		return failmsg;
-	}
-
-	t = json_get_member(buffer, toks, "failure_code");
 	if (!t) {
-		static bool warned = false;
-		if (!warned) {
-			warned = true;
-			log_unusual(ld->log,
-				    "Plugin did not return object with "
-				    "'result' or 'failure_message' fields.  "
-				    "This is now deprecated and you should "
-				    "return {'result': 'continue' } or "
-				    "{'result': 'reject'} or "
-				    "{'failure_message'... instead.");
-		}
-		return failmsg_incorrect_or_unknown(ctx, ld, hin);
+		fatal("Missing failure_message in invoice_payment hook result: %.*s",
+		      toks[0].end - toks[0].start, buffer);
 	}
 
-	if (!lightningd_deprecated_in_ok(ld, ld->log,
-					 ld->deprecated_ok,
-					 "invoice_payment_hook", "failure_code",
-					 "v22.08", "V23.02", NULL))
-		return NULL;
-
-	if (!json_to_number(buffer, t, &val))
-		fatal("Invalid invoice_payment_hook failure_code: %.*s",
+	failmsg = json_tok_bin_from_hex(ctx, buffer, t);
+	if (!failmsg)
+		fatal("Invalid invoice_payment_hook failure_message: %.*s",
 		      toks[0].end - toks[1].start, buffer);
-
-	if (val == WIRE_TEMPORARY_NODE_FAILURE)
-		return towire_temporary_node_failure(ctx);
-	if (val != WIRE_INCORRECT_OR_UNKNOWN_PAYMENT_DETAILS)
-		log_broken(hin->key.channel->log,
-			   "invoice_payment hook returned failcode %u,"
-			   " changing to incorrect_or_unknown_payment_details",
-			   val);
-
-	return failmsg_incorrect_or_unknown(ctx, ld, hin);
+	return failmsg;
 }
 
 static void
@@ -339,7 +305,7 @@ invoice_payment_hooks_done(struct invoice_payment_hook_payload *payload STEALS)
 
 	log_info(ld->log, "Resolved invoice '%s' with amount %s in %zu htlcs",
 		 payload->label->s,
-		 type_to_string(tmpctx, struct amount_msat, &payload->msat),
+		 fmt_amount_msat(tmpctx, payload->msat),
 		 payload->set ? tal_count(payload->set->htlcs) : 0);
 	if (payload->set)
 		htlc_set_fulfill(payload->set, &payload->preimage);
@@ -404,10 +370,10 @@ invoice_check_payment(const tal_t *ctx,
 	if (!invoices_find_unpaid(ld->wallet->invoices, &inv_dbid, payment_hash)) {
 		if (invoices_find_by_rhash(ld->wallet->invoices, &inv_dbid, payment_hash)) {
 			*err = tal_fmt(ctx, "Already paid or expired invoice %s",
-				       type_to_string(tmpctx, struct sha256, payment_hash));
+				       fmt_sha256(tmpctx, payment_hash));
 		} else {
 			*err = tal_fmt(ctx, "Unknown invoice %s",
-				       type_to_string(tmpctx, struct sha256, payment_hash));
+				       fmt_sha256(tmpctx, payment_hash));
 		}
 		return NULL;
 	}
@@ -423,7 +389,7 @@ invoice_check_payment(const tal_t *ctx,
 	if (feature_is_set(details->features, COMPULSORY_FEATURE(OPT_VAR_ONION))
 	    && !payment_secret) {
 		*err = tal_fmt(ctx, "Attempt to pay %s without secret",
-			       type_to_string(tmpctx, struct sha256, &details->rhash));
+			       fmt_sha256(tmpctx, &details->rhash));
 		return tal_free(details);
 	}
 
@@ -436,8 +402,7 @@ invoice_check_payment(const tal_t *ctx,
 			invoice_secret(&details->r, &expected);
 		if (!secret_eq_consttime(payment_secret, &expected)) {
 			*err = tal_fmt(ctx, "Attempt to pay %s with wrong secret",
-				       type_to_string(tmpctx, struct sha256,
-						      &details->rhash));
+				       fmt_sha256(tmpctx, &details->rhash));
 			return tal_free(details);
 		}
 	}
@@ -454,20 +419,18 @@ invoice_check_payment(const tal_t *ctx,
 
 		if (amount_msat_less(msat, *details->msat)) {
 			*err = tal_fmt(ctx, "Attempt to pay %s with amount %s < %s",
-				       type_to_string(tmpctx, struct sha256,
-						      &details->rhash),
-				       type_to_string(tmpctx, struct amount_msat, &msat),
-				       type_to_string(tmpctx, struct amount_msat, details->msat));
+				       fmt_sha256(tmpctx, &details->rhash),
+				       fmt_amount_msat(tmpctx, msat),
+				       fmt_amount_msat(tmpctx, *details->msat));
 			return tal_free(details);
 		}
 
 		if (amount_msat_add(&twice, *details->msat, *details->msat)
 		    && amount_msat_greater(msat, twice)) {
 			*err = tal_fmt(ctx, "Attempt to pay %s with amount %s > %s",
-				       type_to_string(tmpctx, struct sha256,
-						      &details->rhash),
-				       type_to_string(tmpctx, struct amount_msat, &msat),
-				       type_to_string(tmpctx, struct amount_msat, &twice));
+				       fmt_sha256(tmpctx, &details->rhash),
+				       fmt_amount_msat(tmpctx, msat),
+				       fmt_amount_msat(tmpctx, twice));
 			/* BOLT #4:
 			 *
 			 * - if the amount paid is more than twice the amount
@@ -610,10 +573,10 @@ static struct route_info **select_inchan(const tal_t *ctx,
 		if (!amount_sat_add(&cumulative_reserve,
 				    candidates[i].c->our_config.channel_reserve,
 				    candidates[i].c->channel_info.their_config.channel_reserve)
-			|| !amount_sat_to_msat(&capacity, candidates[i].c->funding_sats)
-			|| !amount_msat_sub_sat(&capacity, capacity, cumulative_reserve)) {
+		    || !amount_sat_to_msat(&capacity, candidates[i].c->funding_sats)
+		    || !amount_msat_sub_sat(&capacity, capacity, cumulative_reserve)) {
 			log_broken(ld->log, "Channel %s capacity overflow!",
-					type_to_string(tmpctx, struct short_channel_id, candidates[i].c->scid));
+					fmt_short_channel_id(tmpctx, *candidates[i].c->scid));
 			continue;
 		}
 
@@ -621,9 +584,8 @@ static struct route_info **select_inchan(const tal_t *ctx,
 		 * only one!  So bump it by 1 msat */
 		if (!amount_msat_add(&excess, excess, AMOUNT_MSAT(1))) {
 			log_broken(ld->log, "Channel %s excess overflow!",
-				   type_to_string(tmpctx,
-						  struct short_channel_id,
-						  candidates[i].c->scid));
+				   fmt_short_channel_id(tmpctx,
+							*candidates[i].c->scid));
 			continue;
 		}
 		excess_frac = amount_msat_ratio(excess, capacity);
@@ -687,9 +649,8 @@ static struct route_info **select_inchan_mpp(const tal_t *ctx,
 			log_broken(ld->log,
 				   "Gathered channel capacity overflow: "
 				   "%s + %s",
-				   type_to_string(tmpctx, struct amount_msat, &gathered),
-				   type_to_string(tmpctx, struct amount_msat,
-						  &candidates[i].capacity));
+				   fmt_amount_msat(tmpctx, gathered),
+				   fmt_amount_msat(tmpctx, candidates[i].capacity));
 			continue;
 		}
 		tal_arr_expand(&routehints,
@@ -797,24 +758,20 @@ add_routehints(struct invoice_info *info,
 	}
 
 	log_debug(info->cmd->ld->log, "needed = %s, avail_capacity = %s, private_capacity = %s, offline_capacity = %s, deadend_capacity = %s",
-		  type_to_string(tmpctx, struct amount_msat, &needed),
-		  type_to_string(tmpctx, struct amount_msat, &avail_capacity),
-		  type_to_string(tmpctx, struct amount_msat, &private_capacity),
-		  type_to_string(tmpctx, struct amount_msat, &offline_capacity),
-		  type_to_string(tmpctx, struct amount_msat, &deadend_capacity));
+		  fmt_amount_msat(tmpctx, needed),
+		  fmt_amount_msat(tmpctx, avail_capacity),
+		  fmt_amount_msat(tmpctx, private_capacity),
+		  fmt_amount_msat(tmpctx, offline_capacity),
+		  fmt_amount_msat(tmpctx, deadend_capacity));
 
 	if (!amount_msat_add(&total, avail_capacity, offline_capacity)
 	    || !amount_msat_add(&total, total, deadend_capacity)
 	    || !amount_msat_add(&total, total, private_capacity))
 		fatal("Cannot add %s + %s + %s + %s",
-		      type_to_string(tmpctx, struct amount_msat,
-				     &avail_capacity),
-		      type_to_string(tmpctx, struct amount_msat,
-				     &offline_capacity),
-		      type_to_string(tmpctx, struct amount_msat,
-				     &deadend_capacity),
-		      type_to_string(tmpctx, struct amount_msat,
-				     &private_capacity));
+		      fmt_amount_msat(tmpctx, avail_capacity),
+		      fmt_amount_msat(tmpctx, offline_capacity),
+		      fmt_amount_msat(tmpctx, deadend_capacity),
+		      fmt_amount_msat(tmpctx, private_capacity));
 
 	/* If we literally didn't have capacity at all, warn. */
 	*warning_capacity = amount_msat_greater_eq(needed, total);
@@ -1510,33 +1467,6 @@ static const struct json_command delinvoice_command = {
 	"Delete unpaid invoice {label} with {status}",
 };
 AUTODATA(json_command, &delinvoice_command);
-
-static struct command_result *json_delexpiredinvoice(struct command *cmd,
-						     const char *buffer,
-						     const jsmntok_t *obj UNNEEDED,
-						     const jsmntok_t *params)
-{
-	u64 *maxexpirytime;
-
-	if (!param(cmd, buffer, params,
-		   p_opt_def("maxexpirytime", param_u64, &maxexpirytime,
-				 time_now().ts.tv_sec),
-		   NULL))
-		return command_param_failed();
-
-	invoices_delete_expired(cmd->ld->wallet->invoices, *maxexpirytime);
-
-	return command_success(cmd, json_stream_success(cmd));
-}
-static const struct json_command delexpiredinvoice_command = {
-	"delexpiredinvoice",
-	"payment",
-	json_delexpiredinvoice,
-	"Delete all expired invoices that expired as of given {maxexpirytime} (a UNIX epoch time), or all expired invoices if not specified",
-	.depr_start = "v22.11",
-	.depr_end = "v24.02",
-};
-AUTODATA(json_command, &delexpiredinvoice_command);
 
 static struct command_result *json_waitanyinvoice(struct command *cmd,
 						  const char *buffer,

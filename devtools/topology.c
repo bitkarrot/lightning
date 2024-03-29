@@ -6,7 +6,6 @@
 #include <common/dijkstra.h>
 #include <common/gossmap.h>
 #include <common/route.h>
-#include <common/type_to_string.h>
 #include <devtools/clean_topo.h>
 #include <inttypes.h>
 #include <stdio.h>
@@ -145,15 +144,6 @@ static size_t count_possible_destinations(const struct gossmap *map,
 	     n = gossmap_next_node(map, n)) {
 		if (dijkstra_distance(dij, gossmap_node_idx(map, n)) <= distance_budget)
 			num++;
-#if 0
-		else
-			printf("Can't reach %s (%u) if we exclude %s\n",
-			       type_to_string(tmpctx, struct node_id,
-					      gossmap_node_get_id(map, n)),
-			       dijkstra_distance(dij, gossmap_node_idx(map, n)),
-			       type_to_string(tmpctx, struct node_id,
-					      gossmap_node_get_id(map, exclude)));
-#endif
 	}
 
 	/* Now double-check with flood-fill. */
@@ -182,7 +172,7 @@ static bool measure_least_cost(struct gossmap *map,
 
 	gossmap_node_get_id(map, src, &srcid);
 	printf("# src %s (%u channels)\n",
-	       type_to_string(tmpctx, struct node_id, &srcid),
+	       fmt_node_id(tmpctx, &srcid),
 	       src->num_chans);
 
 	tstart = time_mono();
@@ -212,7 +202,7 @@ static bool measure_least_cost(struct gossmap *map,
 	if (!amount_msat_sub(&fee, path[0].amount, sent))
 		abort();
 	printf("# path fee %s\n",
-	       type_to_string(tmpctx, struct amount_msat, &fee));
+	       fmt_amount_msat(tmpctx, fee));
 
 	/* Count possible sources */
 	for (size_t i = 0; i < tal_count(path); i++) {

@@ -80,7 +80,7 @@ void json_add_bolt11(struct json_stream *response,
 						 &b11->routes[i][n].pubkey);
                                 json_add_short_channel_id(response,
                                                           "short_channel_id",
-                                                          &b11->routes[i][n]
+                                                          b11->routes[i][n]
                                                           .short_channel_id);
                                 json_add_u64(response, "fee_base_msat",
                                              b11->routes[i][n].fee_base_msat);
@@ -119,5 +119,6 @@ void json_add_bolt11(struct json_stream *response,
 
 	json_add_sha256(response, "payment_hash", &b11->payment_hash);
 
-	json_add_string(response, "signature", fmt_signature(tmpctx, &b11->sig));
+	json_add_string(response, "signature",
+			fmt_secp256k1_ecdsa_signature(tmpctx, &b11->sig));
 }

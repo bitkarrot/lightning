@@ -221,7 +221,7 @@ void ecdh(const struct pubkey *point UNNEEDED, struct secret *ss UNNEEDED)
 /* Generated stub for encode_scriptpubkey_to_addr */
 char *encode_scriptpubkey_to_addr(const tal_t *ctx UNNEEDED,
 				  const struct chainparams *chainparams UNNEEDED,
-				  const u8 *scriptPubkey UNNEEDED)
+				  const u8 *scriptpubkey UNNEEDED)
 { fprintf(stderr, "encode_scriptpubkey_to_addr called!\n"); abort(); }
 /* Generated stub for fatal */
 void   fatal(const char *fmt UNNEEDED, ...)
@@ -229,6 +229,9 @@ void   fatal(const char *fmt UNNEEDED, ...)
 /* Generated stub for fatal_vfmt */
 void  fatal_vfmt(const char *fmt UNNEEDED, va_list ap UNNEEDED)
 { fprintf(stderr, "fatal_vfmt called!\n"); abort(); }
+/* Generated stub for fmt_channel_id */
+char *fmt_channel_id(const tal_t *ctx UNNEEDED, const struct channel_id *channel_id UNNEEDED)
+{ fprintf(stderr, "fmt_channel_id called!\n"); abort(); }
 /* Generated stub for force_peer_disconnect */
 void force_peer_disconnect(struct lightningd *ld UNNEEDED,
 			   const struct peer *peer UNNEEDED,
@@ -480,7 +483,7 @@ void json_add_sha256(struct json_stream *result UNNEEDED, const char *fieldname 
 /* Generated stub for json_add_short_channel_id */
 void json_add_short_channel_id(struct json_stream *response UNNEEDED,
 			       const char *fieldname UNNEEDED,
-			       const struct short_channel_id *id UNNEEDED)
+			       struct short_channel_id id UNNEEDED)
 { fprintf(stderr, "json_add_short_channel_id called!\n"); abort(); }
 /* Generated stub for json_add_string */
 void json_add_string(struct json_stream *js UNNEEDED,
@@ -594,16 +597,6 @@ bool json_tok_streq(const char *buffer UNNEEDED, const jsmntok_t *tok UNNEEDED, 
 void kill_uncommitted_channel(struct uncommitted_channel *uc UNNEEDED,
 			      const char *why UNNEEDED)
 { fprintf(stderr, "kill_uncommitted_channel called!\n"); abort(); }
-/* Generated stub for lightningd_deprecated_in_ok */
-bool lightningd_deprecated_in_ok(struct lightningd *ld UNNEEDED,
-				 struct logger *log UNNEEDED,
-				 bool deprecated_apis UNNEEDED,
-				 const char *subsys UNNEEDED,
-				 const char *api UNNEEDED,
-				 const char *start UNNEEDED,
-				 const char *end UNNEEDED,
-				 const char *details UNNEEDED)
-{ fprintf(stderr, "lightningd_deprecated_in_ok called!\n"); abort(); }
 /* Generated stub for lightningd_deprecated_out_ok */
 bool lightningd_deprecated_out_ok(struct lightningd *ld UNNEEDED,
 				  bool deprecated_apis UNNEEDED,
@@ -1001,7 +994,7 @@ void topology_add_sync_waiter_(const tal_t *ctx UNNEEDED,
 			       void *arg UNNEEDED)
 { fprintf(stderr, "topology_add_sync_waiter_ called!\n"); abort(); }
 /* Generated stub for towire_announcement_signatures */
-u8 *towire_announcement_signatures(const tal_t *ctx UNNEEDED, const struct channel_id *channel_id UNNEEDED, const struct short_channel_id *short_channel_id UNNEEDED, const secp256k1_ecdsa_signature *node_signature UNNEEDED, const secp256k1_ecdsa_signature *bitcoin_signature UNNEEDED)
+u8 *towire_announcement_signatures(const tal_t *ctx UNNEEDED, const struct channel_id *channel_id UNNEEDED, struct short_channel_id short_channel_id UNNEEDED, const secp256k1_ecdsa_signature *node_signature UNNEEDED, const secp256k1_ecdsa_signature *bitcoin_signature UNNEEDED)
 { fprintf(stderr, "towire_announcement_signatures called!\n"); abort(); }
 /* Generated stub for towire_channeld_dev_memleak */
 u8 *towire_channeld_dev_memleak(const tal_t *ctx UNNEEDED)
@@ -1107,9 +1100,6 @@ u8 *towire_invalid_onion_blinding(const tal_t *ctx UNNEEDED, const struct sha256
 /* Generated stub for towire_invalid_onion_payload */
 u8 *towire_invalid_onion_payload(const tal_t *ctx UNNEEDED, bigsize type UNNEEDED, u16 offset UNNEEDED)
 { fprintf(stderr, "towire_invalid_onion_payload called!\n"); abort(); }
-/* Generated stub for towire_invalid_realm */
-u8 *towire_invalid_realm(const tal_t *ctx UNNEEDED)
-{ fprintf(stderr, "towire_invalid_realm called!\n"); abort(); }
 /* Generated stub for towire_onchaind_dev_memleak */
 u8 *towire_onchaind_dev_memleak(const tal_t *ctx UNNEEDED)
 { fprintf(stderr, "towire_onchaind_dev_memleak called!\n"); abort(); }
@@ -1122,15 +1112,6 @@ u8 *towire_openingd_dev_memleak(const tal_t *ctx UNNEEDED)
 /* Generated stub for towire_permanent_channel_failure */
 u8 *towire_permanent_channel_failure(const tal_t *ctx UNNEEDED)
 { fprintf(stderr, "towire_permanent_channel_failure called!\n"); abort(); }
-/* Generated stub for towire_permanent_node_failure */
-u8 *towire_permanent_node_failure(const tal_t *ctx UNNEEDED)
-{ fprintf(stderr, "towire_permanent_node_failure called!\n"); abort(); }
-/* Generated stub for towire_required_channel_feature_missing */
-u8 *towire_required_channel_feature_missing(const tal_t *ctx UNNEEDED)
-{ fprintf(stderr, "towire_required_channel_feature_missing called!\n"); abort(); }
-/* Generated stub for towire_required_node_feature_missing */
-u8 *towire_required_node_feature_missing(const tal_t *ctx UNNEEDED)
-{ fprintf(stderr, "towire_required_node_feature_missing called!\n"); abort(); }
 /* Generated stub for towire_scb_chan */
 void towire_scb_chan(u8 **p UNNEEDED, const struct scb_chan *scb_chan UNNEEDED)
 { fprintf(stderr, "towire_scb_chan called!\n"); abort(); }
@@ -1162,7 +1143,7 @@ void try_reconnect(const tal_t *ctx UNNEEDED,
 /* Generated stub for unsigned_channel_update */
 u8 *unsigned_channel_update(const tal_t *ctx UNNEEDED,
 			    const struct channel *channel UNNEEDED,
-			    const struct short_channel_id *scid UNNEEDED,
+			    struct short_channel_id scid UNNEEDED,
 			    const u32 *old_timestamp UNNEEDED,
 			    bool forwardable UNNEEDED,
 			    bool enabled UNNEEDED)
@@ -1623,7 +1604,7 @@ static bool channelseq(struct channel *c1, struct channel *c2)
 	CHECK(c1->their_shachain.id == c2->their_shachain.id);
 	CHECK_MSG(node_id_eq(&p1->id, &p2->id), "NodeIDs do not match");
 	CHECK((c1->scid == NULL && c2->scid == NULL)
-	      || short_channel_id_eq(c1->scid, c2->scid));
+	      || short_channel_id_eq(*c1->scid, *c2->scid));
 	CHECK(amount_msat_eq(c1->our_msat, c2->our_msat));
 	CHECK((c1->shutdown_scriptpubkey[REMOTE] == NULL && c2->shutdown_scriptpubkey[REMOTE] == NULL) || tal_arr_eq(
 		      c1->shutdown_scriptpubkey[REMOTE],

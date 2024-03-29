@@ -6,7 +6,6 @@
 #include <common/json_stream.h>
 #include <common/lease_rates.h>
 #include <common/psbt_open.h>
-#include <common/type_to_string.h>
 #include <plugins/spender/multifundchannel.h>
 #include <plugins/spender/openchannel.h>
 
@@ -442,8 +441,8 @@ openchannel_signed_dest(struct multifundchannel_destination *dest)
 		   "mfc %"PRIu64", dest %u: `openchannel_signed` %s "
 		   "psbt %s",
 		   mfc->id, dest->index,
-		   type_to_string(tmpctx, struct channel_id, &dest->channel_id),
-		   type_to_string(tmpctx, struct wally_psbt, dest->psbt));
+		   fmt_channel_id(tmpctx, &dest->channel_id),
+		   fmt_wally_psbt(tmpctx, dest->psbt));
 
 	req = jsonrpc_request_start(cmd->plugin,
 				    cmd,
@@ -564,7 +563,7 @@ static struct command_result *json_peer_sigs(struct command *cmd,
 		plugin_log(cmd->plugin, LOG_DBG,
 			   "mfc ??: `openchannel_peer_sigs` no "
 			   "pending dest found for channel_id %s",
-			   type_to_string(tmpctx, struct channel_id, &cid));
+			   fmt_channel_id(tmpctx, &cid));
 		return notification_handled(cmd);
 	}
 
@@ -582,9 +581,8 @@ static struct command_result *json_peer_sigs(struct command *cmd,
 			   "mfc %"PRIu64": Unable to combine signed "
 			   "PSBT with roll-up. "
 			   "Signed %s, prev %s", dest->mfc->id,
-			   type_to_string(tmpctx, struct wally_psbt, psbt),
-			   type_to_string(tmpctx, struct wally_psbt,
-					  dest->mfc->psbt));
+			   fmt_wally_psbt(tmpctx, psbt),
+			   fmt_wally_psbt(tmpctx, dest->mfc->psbt));
 
 	tal_wally_end(dest->mfc->psbt);
 
@@ -634,8 +632,7 @@ funding_transaction_established(struct multifundchannel_command *mfc)
 	plugin_log(mfc->cmd->plugin, LOG_DBG,
 		   "mfc %"PRIu64": funding tx %s",
 		   mfc->id,
-		   type_to_string(tmpctx, struct bitcoin_txid,
-				  mfc->txid));
+		   fmt_bitcoin_txid(tmpctx, mfc->txid));
 
 	/* If all we've got is v2 destinations, we're just waiting
 	 * for all of our peers to send us their sigs.
@@ -693,7 +690,7 @@ openchannel_update_ok(struct command *cmd,
 	plugin_log(mfc->cmd->plugin, LOG_DBG,
 		   "mfc %"PRIu64", dest %u: openchannel_update %s returned.",
 		   mfc->id, dest->index,
-		   node_id_to_hexstr(tmpctx, &dest->id));
+		   fmt_node_id(tmpctx, &dest->id));
 
 	assert(!dest->updated_psbt);
 	psbt_tok = json_get_member(buf, result, "psbt");
@@ -794,8 +791,8 @@ openchannel_update_dest(struct multifundchannel_destination *dest)
 		   "mfc %"PRIu64", dest %u: `openchannel_update` %s "
 		   "with psbt %s",
 		   mfc->id, dest->index,
-		   node_id_to_hexstr(tmpctx, &dest->id),
-		   type_to_string(tmpctx, struct wally_psbt, dest->psbt));
+		   fmt_node_id(tmpctx, &dest->id),
+		   fmt_wally_psbt(tmpctx, dest->psbt));
 
 	req = jsonrpc_request_start(cmd->plugin,
 				    cmd,
@@ -923,7 +920,7 @@ openchannel_init_ok(struct command *cmd,
 	plugin_log(mfc->cmd->plugin, LOG_DBG,
 		   "mfc %"PRIu64", dest %u: openchannel_init %s done.",
 		   mfc->id, dest->index,
-		   node_id_to_hexstr(tmpctx, &dest->id));
+		   fmt_node_id(tmpctx, &dest->id));
 
 	err = json_scan(mfc, buf, result,
 			"{psbt:%,"
@@ -980,7 +977,7 @@ openchannel_init_dest(struct multifundchannel_destination *dest)
 	plugin_log(cmd->plugin, LOG_DBG,
 		   "mfc %"PRIu64", dest %u: openchannel_init %s.",
 		   mfc->id, dest->index,
-		   node_id_to_hexstr(tmpctx, &dest->id));
+		   fmt_node_id(tmpctx, &dest->id));
 
 	req = jsonrpc_request_start(cmd->plugin, cmd,
 				    "openchannel_init",
@@ -1021,9 +1018,8 @@ openchannel_init_dest(struct multifundchannel_destination *dest)
 		plugin_log(cmd->plugin, LOG_INFORM,
 			   "Using openchannel for %s open, "
 			   "ignoring `push_msat` of %s",
-			   node_id_to_hexstr(tmpctx, &dest->id),
-			   type_to_string(tmpctx, struct amount_msat,
-					  &dest->push_msat));
+			   fmt_node_id(tmpctx, &dest->id),
+			   fmt_amount_msat(tmpctx, dest->push_msat));
 
 	/* Request some sats from the peer! */
 	if (!amount_sat_zero(dest->request_amt)) {

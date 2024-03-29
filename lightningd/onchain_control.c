@@ -6,7 +6,6 @@
 #include <common/htlc_tx.h>
 #include <common/key_derive.h>
 #include <common/psbt_keypath.h>
-#include <common/type_to_string.h>
 #include <db/exec.h>
 #include <errno.h>
 #include <hsmd/hsmd_wiregen.h>
@@ -174,12 +173,8 @@ static enum watch_result onchain_tx_watched(struct lightningd *ld,
 		bitcoin_txid(tx, &txid2);
 		if (!bitcoin_txid_eq(txid, &txid2)) {
 			channel_internal_error(channel, "Txid for %s is not %s",
-					       type_to_string(tmpctx,
-							      struct bitcoin_tx,
-							      tx),
-					       type_to_string(tmpctx,
-							      struct bitcoin_txid,
-							      txid));
+					       fmt_bitcoin_tx(tmpctx, tx),
+					       fmt_bitcoin_txid(tmpctx, txid));
 			return DELETE_WATCH;
 		}
 	}
@@ -276,10 +271,10 @@ static void handle_onchain_log_coin_move(struct channel *channel, const u8 *msg)
 
 	/* Any 'ignored' payments get registed to the wallet */
 	if (!mvt->account_name)
-		mvt->account_name = type_to_string(mvt, struct channel_id,
+		mvt->account_name = fmt_channel_id(mvt,
 						   &channel->cid);
 	else
-		mvt->originating_acct = type_to_string(mvt, struct channel_id,
+		mvt->originating_acct = fmt_channel_id(mvt,
 						       &channel->cid);
 	notify_chain_mvt(channel->peer->ld, mvt);
 	tal_free(mvt);
@@ -300,7 +295,7 @@ static void handle_onchain_unwatch_tx(struct channel *channel, const u8 *msg)
 			   onchain_tx_watched, channel);
 	if (!txw)
 		log_unusual(channel->log, "Can't unwatch txid %s",
-			    type_to_string(tmpctx, struct bitcoin_txid, &txid));
+			    fmt_bitcoin_txid(tmpctx, &txid));
 	tal_free(txw);
 }
 
@@ -412,7 +407,7 @@ static void onchain_add_utxo(struct channel *channel, const u8 *msg)
 	outpointfilter_add(channel->peer->ld->wallet->owned_outpoints,
 			   &outpoint);
 	log_debug(channel->log, "adding utxo to watch %s, csv %u",
-		  type_to_string(tmpctx, struct bitcoin_outpoint, &outpoint),
+		  fmt_bitcoin_outpoint(tmpctx, &outpoint),
 		  csv_lock);
 
 	wallet_add_onchaind_utxo(channel->peer->ld->wallet,
@@ -423,7 +418,7 @@ static void onchain_add_utxo(struct channel *channel, const u8 *msg)
 
 	mvt = new_coin_wallet_deposit(msg, &outpoint, blockheight,
 			              amount, DEPOSIT);
-	mvt->originating_acct = type_to_string(mvt, struct channel_id,
+	mvt->originating_acct = fmt_channel_id(mvt,
 					       &channel->cid);
 
 	notify_chain_mvt(channel->peer->ld, mvt);
@@ -715,9 +710,8 @@ static struct bitcoin_tx *onchaind_tx_unsigned(const tal_t *ctx,
 			  block_target,
 			  block_target - get_block_height(ld->topology),
 			  feerate,
-			  type_to_string(tmpctx, struct amount_sat, fee),
-			  type_to_string(tmpctx, struct amount_sat,
-					 &info->out_sats));
+			  fmt_amount_sat(tmpctx, *fee),
+			  fmt_amount_sat(tmpctx, info->out_sats));
 
 		/* If we can afford fee and it's not dust, we're done */
 		if (amount_sat_sub(&amt, info->out_sats, *fee)
@@ -734,7 +728,7 @@ static struct bitcoin_tx *onchaind_tx_unsigned(const tal_t *ctx,
 			*fee = AMOUNT_SAT(0);
 			log_broken(channel->log, "TX can't afford minimal feerate"
 				   "; setting output to %s",
-				   type_to_string(tmpctx, struct amount_sat, &amt));
+				   fmt_amount_sat(tmpctx, amt));
 			break;
 		}
 	}
@@ -747,7 +741,7 @@ static struct bitcoin_tx *onchaind_tx_unsigned(const tal_t *ctx,
 			log_unusual(channel->log,
 				    "Lowballing feerate for %s sats from %u to %u (deadline %u->%"PRIu64"):"
 				    " won't count on it being spent!",
-				    type_to_string(tmpctx, struct amount_sat, &info->out_sats),
+				    fmt_amount_sat(tmpctx, info->out_sats),
 				    feerate_for_target(ld->topology, info->deadline_block),
 				    feerate_for_target(ld->topology, block_target),
 				    info->deadline_block, block_target);
@@ -758,7 +752,7 @@ static struct bitcoin_tx *onchaind_tx_unsigned(const tal_t *ctx,
 	if (block_target != info->deadline_block)
 		log_debug(channel->log, "Had to adjust deadline from %u to %"PRIu64" for %s",
 			  info->deadline_block, block_target,
-			  type_to_string(tmpctx, struct amount_sat, &info->out_sats));
+			  fmt_amount_sat(tmpctx, info->out_sats));
 	bitcoin_tx_output_set_amount(tx, 0, amt);
 	bitcoin_tx_finalize(tx);
 
@@ -836,15 +830,15 @@ static bool consider_onchain_rebroadcast(struct channel *channel,
 	     amount_sat_less_eq(newfee, info->fee) ? LOG_DBG : LOG_INFORM,
 	     NULL, false,
 	     "RBF onchain txid %s (fee %s) with txid %s (fee %s)",
-	     type_to_string(tmpctx, struct bitcoin_txid, &oldtxid),
+	     fmt_bitcoin_txid(tmpctx, &oldtxid),
 	     fmt_amount_sat(tmpctx, info->fee),
-	     type_to_string(tmpctx, struct bitcoin_txid, &newtxid),
+	     fmt_bitcoin_txid(tmpctx, &newtxid),
 	     fmt_amount_sat(tmpctx, newfee));
 
 	log_debug(channel->log,
 		  "RBF %s->%s",
-		  type_to_string(tmpctx, struct bitcoin_tx, *tx),
-		  type_to_string(tmpctx, struct bitcoin_tx, newtx));
+		  fmt_bitcoin_tx(tmpctx, *tx),
+		  fmt_bitcoin_tx(tmpctx, newtx));
 
 	/* FIXME: This is ugly, but we want the same parent as old tx. */
 	tal_steal(tal_parent(*tx), newtx);
@@ -957,7 +951,7 @@ static bool consider_onchain_htlc_tx_rebroadcast(struct channel *channel,
 
 	if (!psbt_finalize(psbt))
 		fatal("Non-final PSBT from hsm: %s",
-		      type_to_string(tmpctx, struct wally_psbt, psbt));
+		      fmt_wally_psbt(tmpctx, psbt));
 
 	newtx = tal(tal_parent(*tx), struct bitcoin_tx);
 	newtx->chainparams = chainparams;
@@ -976,9 +970,9 @@ static bool consider_onchain_htlc_tx_rebroadcast(struct channel *channel,
 	     amount_sat_less_eq(newfee, oldfee) ? LOG_DBG : LOG_INFORM,
 	     NULL, false,
 	     "RBF HTLC txid %s (fee %s) with txid %s (fee %s)",
-	     type_to_string(tmpctx, struct bitcoin_txid, &oldtxid),
+	     fmt_bitcoin_txid(tmpctx, &oldtxid),
 	     fmt_amount_sat(tmpctx, oldfee),
-	     type_to_string(tmpctx, struct bitcoin_txid, &newtxid),
+	     fmt_bitcoin_txid(tmpctx, &newtxid),
 	     fmt_amount_sat(tmpctx, newfee));
 
 	tal_free(*tx);
@@ -1055,7 +1049,7 @@ static void create_onchain_tx(struct channel *channel,
 	}
 
 	log_debug(channel->log, "Broadcast for onchaind tx %s%s",
-		  type_to_string(tmpctx, struct bitcoin_tx, tx),
+		  fmt_bitcoin_tx(tmpctx, tx),
 		  worthwhile ? "" : "(NOT WORTHWHILE, LOWBALL FEE!)");
 
 	/* We allow "excessive" fees, as we may be fighting with censors and
@@ -1259,7 +1253,7 @@ static void handle_onchaind_spend_htlc_success(struct channel *channel,
 					     info);
 
 	log_debug(channel->log, "Broadcast for onchaind tx %s",
-		  type_to_string(tmpctx, struct bitcoin_tx, tx));
+		  fmt_bitcoin_tx(tmpctx, tx));
 	broadcast_tx(channel, channel->peer->ld->topology,
 		     channel, take(tx), NULL, false,
 		     info->minblock, NULL,
@@ -1341,7 +1335,7 @@ static void handle_onchaind_spend_htlc_timeout(struct channel *channel,
 					     info);
 
 	log_debug(channel->log, "Broadcast for onchaind tx %s",
-		  type_to_string(tmpctx, struct bitcoin_tx, tx));
+		  fmt_bitcoin_tx(tmpctx, tx));
 	broadcast_tx(channel, channel->peer->ld->topology,
 		     channel, take(tx), NULL, false,
 		     info->minblock, NULL,
@@ -1580,7 +1574,7 @@ enum watch_result onchaind_funding_spent(struct channel *channel,
 
 	/* This could be a mutual close, but it doesn't matter.
 	 * We don't need this for stub channels as well */
-	if (!is_stub_scid(channel->scid))
+	if (!channel->scid || !is_stub_scid(*channel->scid))
 		bitcoin_txid(channel->last_tx, &our_last_txid);
 	else
 	/* Dummy txid for stub channel to make valgrind happy. */
@@ -1648,13 +1642,13 @@ void onchaind_replay_channels(struct lightningd *ld)
 	struct channel *chan;
 
 	db_begin_transaction(ld->wallet->db);
-	onchaind_ids = wallet_onchaind_channels(ld->wallet, ld);
+	onchaind_ids = wallet_onchaind_channels(tmpctx, ld->wallet);
 
 	for (size_t i = 0; i < tal_count(onchaind_ids); i++) {
 		log_info(ld->log, "Restarting onchaind for channel %d",
 			 onchaind_ids[i]);
 
-		txs = wallet_channeltxs_get(ld->wallet, onchaind_ids,
+		txs = wallet_channeltxs_get(onchaind_ids, ld->wallet,
 					    onchaind_ids[i]);
 		chan = channel_by_dbid(ld, onchaind_ids[i]);
 
@@ -1680,7 +1674,6 @@ void onchaind_replay_channels(struct lightningd *ld)
 		}
 		tal_free(txs);
 	}
-	tal_free(onchaind_ids);
 
 	db_commit_transaction(ld->wallet->db);
 }

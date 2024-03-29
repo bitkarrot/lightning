@@ -4,7 +4,6 @@
 #include <ccan/tal/str/str.h>
 #include <common/blockheight_states.h>
 #include <common/fee_states.h>
-#include <common/type_to_string.h>
 #include <wire/wire.h>
 
 struct height_states *new_height_states(const tal_t *ctx,
@@ -147,8 +146,8 @@ struct height_states *fromwire_height_states(const tal_t *ctx, const u8 **cursor
 	return states;
 }
 
-static const char *fmt_height_states(const tal_t *ctx,
-				     const struct height_states *states)
+char *fmt_height_states(const tal_t *ctx,
+			const struct height_states *states)
 {
 	char *ret = tal_strdup(ctx, "{");
 	for (enum htlc_state i = 0; i < ARRAY_SIZE(states->height); i++) {
@@ -160,4 +159,3 @@ static const char *fmt_height_states(const tal_t *ctx,
 	tal_append_fmt(&ret, " }");
 	return ret;
 }
-REGISTER_TYPE_TO_STRING(height_states, fmt_height_states);

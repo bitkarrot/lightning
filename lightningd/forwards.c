@@ -21,10 +21,10 @@ static u64 forward_index_inc(struct lightningd *ld,
 {
 	return wait_index_increment(ld, WAIT_SUBSYSTEM_FORWARD, idx,
 				    "status", forward_status_name(status),
-				    "in_channel", short_channel_id_to_str(tmpctx, &in_channel),
+				    "in_channel", fmt_short_channel_id(tmpctx, in_channel),
 				    "=in_htlc_id", tal_fmt(tmpctx, "%"PRIu64, in_htlc_id),
 				    "=in_msat", in_amount ? tal_fmt(tmpctx, "%"PRIu64, in_amount->millisatoshis) : NULL, /* Raw: JSON output */
-				    "out_channel", out_channel ? short_channel_id_to_str(tmpctx, out_channel): NULL,
+				    "out_channel", out_channel ? fmt_short_channel_id(tmpctx, *out_channel): NULL,
 				    NULL);
 }
 
@@ -100,7 +100,7 @@ void json_add_forwarding_fields(struct json_stream *response,
 	/* Only for forward_event */
 	if (payment_hash)
 		json_add_sha256(response, "payment_hash", payment_hash);
-	json_add_short_channel_id(response, "in_channel", &cur->channel_in);
+	json_add_short_channel_id(response, "in_channel", cur->channel_in);
 
 #ifdef COMPAT_V0121
 	if (cur->htlc_id_in != HTLC_INVALID_ID)
@@ -110,7 +110,7 @@ void json_add_forwarding_fields(struct json_stream *response,
 	/* This can be unknown if we failed before channel lookup */
 	if (cur->channel_out.u64 != 0) {
 		json_add_short_channel_id(response, "out_channel",
-					  &cur->channel_out);
+					  cur->channel_out);
 		if (cur->htlc_id_out)
 			json_add_u64(response, "out_htlc_id", *cur->htlc_id_out);
 	}
@@ -160,7 +160,7 @@ static void listforwardings_add_forwardings(struct json_stream *response,
 {
 	const struct forwarding *forwardings;
 
-	forwardings = wallet_forwarded_payments_get(wallet, tmpctx, status, chan_in, chan_out, listindex, liststart, listlimit);
+	forwardings = wallet_forwarded_payments_get(tmpctx, wallet, status, chan_in, chan_out, listindex, liststart, listlimit);
 
 	json_array_start(response, "forwards");
 	for (size_t i=0; i<tal_count(forwardings); i++) {
@@ -292,7 +292,7 @@ static struct command_result *json_delforward(struct command *cmd,
 #endif
 
 	if (!wallet_forward_delete(cmd->ld->wallet,
-				   chan_in, htlc_id, *status))
+				   *chan_in, htlc_id, *status))
 		return command_fail(cmd, DELFORWARD_NOT_FOUND,
 				    "Could not find that forward");
 

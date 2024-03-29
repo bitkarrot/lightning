@@ -9,7 +9,6 @@
 #include <common/gossip_store.h>
 #include <common/route.h>
 #include <common/setup.h>
-#include <common/type_to_string.h>
 #include <common/utils.h>
 #include <math.h>
 #include <stdio.h>
@@ -141,7 +140,7 @@ int main(int argc, char *argv[])
 		if (!c->half[dir].enabled)
 			continue;
 		scid = gossmap_chan_scid(gossmap, c);
-		assert(gossmap_local_updatechan(localmods, &scid,
+		assert(gossmap_local_updatechan(localmods, scid,
 						amount_msat(fp16_to_u64(c->half[dir].htlc_min)),
 						amount_msat(fp16_to_u64(c->half[dir].htlc_max)),
 						0, 0, 0, true, dir));
@@ -163,7 +162,7 @@ int main(int argc, char *argv[])
 
 		gossmap_node_get_id(gossmap, nodes[i], &them);
 
-		printf("%s,", node_id_to_hexstr(tmpctx, &them));
+		printf("%s,", fmt_node_id(tmpctx, &them));
 		if (!r) {
 			printf("0,0.0,");
 		} else {
@@ -187,7 +186,7 @@ int main(int argc, char *argv[])
 			       r[0].amount.millisatoshis - amt,
 			       r[0].delay - final_delay);
 			for (size_t j = 0; j < tal_count(r); j++)
-				printf(",%s/%u", short_channel_id_to_str(tmpctx, &r[j].scid), r[j].direction);
+				printf(",%s/%u", fmt_short_channel_id(tmpctx, r[j].scid), r[j].direction);
 		}
 		printf("\n");
 	}

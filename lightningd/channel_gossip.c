@@ -2,7 +2,6 @@
 #include <ccan/mem/mem.h>
 #include <common/memleak.h>
 #include <common/timeout.h>
-#include <common/type_to_string.h>
 #include <common/wire_error.h>
 #include <connectd/connectd_wiregen.h>
 #include <hsmd/hsmd_wiregen.h>
@@ -90,7 +89,7 @@ static bool channel_announceable(const struct channel *channel,
 {
 	if (!channel->scid)
 		return false;
-	return is_scid_depth_announceable(channel->scid, block_height);
+	return is_scid_depth_announceable(*channel->scid, block_height);
 }
 
 static void check_channel_gossip(const struct channel *channel)
@@ -124,7 +123,7 @@ static void check_channel_gossip(const struct channel *channel)
 		assert(channel->scid);
 		/* If we have sigs, they don't match */
 		if (cg->remote_sigs)
-			assert(!channel->scid || !short_channel_id_eq(&cg->remote_sigs->scid, channel->scid));
+			assert(!channel->scid || !short_channel_id_eq(cg->remote_sigs->scid, *channel->scid));
 		assert(!cg->refresh_timer);
 		return;
 	case CGOSSIP_ANNOUNCED:
@@ -243,7 +242,11 @@ static void send_private_cupdate(struct channel *channel, bool even_if_redundant
 {
 	struct channel_gossip *cg = channel->channel_gossip;
 	const u8 *cupdate;
-	const struct short_channel_id *scid;
+	struct short_channel_id scid;
+
+	/* Only useful channels: not if closing */
+	if (!channel_state_can_add_htlc(channel->state))
+		return;
 
 	/* BOLT #7:
 	 *
@@ -257,13 +260,9 @@ static void send_private_cupdate(struct channel *channel, bool even_if_redundant
 	/* We prefer their alias, if possible: they might not have seen the block which
 	 * mined the funding tx yet, so the scid would be meaningless to them. */
 	if (channel->alias[REMOTE])
-		scid = channel->alias[REMOTE];
+		scid = *channel->alias[REMOTE];
 	else
-		scid = channel->scid;
-
-	/* Only useful channels: not if closing */
-	if (!channel_state_can_add_htlc(channel->state))
-		return;
+		scid = *channel->scid;
 
 	/* We always set "enabled" on unannounced channels, since if peer
 	 * receives it, that's what it means */
@@ -329,7 +328,7 @@ static void broadcast_public_cupdate(struct channel *channel,
 		enable = ok_if_disconnected;
 	}
 
-	cupdate = unsigned_channel_update(tmpctx, channel, channel->scid,
+	cupdate = unsigned_channel_update(tmpctx, channel, *channel->scid,
 					  have_old ? &old_timestamp : NULL,
 					  true,
 					  enable);
@@ -355,7 +354,7 @@ static void cupdate_timer_refresh(struct channel *channel)
 	cg->refresh_timer = NULL;
 
 	log_debug(channel->log, "Sending keepalive channel_update for %s",
-		  short_channel_id_to_str(tmpctx, channel->scid));
+		  fmt_short_channel_id(tmpctx, *channel->scid));
 
 	/* Free old cupdate to force a new one to be generated */
 	cg->cupdate = tal_free(cg->cupdate);
@@ -379,7 +378,7 @@ static void stash_remote_announce_sigs(struct channel *channel,
 	if (err) {
 		channel_fail_transient(channel, true,
 				       "Bad gossip announcement_signatures for scid %s: %s",
-				       short_channel_id_to_str(tmpctx, &scid),
+				       fmt_short_channel_id(tmpctx, scid),
 				       err);
 		return;
 	}
@@ -391,8 +390,8 @@ static void stash_remote_announce_sigs(struct channel *channel,
 	cg->remote_sigs->bitcoin_sig = *bitcoin_sig;
 	log_debug(channel->log,
 		  "channel_gossip: received announcement sigs for %s (we have %s)",
-		  short_channel_id_to_str(tmpctx, &scid),
-		  channel->scid ? short_channel_id_to_str(tmpctx, channel->scid) : "none");
+		  fmt_short_channel_id(tmpctx, scid),
+		  channel->scid ? fmt_short_channel_id(tmpctx, *channel->scid) : "none");
 }
 
 static bool apply_remote_sigs(struct channel *channel)
@@ -402,7 +401,7 @@ static bool apply_remote_sigs(struct channel *channel)
 	if (!cg->remote_sigs)
 		return false;
 
-	if (!short_channel_id_eq(&cg->remote_sigs->scid, channel->scid)) {
+	if (!short_channel_id_eq(cg->remote_sigs->scid, *channel->scid)) {
 		log_debug(channel->log, "We have remote sigs, but wrong scid!");
 		return false;
 	}
@@ -463,7 +462,7 @@ static void send_channel_announce_sigs(struct channel *channel)
 	}
 
 	msg = towire_announcement_signatures(NULL,
-					     &channel->cid, channel->scid,
+					     &channel->cid, *channel->scid,
 					     &local_node_sig, &local_bitcoin_sig);
 	msg_to_peer(channel, take(msg));
 }
@@ -716,13 +715,13 @@ void channel_gossip_scid_changed(struct channel *channel)
 	case CGOSSIP_NEED_PEER_SIGS:
 	case CGOSSIP_ANNOUNCED:
 		log_debug(channel->log, "channel_gossip: scid now %s",
-			  short_channel_id_to_str(tmpctx, channel->scid));
+			  fmt_short_channel_id(tmpctx, *channel->scid));
 		/* Start again. */
 		/* Maybe remote announcement signatures now apply?  If not,
 		 * free them */
 		if (cg->remote_sigs
-		    && !short_channel_id_eq(&cg->remote_sigs->scid,
-					    channel->scid)) {
+		    && !short_channel_id_eq(cg->remote_sigs->scid,
+					    *channel->scid)) {
 			cg->remote_sigs = tal_free(cg->remote_sigs);
 		}
 
@@ -976,7 +975,7 @@ static struct channel *lookup_by_peer_remote_alias(struct lightningd *ld,
 
 	list_for_each(&p->channels, chan, list) {
 		if (chan->alias[REMOTE]
-		    && short_channel_id_eq(&scid, chan->alias[REMOTE])) {
+		    && short_channel_id_eq(scid, *chan->alias[REMOTE])) {
 			return chan;
 		}
 	}
@@ -993,7 +992,7 @@ void channel_gossip_set_remote_update(struct lightningd *ld,
 	struct channel *channel;
 	struct channel_gossip *cg;
 
-	channel = any_channel_by_scid(ld, &update->scid, true);
+	channel = any_channel_by_scid(ld, update->scid, true);
 	if (!channel) {
 		channel = lookup_by_peer_remote_alias(ld, source, update->scid);
 		if (channel)
@@ -1003,7 +1002,7 @@ void channel_gossip_set_remote_update(struct lightningd *ld,
 	if (!channel) {
 		log_unusual(ld->log, "Bad gossip order: could not find channel %s for peer's "
 			    "channel update",
-			    short_channel_id_to_str(tmpctx, &update->scid));
+			    fmt_short_channel_id(tmpctx, update->scid));
 		return;
 	}
 
@@ -1022,15 +1021,14 @@ void channel_gossip_set_remote_update(struct lightningd *ld,
 	    && !node_id_eq(source, &channel->peer->id)) {
 		log_unusual(ld->log, "Bad gossip order: %s sent us a channel update for a "
 			    "channel owned by %s (%s)",
-			    type_to_string(tmpctx, struct node_id, source),
-			    type_to_string(tmpctx, struct node_id,
-					   &channel->peer->id),
-			    type_to_string(tmpctx, struct short_channel_id, &update->scid));
+			    fmt_node_id(tmpctx, source),
+			    fmt_node_id(tmpctx, &channel->peer->id),
+			    fmt_short_channel_id(tmpctx, update->scid));
 		return;
 	}
 
 	log_debug(ld->log, "updating channel %s with inbound settings",
-		  type_to_string(tmpctx, struct short_channel_id, &update->scid));
+		  fmt_short_channel_id(tmpctx, update->scid));
 	tal_free(cg->peer_update);
 	cg->peer_update = tal_dup(cg, struct peer_update, update);
 	wallet_channel_save(ld->wallet, channel);

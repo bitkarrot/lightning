@@ -10,7 +10,6 @@
 #include <common/json_command.h>
 #include <common/json_param.h>
 #include <common/jsonrpc_errors.h>
-#include <common/type_to_string.h>
 #include <errno.h>
 #include <hsmd/hsmd_wiregen.h>
 #include <lightningd/hsm_control.h>
@@ -70,7 +69,7 @@ static unsigned int hsm_msg(struct subd *hsmd,
 
 	/* This should, of course, never happen. */
 	log_broken(hsmd->log, "client %s %s (request %s)",
-		   type_to_string(tmpctx, struct node_id, &client_id),
+		   fmt_node_id(tmpctx, &client_id),
 		   desc, tal_hex(tmpctx, bad_msg));
 	return 0;
 }
@@ -204,7 +203,7 @@ void bip32_pubkey(struct lightningd *ld, struct pubkey *pubkey, u32 index)
 			fatal("Invalid check_pubkey_reply from hsm");
 		if (!ok)
 			fatal("HSM said key derivation of %u != %s",
-			      index, type_to_string(tmpctx, struct pubkey, pubkey));
+			      index, fmt_pubkey(tmpctx, pubkey));
 	}
 }
 

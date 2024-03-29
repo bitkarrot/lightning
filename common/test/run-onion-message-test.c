@@ -15,7 +15,6 @@ static void maybe_print(const char *fmt, ...);
 #include "../onion_encode.c"
 #include "../onion_message_parse.c"
 #include "../sphinx.c"
-#include "../type_to_string.c"
 #include "../../wire/onion_wiregen.c"
 #include "../../wire/peer_wiregen.c"
 #include <common/ecdh.h>
@@ -97,7 +96,7 @@ static void json_hex_talfield(const char *name, const u8 *val)
 
 static void json_pubkey(const char *name, const struct pubkey *key)
 {
-	json_strfield(name, pubkey_to_hexstr(tmpctx, key));
+	json_strfield(name, fmt_pubkey(tmpctx, key));
 }
 
 static bool enable_superverbose;

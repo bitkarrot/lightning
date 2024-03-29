@@ -1,7 +1,6 @@
 #include "config.h"
 #include <common/features.h>
 #include <common/timeout.h>
-#include <common/type_to_string.h>
 #include <lightningd/channel.h>
 #include <lightningd/htlc_set.h>
 #include <lightningd/invoice.h>
@@ -124,8 +123,7 @@ void htlc_set_add(struct lightningd *ld,
 	if (feature_is_set(details->features, COMPULSORY_FEATURE(OPT_PAYMENT_SECRET))
 	    && !payment_secret) {
 		log_debug(ld->log, "Missing payment_secret, but required for %s",
-			  type_to_string(tmpctx, struct sha256,
-					 &hin->payment_hash));
+			  fmt_sha256(tmpctx, &hin->payment_hash));
 		local_fail_in_htlc(hin,
 				   take(failmsg_incorrect_or_unknown(NULL, ld, hin)));
 		return;
@@ -167,12 +165,9 @@ void htlc_set_add(struct lightningd *ld,
 	if (!amount_msat_eq(total_msat, set->total_msat)) {
 		log_unusual(ld->log, "Failing HTLC set %s:"
 			    " total_msat %s new htlc total %s",
-			    type_to_string(tmpctx, struct sha256,
-					   &set->payment_hash),
-			    type_to_string(tmpctx, struct amount_msat,
-					   &set->total_msat),
-			    type_to_string(tmpctx, struct amount_msat,
-					   &total_msat));
+			    fmt_sha256(tmpctx, &set->payment_hash),
+			    fmt_amount_msat(tmpctx, set->total_msat),
+			    fmt_amount_msat(tmpctx, total_msat));
 		htlc_set_fail(set,
 			      take(towire_final_incorrect_htlc_amount(NULL,
 								      hin->msat)));
@@ -182,12 +177,9 @@ void htlc_set_add(struct lightningd *ld,
 	if (!amount_msat_add(&set->so_far, set->so_far, hin->msat)) {
 		log_unusual(ld->log, "Failing HTLC set %s:"
 			    " overflow adding %s+%s",
-			    type_to_string(tmpctx, struct sha256,
-					   &set->payment_hash),
-			    type_to_string(tmpctx, struct amount_msat,
-					   &set->so_far),
-			    type_to_string(tmpctx, struct amount_msat,
-					   &hin->msat));
+			    fmt_sha256(tmpctx, &set->payment_hash),
+			    fmt_amount_msat(tmpctx, set->so_far),
+			    fmt_amount_msat(tmpctx, hin->msat));
 		htlc_set_fail(set,
 			      take(towire_final_incorrect_htlc_amount(NULL,
 								      hin->msat)));
@@ -197,8 +189,8 @@ void htlc_set_add(struct lightningd *ld,
 	log_debug(ld->log,
 		  "HTLC set contains %zu HTLCs, for a total of %s out of %s (%spayment_secret)",
 		  tal_count(set->htlcs),
-		  type_to_string(tmpctx, struct amount_msat, &set->so_far),
-		  type_to_string(tmpctx, struct amount_msat, &total_msat),
+		  fmt_amount_msat(tmpctx, set->so_far),
+		  fmt_amount_msat(tmpctx, total_msat),
 		  payment_secret ? "" : "no "
 		);
 

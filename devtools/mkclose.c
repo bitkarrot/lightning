@@ -11,7 +11,6 @@
 #include <common/htlc_wire.h>
 #include <common/initial_commit_tx.h>
 #include <common/status.h>
-#include <common/type_to_string.h>
 #include <stdio.h>
 
 static bool verbose = false;
@@ -124,7 +123,7 @@ int main(int argc, char *argv[])
 
 	if (!amount_msat_sub_sat(&local_msat, local_msat, fee))
 		errx(1, "Can't afford fee %s",
-		     type_to_string(NULL, struct amount_sat, &fee));
+		     fmt_amount_sat(NULL, fee));
 	if (!amount_sat_sub_msat(&remote_msat, funding_amount, local_msat))
 		errx(1, "Can't afford local_msat");
 

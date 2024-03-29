@@ -109,7 +109,7 @@ void json_add_sha256(struct json_stream *result UNNEEDED, const char *fieldname 
 /* Generated stub for json_add_short_channel_id */
 void json_add_short_channel_id(struct json_stream *response UNNEEDED,
 			       const char *fieldname UNNEEDED,
-			       const struct short_channel_id *id UNNEEDED)
+			       struct short_channel_id id UNNEEDED)
 { fprintf(stderr, "json_add_short_channel_id called!\n"); abort(); }
 /* Generated stub for json_add_string */
 void json_add_string(struct json_stream *js UNNEEDED,
@@ -286,7 +286,7 @@ static void write_to_store(int store_fd, const u8 *msg)
 static void update_connection(int store_fd,
 			      const struct node_id *from,
 			      const struct node_id *to,
-			      const struct short_channel_id *scid,
+			      struct short_channel_id scid,
 			      struct amount_msat min,
 			      struct amount_msat max,
 			      u32 base_fee, s32 proportional_fee,
@@ -321,7 +321,7 @@ static void update_connection(int store_fd,
 static void add_connection(int store_fd,
 			   const struct node_id *from,
 			   const struct node_id *to,
-			   const struct short_channel_id *scid,
+			   struct short_channel_id scid,
 			   struct amount_msat min,
 			   struct amount_msat max,
 			   u32 base_fee, s32 proportional_fee,
@@ -402,26 +402,26 @@ int main(int argc, char *argv[])
 
 		if (!mk_short_channel_id(&scid, i, i-1, 0))
 			abort();
-		add_connection(store_fd, &ids[i-1], &ids[i], &scid,
+		add_connection(store_fd, &ids[i-1], &ids[i], scid,
 			       AMOUNT_MSAT(0),
 			       AMOUNT_MSAT(1000000 * 1000),
 			       0, 0, 0);
 		SUPERVERBOSE("Joining %s to %s, fee %u\n",
-			     type_to_string(tmpctx, struct node_id, &ids[i-1]),
-			     type_to_string(tmpctx, struct node_id, &ids[i]),
+			     fmt_node_id(tmpctx, &ids[i-1]),
+			     fmt_node_id(tmpctx, &ids[i]),
 			     0);
 
 		if (i <= 2)
 			continue;
 		if (!mk_short_channel_id(&scid, i, 1, 0))
 			abort();
-		add_connection(store_fd, &ids[1], &ids[i], &scid,
+		add_connection(store_fd, &ids[1], &ids[i], scid,
 			       AMOUNT_MSAT(0),
 			       AMOUNT_MSAT(1000000 * 1000),
 			       1 << i, 0, 0);
 		SUPERVERBOSE("Joining %s to %s, fee %u\n",
-			     type_to_string(tmpctx, struct node_id, &ids[1]),
-			     type_to_string(tmpctx, struct node_id, &ids[i]),
+			     fmt_node_id(tmpctx, &ids[1]),
+			     fmt_node_id(tmpctx, &ids[i]),
 			     1 << i);
 	}
 
@@ -431,8 +431,8 @@ int main(int argc, char *argv[])
 		struct route_hop *r;
 		const char *errmsg;
 		SUPERVERBOSE("%s -> %s:\n",
-			     type_to_string(tmpctx, struct node_id, &ids[0]),
-			     type_to_string(tmpctx, struct node_id, &ids[NUM_NODES-1]));
+			     fmt_node_id(tmpctx, &ids[0]),
+			     fmt_node_id(tmpctx, &ids[NUM_NODES-1]));
 
 		src = gossmap_find_node(global_gossmap, &ids[0]);
 		dst = gossmap_find_node(global_gossmap, &ids[NUM_NODES-1]);

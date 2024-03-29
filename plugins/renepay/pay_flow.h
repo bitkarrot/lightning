@@ -3,7 +3,6 @@
 #include "config.h"
 #include <ccan/ccan/tal/str/str.h>
 #include <ccan/short_types/short_types.h>
-#include <common/type_to_string.h>
 #include <common/utils.h>
 #include <plugins/renepay/flow.h>
 #include <plugins/renepay/payment.h>
@@ -75,7 +74,7 @@ static inline const char* fmt_payflow_key(
 		ctx,
 		"key: groupid=%"PRIu64", partid=%"PRIu64", payment_hash=%s",
 		k->groupid,k->partid,
-		type_to_string(ctx,struct sha256,&k->payment_hash));
+		fmt_sha256(ctx, &k->payment_hash));
 	return str;
 }
 

@@ -7,7 +7,6 @@
 #include "../onion_decode.c"
 #include "../onion_encode.c"
 #include "../sphinx.c"
-#include "../type_to_string.c"
 #include <common/setup.h>
 #include <wire/peer_wire.h>
 #include <stdio.h>
@@ -252,20 +251,18 @@ int main(int argc, char *argv[])
 		printf("{\n");
 		json_strfield("node name", names[i]);
 		json_strfield("node_secret",
-			      type_to_string(tmpctx, struct privkey,
-					     &nodekey[i]));
+			      fmt_privkey(tmpctx, &nodekey[i]));
 		json_strfield("node_id",
-			      type_to_string(tmpctx, struct pubkey, &id[i]));
+			      fmt_pubkey(tmpctx, &id[i]));
 
 		printf("\t\"onion_message\": {");
 		json_strfield("raw", tal_hex(tmpctx, omsg));
 		json_strfield("blinding_secret",
-			      type_to_string(tmpctx, struct privkey,
-					     &blinding[i]));
+			      fmt_privkey(tmpctx, &blinding[i]));
 		json_strfield("blinding",
-			      type_to_string(tmpctx, struct pubkey, &blinding_pub[i]));
+			      fmt_pubkey(tmpctx, &blinding_pub[i]));
 		json_strfield("blinded_alias",
-			      type_to_string(tmpctx, struct pubkey, &alias[i]));
+			      fmt_pubkey(tmpctx, &alias[i]));
 		json_strfield("onionmsg_tlv",
 			      tal_hex(tmpctx, onionmsg_tlv[i]));
 		printf("\"enctlv\": \"%s\"}\n", tal_hex(tmpctx, enctlv[i]));

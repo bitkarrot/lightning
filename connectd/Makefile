@@ -74,7 +74,6 @@ CONNECTD_COMMON_OBJS :=				\
 	common/status_wire.o			\
 	common/subdaemon.o			\
 	common/timeout.o			\
-	common/type_to_string.o			\
 	common/utils.o				\
 	common/utxo.o				\
 	common/version.o			\
@@ -82,7 +81,7 @@ CONNECTD_COMMON_OBJS :=				\
 	common/wire_error.o			\
 	gossipd/gossipd_wiregen.o		\
 	gossipd/gossip_store_wiregen.o		\
-	wire/onion$(EXP)_wiregen.o
+	wire/onion_wiregen.o
 
 lightningd/lightning_connectd: $(CONNECTD_OBJS) $(CONNECTD_COMMON_OBJS) $(BITCOIN_OBJS) $(WIRE_OBJS) $(HSMD_CLIENT_OBJS)
 

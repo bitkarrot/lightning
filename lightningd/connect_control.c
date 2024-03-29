@@ -7,7 +7,6 @@
 #include <common/json_param.h>
 #include <common/memleak.h>
 #include <common/timeout.h>
-#include <common/type_to_string.h>
 #include <connectd/connectd_wiregen.h>
 #include <gossipd/gossipd_wiregen.h>
 #include <hsmd/permissions.h>
@@ -238,7 +237,7 @@ static struct command_result *json_connect(struct command *cmd,
 	peer = peer_by_id(cmd->ld, &id_addr.id);
 	if (peer && peer->connected == PEER_CONNECTED) {
 		log_debug(cmd->ld->log, "Already connected via %s",
-			  type_to_string(tmpctx, struct wireaddr_internal,
+			  fmt_wireaddr_internal(tmpctx,
 					 &peer->addr));
 		return connect_cmd_succeed(cmd, peer,
 					   peer->connected_incoming,
@@ -754,7 +753,6 @@ int connectd_init(struct lightningd *ld)
 	    ld->tor_service_password ? ld->tor_service_password : "",
 	    ld->config.connection_timeout_secs,
 	    websocket_helper_path,
-	    ld->websocket_port,
 	    !ld->deprecated_ok,
 	    ld->dev_fast_gossip,
 	    ld->dev_disconnect_fd >= 0,
@@ -850,7 +848,7 @@ static struct command_result *json_sendcustommsg(struct command *cmd,
 	if (!peer) {
 		return command_fail(cmd, JSONRPC2_INVALID_REQUEST,
 				    "No such peer: %s",
-				    type_to_string(cmd, struct node_id, dest));
+				    fmt_node_id(cmd, dest));
 	}
 
 	/* We allow messages from plugins responding to peer_connected hook,

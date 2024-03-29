@@ -5,7 +5,6 @@
 #include <common/keyset.h>
 #include <common/permute_tx.h>
 #include <common/status.h>
-#include <common/type_to_string.h>
 
 /* BOLT #3:
  *
@@ -176,12 +175,9 @@ struct bitcoin_tx *initial_commit_tx(const tal_t *ctx,
 			       " nor other amount %s"
 			       " exceed reserve %s"
 			       " on initial commitment transaction",
-			       type_to_string(tmpctx, struct amount_msat,
-					      &self_pay),
-			       type_to_string(tmpctx, struct amount_msat,
-					      &other_pay),
-			       type_to_string(tmpctx, struct amount_sat,
-					      &self_reserve));
+			       fmt_amount_msat(tmpctx, self_pay),
+			       fmt_amount_msat(tmpctx, other_pay),
+			       fmt_amount_sat(tmpctx, self_reserve));
 		return NULL;
 	}
 

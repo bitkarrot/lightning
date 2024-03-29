@@ -19,7 +19,6 @@
 #include <common/hsm_encryption.h>
 #include <common/json_command.h>
 #include <common/json_param.h>
-#include <common/type_to_string.h>
 #include <common/version.h>
 #include <common/wireaddr.h>
 #include <dirent.h>
@@ -405,7 +404,7 @@ static char *opt_add_addr_withtype(const char *arg,
 		if (wireaddr_internal_eq(&ld->proposed_wireaddr[i], &wi))
 			return tal_fmt(tmpctx, "Duplicate %s address %s",
 				       ala & ADDR_ANNOUNCE ? "announce" : "listen",
-				       type_to_string(tmpctx, struct wireaddr_internal, &wi));
+				       fmt_wireaddr_internal(tmpctx, &wi));
 	}
 
 	tal_arr_expand(&ld->proposed_listen_announce, ala);
@@ -784,6 +783,11 @@ static char *opt_force_featureset(const char *optarg,
 	return NULL;
 }
 
+static char *opt_ignore(void *unused)
+{
+	return NULL;
+}
+
 static void dev_register_opts(struct lightningd *ld)
 {
 	/* We might want to debug plugins, which are started before normal
@@ -915,6 +919,11 @@ static void dev_register_opts(struct lightningd *ld)
 		     opt_set_bool,
 		     &ld->dev_allow_shutdown_destination_change,
 		     "Allow destination override on close, even if risky");
+	/* This is handled directly in daemon_developer_mode(), so we ignore it here */
+	clnopt_noarg("--dev-debug-self", OPT_DEV,
+		     opt_ignore,
+		     NULL,
+		     "Fire up a terminal window with a debugger in it on initialization");
 }
 
 static const struct config testnet_config = {
@@ -1183,25 +1192,6 @@ static bool opt_show_sat(char *buf, size_t len, const struct amount_sat *sat)
 static char *opt_set_wumbo(struct lightningd *ld)
 {
 	/* Wumbo is now the default, FIXME: depreacted_apis! */
-	return NULL;
-}
-
-static char *opt_set_websocket_port(const char *arg, struct lightningd *ld)
-{
-	u32 port COMPILER_WANTS_INIT("9.3.0 -O2");
-	char *err;
-
-	if (!opt_deprecated_ok(ld, "experimental-websocket-port", NULL,
-			       "v23.08", "v23.08"))
-		return "--experimental-websocket-port been deprecated, use --bind-addr=ws:...";
-
-	err = opt_set_u32(arg, &port);
-	if (err)
-		return err;
-
-	ld->websocket_port = port;
-	if (ld->websocket_port != port)
-		return tal_fmt(tmpctx, "'%s' is out of range", arg);
 	return NULL;
 }
 
@@ -1621,9 +1611,6 @@ static void register_opts(struct lightningd *ld)
 		       "--subdaemon=hsmd:remote_signer "
 		       "would use a hypothetical remote signing subdaemon.");
 
-	clnopt_witharg("--experimental-websocket-port", OPT_SHOWINT,
-		       opt_set_websocket_port, NULL,
-		       ld, opt_hidden);
 	opt_register_noarg("--experimental-upgrade-protocol",
 			   opt_set_bool, &ld->experimental_upgrade_protocol,
 			   "experimental: allow channel types to be upgraded on reconnect");
@@ -2111,11 +2098,6 @@ void add_config_deprecated(struct lightningd *ld,
 			json_add_opt_disable_plugins(response, ld->plugins);
 		} else if (opt->cb_arg == (void *)opt_force_feerates) {
 			answer = fmt_force_feerates(name0, ld->force_feerates);
-		} else if (opt->cb_arg == (void *)opt_set_websocket_port) {
-			if (ld->websocket_port)
-				json_add_u32(response, name0,
-					     ld->websocket_port);
-			return;
 		} else if (opt->cb_arg == (void *)opt_set_db_upgrade) {
 			if (ld->db_upgrade_ok)
 				json_add_bool(response, name0,
@@ -2159,7 +2141,6 @@ bool is_known_opt_cb_arg(char *(*cb_arg)(const char *, void *))
 		|| cb_arg == (void *)opt_add_proxy_addr
 		|| cb_arg == (void *)opt_force_feerates
 		|| cb_arg == (void *)opt_set_accept_extra_tlv_types
-		|| cb_arg == (void *)opt_set_websocket_port
 		|| cb_arg == (void *)opt_add_plugin
 		|| cb_arg == (void *)opt_add_plugin_dir
 		|| cb_arg == (void *)opt_important_plugin
@@ -2173,6 +2154,7 @@ bool is_known_opt_cb_arg(char *(*cb_arg)(const char *, void *))
 		|| cb_arg == (void *)opt_add_accept_htlc_tlv
 		|| cb_arg == (void *)opt_set_codex32_or_hex
 		|| cb_arg == (void *)opt_subd_dev_disconnect
+		|| cb_arg == (void *)opt_add_api_beg
 		|| cb_arg == (void *)opt_force_featureset
 		|| cb_arg == (void *)opt_force_privkey
 		|| cb_arg == (void *)opt_force_bip32_seed

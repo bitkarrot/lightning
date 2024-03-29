@@ -8,7 +8,6 @@
 #include <common/json_param.h>
 #include <common/json_stream.h>
 #include <common/memleak.h>
-#include <common/type_to_string.h>
 #include <errno.h>
 #include <plugins/libplugin-pay.h>
 #include <sodium.h>
@@ -81,7 +80,7 @@ static void keysend_cb(struct keysend_data *d, struct payment *p) {
 			    p,
 			    "Recipient %s reported an invalid payload, this "
 			    "usually means they don't support keysend.",
-			    node_id_to_hexstr(tmpctx, p->destination));
+			    fmt_node_id(tmpctx, p->destination));
 		}
 	}
 
@@ -152,7 +151,7 @@ static void check_preapprovekeysend_start(void *d UNUSED, struct payment *p)
 				    &preapprovekeysend_rpc_failure, p);
 	json_add_node_id(req->js, "destination", p->destination);
 	json_add_sha256(req->js, "payment_hash", p->payment_hash);
-	json_add_amount_msat(req->js, "amount_msat", p->amount);
+	json_add_amount_msat(req->js, "amount_msat", p->our_amount);
 	(void) send_outreq(p->plugin, req);
 }
 
@@ -278,7 +277,9 @@ static struct command_result *json_keysend(struct command *cmd, const char *buf,
 	p->payment_metadata = NULL;
 	p->blindedpath = NULL;
 	p->blindedpay = NULL;
-	p->amount = *msat;
+	/* FIXME: We could allow partial keysends, too, but we'd have to allow
+	 * caller to provide keysend secret */
+	p->our_amount = p->final_amount = *msat;
 	p->routes = tal_steal(p, hints);
 	// 22 is the Rust-Lightning default and the highest minimum we know of.
 	p->min_final_cltv_expiry = 22;
@@ -297,7 +298,7 @@ static struct command_result *json_keysend(struct command *cmd, const char *buf,
 		    "We are the destination. Keysend cannot be used to send funds to yourself");
 	}
 
-	if (!amount_msat_fee(&p->constraints.fee_budget, p->amount, 0,
+	if (!amount_msat_fee(&p->constraints.fee_budget, p->our_amount, 0,
 			     *maxfee_pct_millionths / 100)) {
 		return command_fail(
 		    cmd, JSONRPC2_INVALID_PARAMS,
@@ -553,8 +554,8 @@ static struct command_result *htlc_accepted_call(struct command *cmd,
 		    "payment_hash: SHA256(%s)=%s != %s. Ignoring keysend.",
 		    tal_hexstr(tmpctx,
 			       preimage_field->value, preimage_field->length),
-		    type_to_string(tmpctx, struct sha256, &ki->payment_hash),
-		    type_to_string(tmpctx, struct sha256, &payment_hash));
+		    fmt_sha256(tmpctx, &ki->payment_hash),
+		    fmt_sha256(tmpctx, &payment_hash));
 		tal_free(ki);
 		return htlc_accepted_continue(cmd, NULL);
 	}
@@ -571,7 +572,7 @@ static struct command_result *htlc_accepted_call(struct command *cmd,
 				    &htlc_accepted_invoice_failed,
 				    ki);
 
-	plugin_log(cmd->plugin, LOG_INFORM, "Inserting a new invoice for keysend with payment_hash %s", type_to_string(tmpctx, struct sha256, &payment_hash));
+	plugin_log(cmd->plugin, LOG_INFORM, "Inserting a new invoice for keysend with payment_hash %s", fmt_sha256(tmpctx, &payment_hash));
 	json_add_string(req->js, "amount_msat", "any");
 	json_add_string(req->js, "label", ki->label);
 	if (desc_field) {

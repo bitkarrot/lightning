@@ -30,7 +30,6 @@
  * WE ASSUME NO MALLEABILITY!  This requires segregated witness.
  */
 #include "config.h"
-#include <common/type_to_string.h>
 #include <lightningd/chaintopology.h>
 #include <lightningd/channel.h>
 #include <lightningd/lightningd.h>
@@ -210,13 +209,13 @@ static bool txw_fire(struct txwatch *txw,
 		log_debug(txw->topo->log,
 			  "Got first depth change ->%u for %s",
 			  txw->depth,
-			  type_to_string(tmpctx, struct bitcoin_txid, &txw->txid));
+			  fmt_bitcoin_txid(tmpctx, &txw->txid));
 	} else {
 		/* zero depth signals a reorganization */
 		log_debug(txw->topo->log,
 			  "Got depth change %u->%u for %s%s",
 			  txw->depth, depth,
-			  type_to_string(tmpctx, struct bitcoin_txid, &txw->txid),
+			  fmt_bitcoin_txid(tmpctx, &txw->txid),
 			  depth ? "" : " REORG");
 	}
 	txw->depth = depth;
@@ -255,9 +254,9 @@ void txowatch_fire(const struct txowatch *txow,
 	bitcoin_txid(tx, &txid);
 	log_debug(txow->channel->log,
 		  "Got UTXO spend for %s:%u: %s",
-		  type_to_string(tmpctx, struct bitcoin_txid, &txow->out.txid),
+		  fmt_bitcoin_txid(tmpctx, &txow->out.txid),
 		  txow->out.n,
-		  type_to_string(tmpctx, struct bitcoin_txid, &txid));
+		  fmt_bitcoin_txid(tmpctx, &txid));
 
 	r = txow->cb(txow->channel, tx, input_num, block);
 	switch (r) {

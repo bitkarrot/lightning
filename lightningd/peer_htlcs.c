@@ -11,7 +11,6 @@
 #include <common/onion_decode.h>
 #include <common/onionreply.h>
 #include <common/timeout.h>
-#include <common/type_to_string.h>
 #include <connectd/connectd_wiregen.h>
 #include <db/exec.h>
 #include <gossipd/gossipd_wiregen.h>
@@ -289,8 +288,7 @@ static bool check_fwd_amount(struct htlc_in *hin,
 	if (!amount_msat_fee(&fee, amt_to_forward,
 			     feerate_base, feerate_ppm)) {
 		log_broken(hin->key.channel->log, "Fee overflow forwarding %s!",
-			   type_to_string(tmpctx, struct amount_msat,
-					  &amt_to_forward));
+			   fmt_amount_msat(tmpctx, amt_to_forward));
 		return false;
 	}
 
@@ -301,9 +299,9 @@ static bool check_fwd_amount(struct htlc_in *hin,
 	log_debug(hin->key.channel->log, "HTLC %"PRIu64" incorrect amount:"
 		  " %s in, %s out, fee reqd %s",
 		  hin->key.id,
-		  type_to_string(tmpctx, struct amount_msat, &amt_in_htlc),
-		  type_to_string(tmpctx, struct amount_msat, &amt_to_forward),
-		  type_to_string(tmpctx, struct amount_msat, &fee));
+		  fmt_amount_msat(tmpctx, amt_in_htlc),
+		  fmt_amount_msat(tmpctx, amt_to_forward),
+		  fmt_amount_msat(tmpctx, fee));
 	return false;
 }
 
@@ -395,9 +393,8 @@ static void handle_localpay(struct htlc_in *hin,
 			  "HTLC %"PRIu64" final incorrect amount:"
 			  " %s in, %s expected",
 			  hin->key.id,
-			  type_to_string(tmpctx, struct amount_msat, &hin->msat),
-			  type_to_string(tmpctx, struct amount_msat,
-					 &amt_to_forward));
+			  fmt_amount_msat(tmpctx, hin->msat),
+			  fmt_amount_msat(tmpctx, amt_to_forward));
 		/* BOLT #4:
 		 * 1. type: 19 (`final_incorrect_htlc_amount`)
 		 * 2. data:
@@ -542,6 +539,7 @@ static void rcvd_htlc_reply(struct subd *subd, const u8 *msg, const int *fds UNU
 
 		} else if (hout->in) {
 			struct onionreply *failonion;
+			struct short_channel_id scid;
 
 			failonion = create_onionreply(hout,
 						      hout->in->shared_secret,
@@ -550,10 +548,11 @@ static void rcvd_htlc_reply(struct subd *subd, const u8 *msg, const int *fds UNU
 
 			/* here we haven't called connect_htlc_out(),
 			 * so set htlc field with NULL (db wants it to exist!) */
+			scid = channel_scid_or_local_alias(hout->key.channel);
 			wallet_forwarded_payment_add(ld->wallet,
 					 hout->in,
 					 FORWARD_STYLE_TLV,
-					 channel_scid_or_local_alias(hout->key.channel), NULL,
+					 &scid, NULL,
 					 FORWARD_LOCAL_FAILED,
 						     fromwire_peektype(hout->failmsg));
 		}
@@ -716,8 +715,12 @@ static void forward_htlc(struct htlc_in *hin,
 	if (forward_to) {
 		next = channel_by_cid(ld, forward_to);
 		/* Update this to where we're actually trying to send. */
-		if (next)
-			forward_scid = channel_scid_or_local_alias(next);
+		if (next) {
+			struct short_channel_id next_scid;
+			next_scid = channel_scid_or_local_alias(next);
+			forward_scid = tal_dup(tmpctx, struct short_channel_id,
+					       &next_scid);
+		}
 	} else
 		next = NULL;
 
@@ -848,35 +851,6 @@ struct htlc_accepted_hook_payload {
 	size_t failtlvpos;
 };
 
-/* We only handle the simplest cases here */
-static u8 *convert_failcode(const tal_t *ctx,
-			    struct lightningd *ld,
-			    unsigned int failure_code)
-{
-	switch (failure_code) {
-	case WIRE_INVALID_REALM:
-		return towire_invalid_realm(ctx);
-	case WIRE_TEMPORARY_NODE_FAILURE:
-		return towire_temporary_node_failure(ctx);
-	case WIRE_PERMANENT_NODE_FAILURE:
-		return towire_permanent_node_failure(ctx);
-	case WIRE_REQUIRED_NODE_FEATURE_MISSING:
-		return towire_required_node_feature_missing(ctx);
-	case WIRE_PERMANENT_CHANNEL_FAILURE:
-		return towire_permanent_channel_failure(ctx);
-	case WIRE_REQUIRED_CHANNEL_FEATURE_MISSING:
-		return towire_required_channel_feature_missing(ctx);
-	case WIRE_UNKNOWN_NEXT_PEER:
-		return towire_unknown_next_peer(ctx);
-	default:
-		log_broken(ld->log,
-			   "htlc_accepted_hook plugin returned failure_code %u,"
-			   " turning to WIRE_TEMPORARY_NODE_FAILURE",
-			   failure_code);
-		return towire_temporary_node_failure(ctx);
-	}
-}
-
 static void
 htlc_accepted_hook_try_resolve(struct htlc_accepted_hook_payload *request,
 			       struct preimage *payment_preimage)
@@ -892,9 +866,9 @@ htlc_accepted_hook_try_resolve(struct htlc_accepted_hook_payload *request,
 		    request->channel->log,
 		    "Plugin returned a preimage (sha256(%s) = %s) that doesn't "
 		    "match the HTLC hash (%s) it tries to resolve.",
-		    type_to_string(tmpctx, struct preimage, payment_preimage),
-		    type_to_string(tmpctx, struct sha256, &payment_hash),
-		    type_to_string(tmpctx, struct sha256, &hin->payment_hash));
+		    fmt_preimage(tmpctx, payment_preimage),
+		    fmt_sha256(tmpctx, &payment_hash),
+		    fmt_sha256(tmpctx, &hin->payment_hash));
 
 		unknown_details = tal_arr(NULL, u8, 0);
 		towire_u16(&unknown_details, 0x400f);
@@ -989,7 +963,7 @@ static bool htlc_accepted_hook_deserialize(struct htlc_accepted_hook_payload *re
 
 	if (json_tok_streq(buffer, resulttok, "fail")) {
 		u8 *failmsg;
-		const jsmntok_t *failoniontok, *failmsgtok, *failcodetok;
+		const jsmntok_t *failoniontok, *failmsgtok;
 
 		failoniontok = json_get_member(buffer, toks, "failure_onion");
 		failmsgtok = json_get_member(buffer, toks, "failure_message");
@@ -1012,36 +986,21 @@ static bool htlc_accepted_hook_deserialize(struct htlc_accepted_hook_payload *re
 							      failonion)));
 			return false;
 		}
-		if (failmsgtok) {
-			failmsg = json_tok_bin_from_hex(NULL, buffer,
-							failmsgtok);
-			if (!failmsg)
-				fatal("Bad failure_message for htlc_accepted"
-				      " hook: %.*s",
-				      failmsgtok->end - failmsgtok->start,
-				      buffer + failmsgtok->start);
-			local_fail_in_htlc(hin, take(failmsg));
-			return false;
-		} else if ((failcodetok = json_get_member(buffer, toks,
-							     "failure_code"))
-			   && lightningd_deprecated_in_ok(ld, ld->log, ld->deprecated_ok,
-							  "htlc_accepted_hook", "failure_code",
-							  "v0.8", "v24.02", NULL)) {
-			unsigned int failcode;
-			if (!json_to_number(buffer, failcodetok, &failcode))
-				fatal("Bad failure_code for htlc_accepted"
-				      " hook: %.*s",
-				      failcodetok->end
-				      - failcodetok->start,
-				      buffer + failcodetok->start);
-			failmsg = convert_failcode(NULL, ld, failcode);
-			local_fail_in_htlc(hin, take(failmsg));
-			return false;
-		} else {
-			failmsg = towire_temporary_node_failure(NULL);
-			local_fail_in_htlc(hin, take(failmsg));
-			return false;
+		if (!failmsgtok) {
+			fatal("Missing both failure_onion and failure_message for htlc_accepted"
+			      " hook fail: %.*s",
+			      resulttok->end - resulttok->start,
+			      buffer + resulttok->start);
 		}
+
+		failmsg = json_tok_bin_from_hex(NULL, buffer, failmsgtok);
+		if (!failmsg)
+			fatal("Bad failure_message for htlc_accepted"
+			      " hook: %.*s",
+			      failmsgtok->end - failmsgtok->start,
+			      buffer + failmsgtok->start);
+		local_fail_in_htlc(hin, take(failmsg));
+		return false;
 	} else if (json_tok_streq(buffer, resulttok, "resolve")) {
 		paykeytok = json_get_member(buffer, toks, "payment_key");
 		if (!paykeytok)
@@ -1083,7 +1042,7 @@ static void htlc_accepted_hook_serialize(struct htlc_accepted_hook_payload *p,
 
 		if (p->payload->forward_channel)
 			json_add_short_channel_id(s, "short_channel_id",
-						  p->payload->forward_channel);
+						  *p->payload->forward_channel);
 		if (p->payload->forward_node_id)
 			json_add_pubkey(s, "next_node_id",
 					p->payload->forward_node_id);
@@ -1217,16 +1176,14 @@ static struct channel_id *calc_forwarding_channel(struct lightningd *ld,
 	if (p->forward_channel) {
 		log_debug(hp->channel->log,
 			  "Looking up channel by scid=%s to forward htlc_id=%" PRIu64,
-			  type_to_string(tmpctx, struct short_channel_id,
-					 p->forward_channel),
+			  fmt_short_channel_id(tmpctx, *p->forward_channel),
 			  hp->hin->key.id);
 
-		c = any_channel_by_scid(ld, p->forward_channel, false);
+		c = any_channel_by_scid(ld, *p->forward_channel, false);
 
 		if (!c) {
 			log_unusual(hp->channel->log, "No peer channel with scid=%s",
-				    type_to_string(tmpctx, struct short_channel_id,
-						   p->forward_channel));
+				    fmt_short_channel_id(tmpctx, *p->forward_channel));
 			return NULL;
 		}
 
@@ -1243,12 +1200,12 @@ static struct channel_id *calc_forwarding_channel(struct lightningd *ld,
 		peer = peer_by_id(ld, &id);
 
 		log_debug(hp->channel->log, "Looking up peer by node_id=%s",
-			  type_to_string(tmpctx, struct node_id, &id));
+			  fmt_node_id(tmpctx, &id));
 
 		if (!peer) {
 			log_unusual(
 			    hp->channel->log, "No peer with node_id=%s",
-			    type_to_string(tmpctx, struct node_id, &id));
+			    fmt_node_id(tmpctx, &id));
 			return NULL;
 		}
 		c = NULL;
@@ -1260,26 +1217,25 @@ static struct channel_id *calc_forwarding_channel(struct lightningd *ld,
 			return NULL;
 		log_debug(hp->channel->log,
 			  "Chose channel %s for peer %s",
-			  type_to_string(tmpctx, struct short_channel_id,
-					 channel_scid_or_local_alias(best)),
-			  type_to_string(tmpctx, struct node_id,
-					 &peer->id));
+			  fmt_short_channel_id(tmpctx,
+					       channel_scid_or_local_alias(best)),
+			  fmt_node_id(tmpctx, &peer->id));
 	} else if (best != c) {
 		log_debug(hp->channel->log,
 			  "Chose a better channel than %s: %s",
-			  type_to_string(tmpctx, struct short_channel_id,
-					 p->forward_channel),
-			  type_to_string(tmpctx, struct short_channel_id,
-					 channel_scid_or_local_alias(best)));
+			  fmt_short_channel_id(tmpctx,
+					       *p->forward_channel),
+			  fmt_short_channel_id(tmpctx,
+					       channel_scid_or_local_alias(best)));
 	}
 
 	log_debug(hp->channel->log,
 		  "Decided to forward htlc_id=%" PRIu64
 		  " over channel with scid=%s with peer %s",
 		  hp->hin->key.id,
-		  type_to_string(tmpctx, struct short_channel_id,
-				 channel_scid_or_local_alias(best)),
-		  type_to_string(tmpctx, struct node_id, &best->peer->id));
+		  fmt_short_channel_id(tmpctx,
+				       channel_scid_or_local_alias(best)),
+		  fmt_node_id(tmpctx, &best->peer->id));
 
 	return tal_dup(hp, struct channel_id, &best->cid);
 }
@@ -1390,7 +1346,7 @@ static bool peer_accepted_htlc(const tal_t *ctx,
 			  "Rejecting their htlc %"PRIu64
 			  " since onion is unprocessable %s ss=%s",
 			  id, onion_wire_name(*badonion),
-			  type_to_string(tmpctx, struct secret, hin->shared_secret));
+			  fmt_secret(tmpctx, hin->shared_secret));
 		goto fail;
 	}
 
@@ -1479,10 +1435,11 @@ static void fulfill_our_htlc_out(struct channel *channel, struct htlc_out *hout,
 			log_unusual(channel->log, "FUNDS LOSS of %s: peer took funds onchain before we could time out the HTLC, but we abandoned incoming HTLC to save the incoming channel",
 				    fmt_amount_msat(tmpctx, hout->msat));
 		} else {
+			struct short_channel_id scid = channel_scid_or_local_alias(hout->key.channel);
 			fulfill_htlc(hout->in, preimage);
 			wallet_forwarded_payment_add(ld->wallet, hout->in,
 						     FORWARD_STYLE_TLV,
-						     channel_scid_or_local_alias(hout->key.channel), hout,
+						     &scid, hout,
 						     FORWARD_SETTLED, 0);
 		}
 	}
@@ -1611,14 +1568,16 @@ static bool peer_failed_our_htlc(struct channel *channel,
 		  fromwire_peektype(hout->failmsg));
 	htlc_out_check(hout, __func__);
 
-	if (hout->in)
+	if (hout->in) {
+		struct short_channel_id scid = channel_scid_or_local_alias(channel);
 		wallet_forwarded_payment_add(ld->wallet, hout->in,
 					     FORWARD_STYLE_TLV,
-					     channel_scid_or_local_alias(channel),
+					     &scid,
 					     hout, FORWARD_FAILED,
 					     hout->failmsg
 					     ? fromwire_peektype(hout->failmsg)
 					     : 0);
+	}
 
 	return true;
 }
@@ -1644,7 +1603,7 @@ static void check_already_failed(const struct channel *channel, struct htlc_out 
 		   hout->key.id,
 		   hout->failonion ? tal_hex(tmpctx, hout->failonion->contents) : "(null)",
 		   hout->failmsg ? tal_hex(tmpctx, hout->failmsg) : "(null)",
-		   hout->preimage ? type_to_string(tmpctx, struct preimage, hout->preimage) : "(null)");
+		   hout->preimage ? fmt_preimage(tmpctx, hout->preimage) : "(null)");
 
 	if (hout->preimage) {
 		/* Log on both ours and theirs! */
@@ -1771,6 +1730,7 @@ void onchain_failed_our_htlc(const struct channel *channel,
 		payment_failed(ld, hout, localfail);
 		tal_free(localfail);
 	} else if (hout->in) {
+		struct short_channel_id scid = channel_scid_or_local_alias(channel);
 		log_debug(channel->log, "HTLC id %"PRIu64" has incoming",
 			  htlc->id);
  		/* Careful!  We might have already timed out incoming
@@ -1783,7 +1743,7 @@ void onchain_failed_our_htlc(const struct channel *channel,
 		}
 		wallet_forwarded_payment_add(hout->key.channel->peer->ld->wallet,
 					 hout->in, FORWARD_STYLE_TLV,
-					 channel_scid_or_local_alias(channel), hout,
+					 &scid, hout,
 					 FORWARD_LOCAL_FAILED,
 					 hout->failmsg
 					 ? fromwire_peektype(hout->failmsg)
@@ -1819,17 +1779,14 @@ static void remove_htlc_in(struct channel *channel, struct htlc_in *hin)
 				     hin->msat)) {
 			channel_internal_error(channel,
 					       "Overflow our_msat %s + HTLC %s",
-					       type_to_string(tmpctx,
-							      struct amount_msat,
-							      &channel->our_msat),
-					       type_to_string(tmpctx,
-							      struct amount_msat,
-							      &hin->msat));
+					       fmt_amount_msat(tmpctx,
+							       channel->our_msat),
+					       fmt_amount_msat(tmpctx,
+							       hin->msat));
 		}
 		log_debug(channel->log, "Balance %s -> %s",
-			  type_to_string(tmpctx, struct amount_msat, &oldamt),
-			  type_to_string(tmpctx, struct amount_msat,
-					 &channel->our_msat));
+			  fmt_amount_msat(tmpctx, oldamt),
+			  fmt_amount_msat(tmpctx, channel->our_msat));
 		if (amount_msat_greater(channel->our_msat,
 					channel->msat_to_us_max))
 			channel->msat_to_us_max = channel->our_msat;
@@ -1872,18 +1829,15 @@ static void remove_htlc_out(struct channel *channel, struct htlc_out *hout)
 				     hout->msat)) {
 			channel_internal_error(channel,
 					       "Underflow our_msat %s - HTLC %s",
-					       type_to_string(tmpctx,
-							      struct amount_msat,
-							      &channel->our_msat),
-					       type_to_string(tmpctx,
-							      struct amount_msat,
-							      &hout->msat));
+					       fmt_amount_msat(tmpctx,
+							       channel->our_msat),
+					       fmt_amount_msat(tmpctx,
+							       hout->msat));
 		}
 
 		log_debug(channel->log, "Balance %s -> %s",
-			  type_to_string(tmpctx, struct amount_msat, &oldamt),
-			  type_to_string(tmpctx, struct amount_msat,
-					 &channel->our_msat));
+			  fmt_amount_msat(tmpctx, oldamt),
+			  fmt_amount_msat(tmpctx, channel->our_msat));
 		if (amount_msat_less(channel->our_msat, channel->msat_to_us_min))
 			channel->msat_to_us_min = channel->our_msat;
 
@@ -1947,9 +1901,12 @@ static bool update_out_htlc(struct channel *channel,
 						      hout->msat);
 
 		if (hout->in) {
+			struct short_channel_id scid;
+			scid = channel_scid_or_local_alias(channel);
+
 			wallet_forwarded_payment_add(ld->wallet, hout->in,
 						     FORWARD_STYLE_TLV,
-						     channel_scid_or_local_alias(channel), hout,
+						     &scid, hout,
 						     FORWARD_OFFERED, 0);
 		}
 	}
@@ -1986,7 +1943,7 @@ static bool valid_commitment_tx(struct channel *channel,
 	if (tx->wtx->num_outputs == 0) {
 		channel_internal_error(channel,
 				       "channel_got_commitsig: zero output tx! %s",
-				       type_to_string(tmpctx, struct bitcoin_tx, tx));
+				       fmt_bitcoin_tx(tmpctx, tx));
 		return false;
 	}
 	return true;
@@ -2145,12 +2102,9 @@ static bool channel_added_their_htlc(struct channel *channel,
 		channel_internal_error(channel,
 				       "trying to add HTLC amount %s"
 				       " but minimum is %s",
-				       type_to_string(tmpctx,
-						      struct amount_msat,
-						      &added->amount),
-				       type_to_string(tmpctx,
-						      struct amount_msat,
-						      &channel->our_config.htlc_minimum));
+				       fmt_amount_msat(tmpctx, added->amount),
+				       fmt_amount_msat(tmpctx,
+						       channel->our_config.htlc_minimum));
 		return false;
 	}
 
@@ -2523,8 +2477,7 @@ void peer_got_revoke(struct channel *channel, const u8 *msg)
 		channel_fail_permanent(channel,
 				       REASON_PROTOCOL,
 				       "Bad per_commitment_secret %s for %"PRIu64,
-				       type_to_string(msg, struct secret,
-						      &per_commitment_secret),
+				       fmt_secret(msg, &per_commitment_secret),
 				       revokenum);
 		return;
 	}
@@ -2890,9 +2843,8 @@ static void fixup_hout(struct lightningd *ld, struct htlc_out *hout)
 		   " to %s"
 		   " is missing a resolution: %s.",
 		   hout->key.id, htlc_state_name(hout->hstate),
-		   type_to_string(tmpctx, struct amount_msat, &hout->msat),
-		   type_to_string(tmpctx, struct node_id,
-				  &hout->key.channel->peer->id),
+		   fmt_amount_msat(tmpctx, hout->msat),
+		   fmt_node_id(tmpctx, &hout->key.channel->peer->id),
 		   fix);
 }
 
@@ -2995,7 +2947,7 @@ static struct command_result *param_channel(struct command *cmd,
 						     "unknown channel");
 		return NULL;
 	} else if (json_to_short_channel_id(buffer, tok, &scid)) {
-		*chan = any_channel_by_scid(cmd->ld, &scid, true);
+		*chan = any_channel_by_scid(cmd->ld, scid, true);
 		if (!*chan)
 			return command_fail_badparam(cmd, name, buffer, tok,
 						     "unknown channel");
@@ -3036,7 +2988,7 @@ static struct command_result *json_listhtlcs(struct command *cmd,
 				   &scid, &htlc_id, &cltv_expiry, &owner, &msat,
 				   &payment_hash, &hstate)) {
 		json_object_start(response, NULL);
-		json_add_short_channel_id(response, "short_channel_id", &scid);
+		json_add_short_channel_id(response, "short_channel_id", scid);
 		json_add_u64(response, "id", htlc_id);
 		json_add_u32(response, "expiry", cltv_expiry);
 		json_add_string(response, "direction",

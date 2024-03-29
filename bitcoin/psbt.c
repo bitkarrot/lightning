@@ -8,7 +8,7 @@
 #include <ccan/ccan/array_size/array_size.h>
 #include <ccan/ccan/mem/mem.h>
 #include <ccan/tal/str/str.h>
-#include <common/type_to_string.h>
+#include <common/utils.h>
 #include <wally_psbt.h>
 #include <wire/wire.h>
 
@@ -733,7 +733,7 @@ struct wally_psbt *psbt_from_b64(const tal_t *ctx,
 	return psbt;
 }
 
-char *psbt_to_b64(const tal_t *ctx, const struct wally_psbt *psbt)
+char *fmt_wally_psbt(const tal_t *ctx, const struct wally_psbt *psbt)
 {
 	char *serialized_psbt;
 	int ret;
@@ -745,7 +745,6 @@ char *psbt_to_b64(const tal_t *ctx, const struct wally_psbt *psbt)
 
 	return serialized_psbt;
 }
-REGISTER_TYPE_TO_STRING(wally_psbt, psbt_to_b64);
 
 const u8 *psbt_get_bytes(const tal_t *ctx, const struct wally_psbt *psbt,
 			 size_t *bytes_written)

@@ -5,7 +5,7 @@
 #include <bitcoin/tx.h>
 #include <ccan/mem/mem.h>
 #include <ccan/str/hex/hex.h>
-#include <common/type_to_string.h>
+#include <common/utils.h>
 
 /* Sets *cursor to NULL and returns NULL when a pull fails. */
 static const u8 *pull(const u8 **cursor, size_t *max, void *copy, size_t n)
@@ -237,15 +237,14 @@ static bool bitcoin_blkid_to_hex(const struct bitcoin_blkid *blockid,
 	return bitcoin_txid_to_hex(&fake_txid, hexstr, hexstr_len);
 }
 
-static char *fmt_bitcoin_blkid(const tal_t *ctx,
-			       const struct bitcoin_blkid *blkid)
+char *fmt_bitcoin_blkid(const tal_t *ctx,
+			const struct bitcoin_blkid *blkid)
 {
 	char *hexstr = tal_arr(ctx, char, hex_str_size(sizeof(*blkid)));
 
 	bitcoin_blkid_to_hex(blkid, hexstr, hex_str_size(sizeof(*blkid)));
 	return hexstr;
 }
-REGISTER_TYPE_TO_STRING(bitcoin_blkid, fmt_bitcoin_blkid);
 
 void fromwire_bitcoin_blkid(const u8 **cursor, size_t *max,
 			    struct bitcoin_blkid *blkid)

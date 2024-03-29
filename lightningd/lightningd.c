@@ -56,7 +56,6 @@
 #include <common/memleak.h>
 #include <common/timeout.h>
 #include <common/trace.h>
-#include <common/type_to_string.h>
 #include <common/version.h>
 #include <db/exec.h>
 
@@ -272,7 +271,6 @@ static struct lightningd *new_lightningd(const tal_t *ctx)
 	ld->always_use_proxy = false;
 	ld->pure_tor_setup = false;
 	ld->tor_service_password = NULL;
-	ld->websocket_port = 0;
 	ld->deprecated_ok = true;
 
 	/*~ This is initialized later, but the plugin loop examines this,
@@ -1068,6 +1066,12 @@ int main(int argc, char *argv[])
 
 	trace_span_start("lightningd/startup", argv);
 
+	/*~ What happens in strange locales should stay there. */
+	setup_locale();
+
+	/*~ This handles --dev-debug-self really early, which we otherwise ignore */
+	daemon_developer_mode(argv);
+
 	/*~ We fork out new processes very very often; every channel gets its
 	 * own process, for example, and we have `hsmd` and `gossipd` and
 	 * the plugins as well.
@@ -1105,9 +1109,6 @@ int main(int argc, char *argv[])
 	 * and hit the 1024 limit.
 	 */
 	closefrom_limit(4096);
-
-	/*~ What happens in strange locales should stay there. */
-	setup_locale();
 
 	/*~ This sets up SIGCHLD to make sigchld_rfd readable. */
 	sigchld_rfd = setup_sig_handlers();
@@ -1352,15 +1353,16 @@ int main(int argc, char *argv[])
 
 	/*~ Mark ourselves live.
 	 *
-	 * Note the use of type_to_string() here: it's a typesafe formatter,
-	 * often handed 'tmpctx' like here to allocate a throwaway string for
-	 * formatting.  json_escape() avoids printing weird characters in our
-	 * log.  And tal_hex() is a helper from utils which returns a hex string;
-	 * it's assumed that the argument was allocated with tal or tal_arr
-	 * so it can use tal_bytelen() to get the length. */
+	 * Note the use of fmt_node_id() here: most complex types have a
+	 * string formatter of this convention, usually handed 'tmpctx' like
+	 * here to allocate a throwaway string for formatting.  json_escape()
+	 * avoids printing weird characters in our log.  And tal_hex() is a
+	 * helper from utils which returns a hex string; it's assumed that the
+	 * argument was allocated with tal or tal_arr so it can use
+	 * tal_bytelen() to get the length. */
 	log_info(ld->log, "--------------------------------------------------");
 	log_info(ld->log, "Server started with public key %s, alias %s (color #%s) and lightningd %s",
-		 type_to_string(tmpctx, struct node_id, &ld->id),
+		 fmt_node_id(tmpctx, &ld->id),
 		 json_escape(tmpctx, (const char *)ld->alias)->s,
 		 tal_hex(tmpctx, ld->rgb), version());
 	ld->state = LD_STATE_RUNNING;

@@ -63,14 +63,12 @@ GOSSIPD_COMMON_OBJS :=				\
 	common/status_wire.o			\
 	common/subdaemon.o			\
 	common/timeout.o			\
-	common/type_to_string.o			\
 	common/utils.o				\
 	common/utxo.o				\
 	common/version.o			\
 	common/wireaddr.o			\
 	common/wire_error.o			\
-	connectd/connectd_gossipd_wiregen.o	\
-	wire/onion_wiregen.o
+	connectd/connectd_gossipd_wiregen.o
 
 lightningd/lightning_gossipd: $(GOSSIPD_OBJS) $(GOSSIPD_COMMON_OBJS) $(BITCOIN_OBJS) $(WIRE_OBJS) $(HSMD_CLIENT_OBJS)
 

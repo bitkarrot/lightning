@@ -427,7 +427,7 @@ def test_pay_plugin(node_factory):
     # Make sure usage messages are present.
     msg = 'pay bolt11 [amount_msat] [label] [riskfactor] [maxfeepercent] '\
           '[retry_for] [maxdelay] [exemptfee] [localinvreqid] [exclude] '\
-          '[maxfee] [description]'
+          '[maxfee] [description] [partial_msat]'
     # We run with --developer:
     msg += ' [dev_use_shadow]'
     assert only_one(l1.rpc.help('pay')['help'])['command'] == msg
@@ -2333,8 +2333,8 @@ def test_notify(node_factory):
     assert out == ['"This worked"']
 
 
-def test_htlc_accepted_hook_failcodes(node_factory):
-    plugin = os.path.join(os.path.dirname(__file__), 'plugins/htlc_accepted-failcode.py')
+def test_htlc_accepted_hook_failmsg(node_factory):
+    plugin = os.path.join(os.path.dirname(__file__), 'plugins/htlc_accepted-failmessage.py')
     l1, l2 = node_factory.line_graph(2, opts=[{}, {'plugin': plugin}])
 
     # First let's test the newer failure_message, which should get passed
@@ -2347,27 +2347,8 @@ def test_htlc_accepted_hook_failcodes(node_factory):
     }
 
     for failmsg, expected in tests.items():
-        l2.rpc.setfailcode(msg=failmsg)
+        l2.rpc.setfailmsg(msg=failmsg)
         inv = l2.rpc.invoice(42, 'failmsg{}'.format(failmsg), '')['bolt11']
-        with pytest.raises(RpcError, match=r'failcodename.: .{}.'.format(expected)):
-            l1.rpc.pay(inv)
-
-    # And now test the older failcode return value. This is deprecated and can
-    # be removed once we have removed the failcode correction code in
-    # peer_htlcs.c. The following ones get remapped
-    tests.update({
-        '400F': 'WIRE_TEMPORARY_NODE_FAILURE',
-        '4009': 'WIRE_TEMPORARY_NODE_FAILURE',
-        '4016': 'WIRE_TEMPORARY_NODE_FAILURE',
-    })
-
-    for failcode, expected in tests.items():
-        # Do not attempt with full messages
-        if len(failcode) > 4:
-            continue
-
-        l2.rpc.setfailcode(code=failcode)
-        inv = l2.rpc.invoice(42, 'failcode{}'.format(failcode), '')['bolt11']
         with pytest.raises(RpcError, match=r'failcodename.: .{}.'.format(expected)):
             l1.rpc.pay(inv)
 
@@ -2939,35 +2920,35 @@ def test_commando_rune_pay_amount(node_factory):
     inv2 = l2.rpc.invoice(amount_msat='any', label='inv2', description='description2')['bolt11']
 
     # Rune requires amount_msat!
-    with pytest.raises(RpcError, match='Invalid rune: Not permitted: pnameamountmsat is not an integer field'):
+    with pytest.raises(RpcError, match='Invalid rune: Not permitted: parameter amountmsat not present'):
         l2.rpc.commando(peer_id=l1.info['id'],
                         rune=rune,
                         method='pay',
                         params={'bolt11': inv1})
 
     # As a named parameter!
-    with pytest.raises(RpcError, match='Invalid rune: Not permitted: pnameamountmsat is not an integer field'):
+    with pytest.raises(RpcError, match='Invalid rune: Not permitted: parameter amountmsat not present'):
         l2.rpc.commando(peer_id=l1.info['id'],
                         rune=rune,
                         method='pay',
                         params=[inv1])
 
     # Can't get around it this way!
-    with pytest.raises(RpcError, match='Invalid rune: Not permitted: pnameamountmsat is not an integer field'):
+    with pytest.raises(RpcError, match='Invalid rune: Not permitted: parameter amountmsat not present'):
         l2.rpc.commando(peer_id=l1.info['id'],
                         rune=rune,
                         method='pay',
                         params=[inv2, 12000])
 
     # Nor this way, using a string!
-    with pytest.raises(RpcError, match='Invalid rune: Not permitted: pnameamountmsat is not an integer field'):
+    with pytest.raises(RpcError, match='Invalid rune: Not permitted: parameter amountmsat is not an integer field'):
         l2.rpc.commando(peer_id=l1.info['id'],
                         rune=rune,
                         method='pay',
                         params={'bolt11': inv2, 'amount_msat': '10000sat'})
 
     # Too much!
-    with pytest.raises(RpcError, match='Invalid rune: Not permitted: pnameamountmsat is greater or equal to 10000'):
+    with pytest.raises(RpcError, match='Invalid rune: Not permitted: parameter amountmsat is greater or equal to 10000'):
         l2.rpc.commando(peer_id=l1.info['id'],
                         rune=rune,
                         method='pay',

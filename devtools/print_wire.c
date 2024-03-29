@@ -2,7 +2,6 @@
 #include <ccan/mem/mem.h>
 #include <ccan/utf8/utf8.h>
 #include <common/decode_array.h>
-#include <common/type_to_string.h>
 #include <devtools/print_wire.h>
 #include <errno.h>
 #include <stdio.h>
@@ -241,7 +240,7 @@ static bool printwire_encoded_short_ids(const u8 **cursor, size_t *plen, size_t 
 		}
 		for (size_t i = 0; i < tal_count(scids); i++)
 			printf(" %s",
-			       short_channel_id_to_str(tmpctx, &scids[i]));
+			       fmt_short_channel_id(tmpctx, scids[i]));
 	} else {
 		/* If it was unknown, that's different from corrupt */
 		if (len == 0
@@ -326,7 +325,7 @@ fail:
 	return false;
 }
 
-#define PRINTWIRE_TYPE_TO_STRING(T, N)					\
+#define PRINTWIRE_TYPE_TO_STRING(T, N)				\
 	bool printwire_##N(const char *fieldname, const u8 **cursor,	\
 			   size_t *plen)				\
 	{								\
@@ -336,7 +335,7 @@ fail:
 			printf("**TRUNCATED " stringify(N) "\n");	\
 			return false;					\
 		}							\
-		const char *s = type_to_string(NULL, T, &v);		\
+		const char *s = fmt_##N(NULL, &v);			\
 		printf("%s\n", s);					\
 		tal_free(s);						\
 		return true;						\
@@ -351,7 +350,7 @@ fail:
 			printf("**TRUNCATED " stringify(N) "\n");	\
 			return false;					\
 		}							\
-		const char *s = type_to_string(NULL, struct N, &v);	\
+		const char *s = fmt_##N(NULL, v);			\
 		printf("%s\n", s);					\
 		tal_free(s);						\
 		return true;						\
@@ -369,7 +368,7 @@ PRINTWIRE_STRUCT_TYPE_TO_STRING(preimage)
 PRINTWIRE_STRUCT_TYPE_TO_STRING(pubkey)
 PRINTWIRE_STRUCT_TYPE_TO_STRING(sha256)
 PRINTWIRE_STRUCT_TYPE_TO_STRING(secret)
-PRINTWIRE_STRUCT_TYPE_TO_STRING(short_channel_id)
+PRINTWIRE_ASSIGNABLE_STRUCT_TO_STRING(short_channel_id)
 PRINTWIRE_ASSIGNABLE_STRUCT_TO_STRING(amount_sat)
 PRINTWIRE_ASSIGNABLE_STRUCT_TO_STRING(amount_msat)
 PRINTWIRE_TYPE_TO_STRING(secp256k1_ecdsa_signature, secp256k1_ecdsa_signature)

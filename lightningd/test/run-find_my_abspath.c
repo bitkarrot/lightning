@@ -27,6 +27,9 @@ int connectd_init(struct lightningd *ld UNNEEDED)
 /* Generated stub for connectd_start_shutdown */
 void connectd_start_shutdown(struct subd *connectd UNNEEDED)
 { fprintf(stderr, "connectd_start_shutdown called!\n"); abort(); }
+/* Generated stub for daemon_developer_mode */
+bool daemon_developer_mode(char *argv[])
+{ fprintf(stderr, "daemon_developer_mode called!\n"); abort(); }
 /* Generated stub for daemon_poll */
 int daemon_poll(struct pollfd *fds UNNEEDED, nfds_t nfds UNNEEDED, int timeout UNNEEDED)
 { fprintf(stderr, "daemon_poll called!\n"); abort(); }
@@ -77,6 +80,9 @@ struct feature_set *feature_set_for_feature(const tal_t *ctx UNNEEDED, int featu
 bool feature_set_or(struct feature_set *a UNNEEDED,
 		    const struct feature_set *b TAKES UNNEEDED)
 { fprintf(stderr, "feature_set_or called!\n"); abort(); }
+/* Generated stub for fmt_node_id */
+char *fmt_node_id(const tal_t *ctx UNNEEDED, const struct node_id *id UNNEEDED)
+{ fprintf(stderr, "fmt_node_id called!\n"); abort(); }
 /* Generated stub for free_htlcs */
 void free_htlcs(struct lightningd *ld UNNEEDED, const struct channel *channel UNNEEDED)
 { fprintf(stderr, "free_htlcs called!\n"); abort(); }

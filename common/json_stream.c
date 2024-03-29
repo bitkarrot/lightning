@@ -20,7 +20,6 @@
 #include <common/json_parse.h>
 #include <common/json_stream.h>
 #include <common/node_id.h>
-#include <common/type_to_string.h>
 #include <common/wireaddr.h>
 #include <inttypes.h>
 #include <stdio.h>
@@ -478,7 +477,7 @@ void json_add_outpoint(struct json_stream *result, const char *fieldname,
 
 void json_add_short_channel_id(struct json_stream *response,
 			       const char *fieldname,
-			       const struct short_channel_id *scid)
+			       struct short_channel_id scid)
 {
 	json_add_str_fmt(response, fieldname, "%dx%dx%d",
 			 short_channel_id_blocknum(scid),
@@ -604,7 +603,7 @@ void json_add_psbt(struct json_stream *stream,
 		   const struct wally_psbt *psbt TAKES)
 {
 	const char *psbt_b64;
-	psbt_b64 = psbt_to_b64(NULL, psbt);
+	psbt_b64 = fmt_wally_psbt(NULL, psbt);
 	json_add_string(stream, fieldname, take(psbt_b64));
 	if (taken(psbt))
 		tal_free(psbt);

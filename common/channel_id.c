@@ -3,7 +3,7 @@
 #include <bitcoin/tx.h>
 #include <common/channel_id.h>
 #include <common/pseudorand.h>
-#include <common/type_to_string.h>
+#include <common/utils.h>
 #include <wire/wire.h>
 
 void derive_channel_id(struct channel_id *channel_id,
@@ -94,4 +94,7 @@ bool fromwire_channel_id(const u8 **cursor, size_t *max,
 	return fromwire(cursor, max, channel_id, sizeof(*channel_id)) != NULL;
 }
 
-REGISTER_TYPE_TO_HEXSTR(channel_id);
+char *fmt_channel_id(const tal_t *ctx, const struct channel_id *channel_id)
+{
+	return tal_hexstr(ctx, channel_id, sizeof(*channel_id));
+}

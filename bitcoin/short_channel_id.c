@@ -1,7 +1,6 @@
 #include "config.h"
 #include <bitcoin/short_channel_id.h>
 #include <ccan/tal/str/str.h>
-#include <common/type_to_string.h>
 #include <stdio.h>
 #include <wire/wire.h>
 
@@ -53,7 +52,7 @@ bool short_channel_id_from_str(const char *str, size_t strlen,
 		&& mk_short_channel_id(dst, blocknum, txnum, outnum);
 }
 
-char *short_channel_id_to_str(const tal_t *ctx, const struct short_channel_id *scid)
+char *fmt_short_channel_id(const tal_t *ctx, struct short_channel_id scid)
 {
 	return tal_fmt(ctx, "%dx%dx%d",
 		       short_channel_id_blocknum(scid),
@@ -78,26 +77,25 @@ bool short_channel_id_dir_from_str(const char *str, size_t strlen,
 	return true;
 }
 
-static char *short_channel_id_dir_to_str(const tal_t *ctx,
-					 const struct short_channel_id_dir *scidd)
+char *fmt_short_channel_id_dir(const tal_t *ctx,
+			       const struct short_channel_id_dir *scidd)
 {
-	char *str, *scidstr = short_channel_id_to_str(NULL, &scidd->scid);
+	char *str, *scidstr = fmt_short_channel_id(NULL, scidd->scid);
 	str = tal_fmt(ctx, "%s/%u", scidstr, scidd->dir);
 	tal_free(scidstr);
 	return str;
 }
 
-REGISTER_TYPE_TO_STRING(short_channel_id, short_channel_id_to_str);
-REGISTER_TYPE_TO_STRING(short_channel_id_dir, short_channel_id_dir_to_str);
-
 void towire_short_channel_id(u8 **pptr,
-			     const struct short_channel_id *short_channel_id)
+			     struct short_channel_id short_channel_id)
 {
-	towire_u64(pptr, short_channel_id->u64);
+	towire_u64(pptr, short_channel_id.u64);
 }
 
-void fromwire_short_channel_id(const u8 **cursor, size_t *max,
-			       struct short_channel_id *short_channel_id)
+struct short_channel_id fromwire_short_channel_id(const u8 **cursor, size_t *max)
 {
-	short_channel_id->u64 = fromwire_u64(cursor, max);
+	struct short_channel_id scid;
+
+	scid.u64 = fromwire_u64(cursor, max);
+	return scid;
 }

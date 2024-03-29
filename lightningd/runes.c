@@ -3,6 +3,7 @@
 #include <ccan/json_escape/json_escape.h>
 #include <ccan/rune/rune.h>
 #include <ccan/tal/str/str.h>
+#include <common/bolt12.h>
 #include <common/configdir.h>
 #include <common/json_command.h>
 #include <common/json_param.h>
@@ -10,7 +11,6 @@
 #include <common/memleak.h>
 #include <common/overflows.h>
 #include <common/timeout.h>
-#include <common/type_to_string.h>
 #include <db/exec.h>
 #include <hsmd/hsmd_wiregen.h>
 #include <lightningd/hsm_control.h>
@@ -37,6 +37,12 @@ struct runes {
 	struct rune *master;
 	u64 next_unique_id;
 	struct rune_blacklist *blacklist;
+};
+
+enum invoice_field {
+	INV_FIELD_AMOUNT,
+	INV_FIELD_DESCRIPTION,
+	INV_FIELD_NODE_ID,
 };
 
 const char *rune_is_ours(struct lightningd *ld, const struct rune *rune)
@@ -483,22 +489,8 @@ static struct rune_restr *rune_restr_from_json(struct command *cmd,
 	size_t i;
 	struct rune_restr *restr;
 
-	/* \| is not valid JSON, so they use \\|: undo it! */
-	if (tok->type == JSMN_STRING
-	    && command_deprecated_in_ok(cmd, "restrictions.string",
-					"v23.05", "v24.02")) {
-		const char *unescape;
-		struct json_escape *e = json_escape_string_(tmpctx,
-							    buffer + tok->start,
-							    tok->end - tok->start);
-		unescape = json_escape_unescape(tmpctx, e);
-		if (!unescape)
-			return NULL;
-		return rune_restr_from_string(ctx, unescape, strlen(unescape));
-	}
-
 	restr = tal(ctx, struct rune_restr);
-	/* FIXME: after deprecation removed, allow singletons again! */
+	/* FIXME: allow singletons again? */
 	if (tok->type != JSMN_ARRAY)
 		return NULL;
 
@@ -722,6 +714,132 @@ static const struct json_command destroyrune_command = {
 };
 AUTODATA(json_command, &destroyrune_command);
 
+/* Returns the parameter name and set *invf, or NULL */
+static const char *match_inv_condition(const tal_t *ctx,
+				       const char *fieldname,
+				       enum invoice_field *invf)
+{
+	struct {
+		const char *prefix;
+		enum invoice_field invf;
+	} fields[] = { {"_amount", INV_FIELD_AMOUNT},
+		       {"_description", INV_FIELD_DESCRIPTION},
+		       {"_node", INV_FIELD_NODE_ID},
+		       /* Insert new ones here! */
+	};
+	for (size_t i = 0; i < ARRAY_SIZE(fields); i++) {
+		if (strends(fieldname, fields[i].prefix)) {
+			*invf = fields[i].invf;
+			return tal_strndup(ctx, fieldname,
+					   strlen(fieldname)
+					   - strlen(fields[i].prefix));
+		}
+	}
+	return NULL;
+}
+
+static const char *check_bolt11_condition(const tal_t *ctx,
+					  const struct rune_altern *alt,
+					  const struct bolt11 *b11,
+					  enum invoice_field invf)
+{
+
+	switch (invf) {
+	case INV_FIELD_AMOUNT:
+		if (!b11->msat)
+			return rune_alt_single_missing(ctx, alt);
+		return rune_alt_single_int(ctx, alt,
+					   b11->msat->millisatoshis /* Raw: rune check */);
+	case INV_FIELD_NODE_ID: {
+		const char *id = fmt_node_id(tmpctx, &b11->receiver_id);
+		return rune_alt_single_str(ctx, alt, id, strlen(id));
+	}
+	case INV_FIELD_DESCRIPTION:
+		if (!b11->description)
+			return rune_alt_single_missing(ctx, alt);
+		return rune_alt_single_str(ctx, alt, b11->description,
+					   strlen(b11->description));
+	}
+	abort();
+}
+
+static const char *check_bolt12_condition(const tal_t *ctx,
+					  const struct rune_altern *alt,
+					  const struct tlv_invoice *b12,
+					  enum invoice_field invf)
+{
+
+	switch (invf) {
+	case INV_FIELD_AMOUNT:
+		if (!b12->invoice_amount)
+			return rune_alt_single_missing(ctx, alt);
+		return rune_alt_single_int(ctx, alt, *b12->invoice_amount);
+	case INV_FIELD_NODE_ID: {
+		if (!b12->offer_node_id)
+			return rune_alt_single_missing(ctx, alt);
+		const char *id = fmt_pubkey(tmpctx, b12->offer_node_id);
+		return rune_alt_single_str(ctx, alt, id, strlen(id));
+	}
+	case INV_FIELD_DESCRIPTION:
+		if (!b12->offer_description)
+			return rune_alt_single_missing(ctx, alt);
+		return rune_alt_single_str(ctx, alt, b12->offer_description,
+					   tal_bytelen(b12->offer_description));
+	}
+	abort();
+}
+
+static const char *check_inv_condition(const tal_t *ctx,
+				       const struct rune_altern *alt,
+				       struct cond_info *cinfo)
+{
+	const char *invfield = alt->fieldname + strlen("pinv");
+	const char *param;
+	char *b11fail, *b12fail;
+	const struct bolt11 *b11;
+	const struct tlv_invoice *b12;
+	enum invoice_field invf;
+	const jsmntok_t *ptok;
+	const char *invstr;
+
+	param = match_inv_condition(tmpctx, invfield, &invf);
+	if (!param)
+		return tal_fmt(ctx, "Unknown invoice field %s", invfield);
+
+	/* strmap contains pname<param> */
+	ptok = strmap_get(&cinfo->cached_params,
+			  tal_fmt(tmpctx, "pname%s", param));
+	if (!ptok)
+		return tal_fmt(ctx, "Unknown invoice parameter %s", param);
+
+	invstr = json_strdup(tmpctx, cinfo->buf, ptok);
+	if (strstarts(invstr, "lightning:") || strstarts(invstr, "LIGHTNING:"))
+		invstr += strlen("lightning:");
+
+	b11 = bolt11_decode(tmpctx,
+			    invstr,
+			    NULL,
+			    NULL,
+			    NULL,
+			    &b11fail);
+	if (b11)
+		return check_bolt11_condition(ctx, alt, b11, invf);
+
+	b12 = invoice_decode(tmpctx,
+			     invstr, strlen(invstr),
+			     NULL,
+			     NULL,
+			     &b12fail);
+	if (b12)
+		return check_bolt12_condition(ctx, alt, b12, invf);
+
+	/* If it looks like BOLT11, use that fail msg (it's probably
+	 * more informative!) */
+	if (strstarts(invstr, "lni"))
+		return tal_fmt(ctx, "Invalid invoice: %s", b12fail);
+	return tal_fmt(ctx, "Invalid invoice: %s", b11fail);
+}
+
 static const char *check_condition(const tal_t *ctx,
 				   const struct rune *rune,
 				   const struct rune_altern *alt,
@@ -733,7 +851,7 @@ static const char *check_condition(const tal_t *ctx,
 		return rune_alt_single_int(ctx, alt, cinfo->now.ts.tv_sec);
 	} else if (streq(alt->fieldname, "id")) {
 		if (cinfo->peer) {
-			const char *id = node_id_to_hexstr(tmpctx, cinfo->peer);
+			const char *id = fmt_node_id(tmpctx, cinfo->peer);
 			return rune_alt_single_str(ctx, alt, id, strlen(id));
 		}
 		return rune_alt_single_missing(ctx, alt);
@@ -751,19 +869,24 @@ static const char *check_condition(const tal_t *ctx,
 		return per_time_check(ctx, cinfo->runes, rune, alt, cinfo);
 	}
 
-	/* Rest are params looksup: generate this once! */
+	/* Rest need params lookups: generate this once! */
 	if (cinfo->params && strmap_empty(&cinfo->cached_params)) {
 		const jsmntok_t *t;
 		size_t i;
 
 		if (cinfo->params->type == JSMN_OBJECT) {
 			json_for_each_obj(i, t, cinfo->params) {
-				char *pmemname = tal_fmt(tmpctx,
+				char *pmemname = tal_fmt(ctx,
 							 "pname%.*s",
 							 t->end - t->start,
 							 cinfo->buf + t->start);
 				size_t off = strlen("pname");
-				/* Remove punctuation! */
+
+				/* First, add version with underscores intact. */
+				strmap_add(&cinfo->cached_params,
+					   tal_strdup(ctx, pmemname), t+1);
+
+				/* Now with punctuation removed: */
 				for (size_t n = off; pmemname[n]; n++) {
 					if (cispunct(pmemname[n]))
 						continue;
@@ -779,6 +902,10 @@ static const char *check_condition(const tal_t *ctx,
 			}
 		}
 	}
+
+	/* This references into the (cached) params array */
+	if (strstarts(alt->fieldname, "pinv"))
+		return check_inv_condition(ctx, alt, cinfo);
 
 	ptok = strmap_get(&cinfo->cached_params, alt->fieldname);
 	if (!ptok)
@@ -849,6 +976,16 @@ static struct command_result *json_checkrune(struct command *cmd,
 	/* Just in case they manage to make us speak non-JSON, escape! */
 	if (err) {
 		err = json_escape(tmpctx, err)->s;
+
+		/* Turn runespeak into english! */
+		if (strstarts(err, "pname"))
+			err = tal_strcat(tmpctx, "parameter ", err + strlen("pname"));
+		else if (strstarts(err, "parr"))
+			err = tal_strcat(tmpctx, "parameter #", err + strlen("parr"));
+		else if (strstarts(err, "pnum"))
+			err = tal_strcat(tmpctx, "number of parameters", err + strlen("pnum"));
+		else if (strstarts(err, "pinv"))
+			err = tal_strcat(tmpctx, "invoice parameter ", err + strlen("pinv"));
 		return command_fail(cmd, RUNE_NOT_PERMITTED, "Not permitted: %s", err);
 	}
 

@@ -1,7 +1,6 @@
 #include "config.h"
 #include <ccan/cast/cast.h>
 #include <common/configdir.h>
-#include <common/type_to_string.h>
 #include <lightningd/channel.h>
 #include <lightningd/coin_mvts.h>
 #include <lightningd/notification.h>
@@ -238,9 +237,6 @@ static void channel_opened_notification_serialize(struct json_stream *stream,
 	json_add_node_id(stream, "id", node_id);
 	json_add_amount_sat_msat(stream, "funding_msat", *funding_sat);
 	json_add_txid(stream, "funding_txid", funding_txid);
-	if (lightningd_deprecated_out_ok(ld, ld->deprecated_ok,
-					 "channel_opened", "funding_locked", "v22.11", "v24.02"))
-		json_add_bool(stream, "funding_locked", channel_ready);
 	json_add_bool(stream, "channel_ready", channel_ready);
 }
 
@@ -270,7 +266,7 @@ static void channel_state_changed_notification_serialize(struct json_stream *str
 	json_add_node_id(stream, "peer_id", peer_id);
 	json_add_channel_id(stream, "channel_id", cid);
 	if (scid)
-		json_add_short_channel_id(stream, "short_channel_id", scid);
+		json_add_short_channel_id(stream, "short_channel_id", *scid);
 	else
 		json_add_null(stream, "short_channel_id");
 	json_add_timeiso(stream, "timestamp", timestamp);
@@ -319,7 +315,7 @@ static void forward_event_notification_serialize(struct json_stream *stream,
 	 * the the sender is using probably using the REMOTE
 	 * alias. The LOCAL one is controlled by us, and we keep it
 	 * stable. */
-	cur->channel_in = *channel_scid_or_local_alias(in->key.channel);
+	cur->channel_in = channel_scid_or_local_alias(in->key.channel);
 
 	cur->msat_in = in->msat;
 	if (scid_out) {
@@ -423,15 +419,15 @@ static void json_mvt_id(struct json_stream *stream, enum mvt_type mvt_type,
 			/* some 'journal entries' don't have a txid */
 			if (id->tx_txid)
 				json_add_string(stream, "txid",
-						type_to_string(tmpctx, struct bitcoin_txid,
-							       id->tx_txid));
+						fmt_bitcoin_txid(tmpctx,
+								 id->tx_txid));
 			/* some chain ledger entries aren't associated with a utxo
 			 * e.g. journal updates (due to penalty/state loss) and
 			 * chain_fee entries */
 			if (id->outpoint) {
 				json_add_string(stream, "utxo_txid",
-						type_to_string(tmpctx, struct bitcoin_txid,
-							       &id->outpoint->txid));
+						fmt_bitcoin_txid(tmpctx,
+								 &id->outpoint->txid));
 				json_add_u32(stream, "vout", id->outpoint->n);
 			}
 
@@ -439,13 +435,13 @@ static void json_mvt_id(struct json_stream *stream, enum mvt_type mvt_type,
 			if (id->payment_hash)
 				json_add_sha256(stream, "payment_hash", id->payment_hash);
 			return;
-		case CHANNEL_MVT:
-			/* push funding / leases don't have a payment_hash */
-			if (id->payment_hash)
-				json_add_sha256(stream, "payment_hash", id->payment_hash);
-			if (id->part_id)
-				json_add_u64(stream, "part_id", *id->part_id);
-			return;
+	case CHANNEL_MVT:
+		/* push funding / leases don't have a payment_hash */
+		if (id->payment_hash)
+			json_add_sha256(stream, "payment_hash", id->payment_hash);
+		if (id->part_id)
+			json_add_u64(stream, "part_id", *id->part_id);
+		return;
 	}
 	abort();
 }
@@ -531,10 +527,10 @@ void notify_balance_snapshot(struct lightningd *ld,
 }
 
 static void json_add_block_added_fields(struct json_stream *stream,
-					   const struct block *block)
+					const struct block *block)
 {
 	json_add_string(stream, "hash",
-			type_to_string(tmpctx, struct bitcoin_blkid, &block->blkid));
+			fmt_bitcoin_blkid(tmpctx, &block->blkid));
 	json_add_u32(stream, "height", block->height);
 }
 

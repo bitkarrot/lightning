@@ -53,7 +53,6 @@ CLOSINGD_COMMON_OBJS :=				\
 	common/status.o				\
 	common/status_wire.o			\
 	common/subdaemon.o			\
-	common/type_to_string.o			\
 	common/utils.o				\
 	common/utxo.o				\
 	common/version.o			\
@@ -62,6 +61,6 @@ CLOSINGD_COMMON_OBJS :=				\
 	gossipd/gossip_store_wiregen.o		\
 	gossipd/gossipd_peerd_wiregen.o
 
-lightningd/lightning_closingd: $(CLOSINGD_OBJS) $(WIRE_ONION_OBJS) $(CLOSINGD_COMMON_OBJS) $(WIRE_OBJS) $(BITCOIN_OBJS) $(HSMD_CLIENT_OBJS)
+lightningd/lightning_closingd: $(CLOSINGD_OBJS) $(CLOSINGD_COMMON_OBJS) $(WIRE_OBJS) $(BITCOIN_OBJS) $(HSMD_CLIENT_OBJS)
 
 -include closingd/test/Makefile

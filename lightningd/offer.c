@@ -7,7 +7,6 @@
 #include <common/json_command.h>
 #include <common/json_param.h>
 #include <common/json_stream.h>
-#include <common/type_to_string.h>
 #include <errno.h>
 #include <hsmd/hsmd_wiregen.h>
 #include <lightningd/hsm_control.h>
@@ -68,8 +67,8 @@ static void hsm_sign_b12(struct lightningd *ld,
 	sighash_from_merkle(messagename, fieldname, merkle, &sighash);
 	if (!check_schnorr_sig(&sighash, &key->pubkey, sig))
 		fatal("HSM gave bad signature %s for pubkey %s",
-		      type_to_string(tmpctx, struct bip340sig, sig),
-		      type_to_string(tmpctx, struct pubkey, (struct pubkey *)key));
+		      fmt_bip340sig(tmpctx, sig),
+		      fmt_pubkey(tmpctx, key));
 }
 
 static struct command_result *json_createoffer(struct command *cmd,

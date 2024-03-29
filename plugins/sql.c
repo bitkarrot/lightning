@@ -10,7 +10,6 @@
 #include <common/json_stream.h>
 #include <common/memleak.h>
 #include <common/setup.h>
-#include <common/type_to_string.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <gossipd/gossip_store_wiregen.h>
@@ -768,7 +767,7 @@ static void delete_channel_from_db(struct command *cmd,
 			   tal_fmt(tmpctx,
 				   "DELETE FROM channels"
 				   " WHERE short_channel_id = '%s'",
-				   short_channel_id_to_str(tmpctx, &scid)),
+				   fmt_short_channel_id(tmpctx, scid)),
 			   NULL, NULL, &errmsg);
 	if (err != SQLITE_OK)
 		plugin_err(cmd->plugin, "Could not delete from channels: %s",
@@ -849,7 +848,7 @@ static struct command_result *channels_refresh(struct command *cmd,
 			}
 
 			plugin_log(cmd->plugin, LOG_DBG, "Refreshing channel: %s",
-				   type_to_string(tmpctx, struct short_channel_id, &scid));
+				   fmt_short_channel_id(tmpctx, scid));
 			/* FIXME: sqlite 3.24.0 (2018-06-04) added UPSERT, but
 			 * we don't require it. */
 			delete_channel_from_db(cmd, scid);
@@ -857,7 +856,7 @@ static struct command_result *channels_refresh(struct command *cmd,
 						    listchannels_one_done,
 						    forward_error,
 						    dbq);
-			json_add_short_channel_id(req->js, "short_channel_id", &scid);
+			json_add_short_channel_id(req->js, "short_channel_id", scid);
 			return send_outreq(cmd->plugin, req);
 		} else if (type == WIRE_GOSSIP_STORE_DELETE_CHAN) {
 			/* This can fail if entry not fully written yet. */
@@ -866,7 +865,7 @@ static struct command_result *channels_refresh(struct command *cmd,
 				break;
 			}
 			plugin_log(cmd->plugin, LOG_DBG, "Deleting channel: %s",
-				   type_to_string(tmpctx, struct short_channel_id, &scid));
+				   fmt_short_channel_id(tmpctx, scid));
 			delete_channel_from_db(cmd, scid);
 		}
 	}
@@ -904,7 +903,7 @@ static void delete_node_from_db(struct command *cmd,
 			   tal_fmt(tmpctx,
 				   "DELETE FROM nodes"
 				   " WHERE nodeid = X'%s'",
-				   node_id_to_hexstr(tmpctx, id)),
+				   fmt_node_id(tmpctx, id)),
 			   NULL, NULL, &errmsg);
 	if (err != SQLITE_OK)
 		plugin_err(cmd->plugin, "Could not delete from nodes: %s",

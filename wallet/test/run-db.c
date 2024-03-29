@@ -32,7 +32,7 @@ const struct peer_update *channel_gossip_get_remote_update(const struct channel 
 void channel_gossip_update(struct channel *channel UNNEEDED)
 { fprintf(stderr, "channel_gossip_update called!\n"); abort(); }
 /* Generated stub for channel_scid_or_local_alias */
-const struct short_channel_id *channel_scid_or_local_alias(const struct channel *chan UNNEEDED)
+struct short_channel_id channel_scid_or_local_alias(const struct channel *chan UNNEEDED)
 { fprintf(stderr, "channel_scid_or_local_alias called!\n"); abort(); }
 /* Generated stub for connect_htlc_in */
 void connect_htlc_in(struct htlc_in_map *map UNNEEDED, struct htlc_in *hin UNNEEDED)
@@ -58,6 +58,9 @@ void  fatal_vfmt(const char *fmt UNNEEDED, va_list ap UNNEEDED)
 /* Generated stub for find_peer_by_dbid */
 struct peer *find_peer_by_dbid(struct lightningd *ld UNNEEDED, u64 dbid UNNEEDED)
 { fprintf(stderr, "find_peer_by_dbid called!\n"); abort(); }
+/* Generated stub for fmt_channel_id */
+char *fmt_channel_id(const tal_t *ctx UNNEEDED, const struct channel_id *channel_id UNNEEDED)
+{ fprintf(stderr, "fmt_channel_id called!\n"); abort(); }
 /* Generated stub for forward_index_created */
 u64 forward_index_created(struct lightningd *ld UNNEEDED,
 			  enum forward_status status UNNEEDED,

@@ -397,8 +397,7 @@ static void try_command(struct commando *incoming STEALS)
 	}
 	filter = json_get_member(buf, toks, "filter");
 	id = json_get_member(buf, toks, "id");
-	if (!id && !command_deprecated_in_nocmd_ok(plugin, "commando.missing-id",
-						   "v23.02", "v24.02")) {
+	if (!id) {
 		commando_error(incoming, COMMANDO_ERROR_REMOTE,
 			       "missing id field");
 		return;
@@ -444,7 +443,7 @@ static void handle_incmd(struct command *cmd,
 	/* Don't let them buffer multiple commands: discard old. */
 	if (incmd && incmd->id != idnum) {
 		plugin_log(plugin, LOG_DBG, "New cmd from %s, replacing old",
-			   node_id_to_hexstr(tmpctx, peer));
+			   fmt_node_id(tmpctx, peer));
 		incmd = tal_free(incmd);
 	}
 
@@ -467,7 +466,7 @@ static void handle_incmd(struct command *cmd,
 
 	if (!incmd->contents) {
 		plugin_log(plugin, LOG_UNUSUAL, "%s: ignoring oversize request",
-			   node_id_to_hexstr(tmpctx, peer));
+			   fmt_node_id(tmpctx, peer));
 		return;
 	}
 
@@ -491,7 +490,7 @@ static struct command_result *handle_reply(struct node_id *peer,
 		plugin_log(plugin, LOG_DBG,
 			   "Ignoring unexpected %s reply from %s (id %"PRIu64")",
 			   terminal ? "terminal" : "partial",
-			   node_id_to_hexstr(tmpctx, peer),
+			   fmt_node_id(tmpctx, peer),
 			   idnum);
 		return NULL;
 	}

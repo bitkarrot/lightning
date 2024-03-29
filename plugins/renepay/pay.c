@@ -11,7 +11,6 @@
 #include <common/json_stream.h>
 #include <common/memleak.h>
 #include <common/pseudorand.h>
-#include <common/type_to_string.h>
 #include <errno.h>
 #include <plugins/renepay/pay.h>
 #include <plugins/renepay/pay_flow.h>
@@ -316,7 +315,7 @@ static void sendpay_new_flows(struct payment *p)
 			json_add_node_id(req->js, "id",
 					 &pf->path_nodes[j]);
 			json_add_short_channel_id(req->js, "channel",
-						  &pf->path_scidds[j].scid);
+						  pf->path_scidds[j].scid);
 			json_add_amount_msat(req->js, "amount_msat",
 						  pf->amounts[j]);
 			json_add_num(req->js, "direction",
@@ -386,8 +385,8 @@ const char *try_paying(const tal_t *ctx,
 			   "%s (line %d) could not substract maxspend=%s and amount=%s.",
 			   __PRETTY_FUNCTION__,
 			   __LINE__,
-			   type_to_string(tmpctx, struct amount_msat, &payment->maxspend),
-			   type_to_string(tmpctx, struct amount_msat, &payment->amount));
+			   fmt_amount_msat(tmpctx, payment->maxspend),
+			   fmt_amount_msat(tmpctx, payment->amount));
 	}
 
 	/* Fees spent so far */
@@ -397,8 +396,8 @@ const char *try_paying(const tal_t *ctx,
 			   "%s (line %d) could not substract total_sent=%s and total_delivering=%s.",
 			   __PRETTY_FUNCTION__,
 			   __LINE__,
-			   type_to_string(tmpctx, struct amount_msat, &payment->total_sent),
-			   type_to_string(tmpctx, struct amount_msat, &payment->total_delivering));
+			   fmt_amount_msat(tmpctx, payment->total_sent),
+			   fmt_amount_msat(tmpctx, payment->total_delivering));
 	}
 
 	/* Remaining fee budget. */
@@ -408,8 +407,8 @@ const char *try_paying(const tal_t *ctx,
 			   "%s (line %d) could not substract feebudget=%s and fees_spent=%s.",
 			   __PRETTY_FUNCTION__,
 			   __LINE__,
-			   type_to_string(tmpctx, struct amount_msat, &feebudget),
-			   type_to_string(tmpctx, struct amount_msat, &fees_spent));
+			   fmt_amount_msat(tmpctx, feebudget),
+			   fmt_amount_msat(tmpctx, fees_spent));
 	}
 
 	/* How much are we still trying to send? */
@@ -419,8 +418,8 @@ const char *try_paying(const tal_t *ctx,
 			   "%s (line %d) could not substract amount=%s and total_delivering=%s.",
 			   __PRETTY_FUNCTION__,
 			   __LINE__,
-			   type_to_string(tmpctx, struct amount_msat, &payment->amount),
-			   type_to_string(tmpctx, struct amount_msat, &payment->total_delivering));
+			   fmt_amount_msat(tmpctx, payment->amount),
+			   fmt_amount_msat(tmpctx, payment->total_delivering));
 	}
 
 	// plugin_log(pay_plugin->plugin,LOG_DBG,fmt_chan_extra_map(tmpctx,pay_plugin->chan_extra_map));
@@ -739,7 +738,7 @@ payment_listsendpays_previous(
 			plugin_log(pay_plugin->plugin,LOG_DBG,
 				   "this part is complete then "
 				   "complete_msat = %s",
-				   type_to_string(tmpctx,struct amount_msat,&complete_msat));
+				   fmt_amount_msat(tmpctx, complete_msat));
 		} else if (streq(status, "pending")) {
 			/* If we have more than one pending group, something went wrong! */
 			if (pending_group_id != INVALID_ID
@@ -792,7 +791,7 @@ payment_listsendpays_previous(
 			   "delivering = %s, "
 			   "last_partid = %"PRIu64,
 			   pending_group_id,
-			   type_to_string(tmpctx,struct amount_msat,&payment->total_delivering),
+			   fmt_amount_msat(tmpctx, payment->total_delivering),
 			   max_pending_partid);
 
 		if(amount_msat_greater_eq(payment->total_delivering,payment->amount))
@@ -1234,8 +1233,8 @@ static void handle_sendpay_failure_flow(struct pay_flow *pf,
 			     "Failure to forward amount %s in channel %s, "
 			     "state change %s -> %s",
 			     fmt_amount_msat(tmpctx, pf->amounts[erridx]),
-			     type_to_string(tmpctx, struct short_channel_id_dir,
-					    &pf->path_scidds[erridx]),
+			     fmt_short_channel_id_dir(tmpctx,
+						      &pf->path_scidds[erridx]),
 			     old_state,
 			     fmt_chan_extra_details(tmpctx,
 						    pay_plugin->chan_extra_map,

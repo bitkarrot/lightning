@@ -13,7 +13,6 @@
 #include <ccan/opt/opt.h>
 #include <ccan/str/hex/hex.h>
 #include <ccan/tal/str/str.h>
-#include <common/type_to_string.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <wire/peer_wire.h>
@@ -78,8 +77,7 @@ static char *sig_notation(const struct privkey *privkey,
 {
 	const char *pstr = tal_hexstr(NULL, privkey->secret.data,
 				      sizeof(privkey->secret.data));
-	const char *hstr =
-		type_to_string(NULL, struct sha256_double, hash);
+	const char *hstr = fmt_sha256_double(NULL, hash);
 
 	if (verbose)
 		return tal_fmt(NULL,
@@ -121,7 +119,7 @@ static u32 crc32_of_update(const u8 *channel_update)
 }
 
 static void print_update(const struct bitcoin_blkid *chainhash,
-			 const struct short_channel_id *scid,
+			 struct short_channel_id scid,
 			 const struct update_opts *opts,
 			 bool is_lesser_key,
 			 const struct privkey *privkey)
@@ -149,7 +147,7 @@ static void print_update(const struct bitcoin_blkid *chainhash,
 	printf("type=channel_update\n");
 	printf("   signature=%s\n", sig_notation(privkey, &hash, &sig));
 	printf("   chain_hash=%s\n", tal_hexstr(NULL, chainhash, sizeof(*chainhash)));
-	printf("   short_channel_id=%s\n", short_channel_id_to_str(NULL, scid));
+	printf("   short_channel_id=%s\n", fmt_short_channel_id(NULL, scid));
 	printf("   timestamp=%u\n", opts->timestamp);
 	printf("   message_flags=%u\n",
 	       ROUTING_OPT_HTLC_MAX_MSAT);
@@ -196,7 +194,7 @@ static void print_nannounce(const struct node_id *nodeid,
 	printf("   signature=%s\n", sig_notation(privkey, &hash, &sig));
 	printf("   features=%s\n", tal_hex(NULL, NULL));
 	printf("   timestamp=%u\n", opts->timestamp);
-	printf("   node_id=%s\n", node_id_to_hexstr(NULL, nodeid));
+	printf("   node_id=%s\n", fmt_node_id(NULL, nodeid));
 	printf("   rgb_color=%s\n", tal_hexstr(NULL, nodeid->k, 3));
 	printf("   alias=%s\n", tal_hexstr(NULL, alias, 32));
 	printf("   addresses=%s\n", tal_hex(NULL, opts->addresses));
@@ -309,7 +307,7 @@ int main(int argc, char *argv[])
 						&bitcoinsig[lesser_key],
 						&bitcoinsig[!lesser_key],
 						features, &chainhash,
-						&scid,
+						scid,
 						&nodeid[lesser_key],
 						&nodeid[!lesser_key],
 						&bitcoin[lesser_key],
@@ -332,23 +330,23 @@ int main(int argc, char *argv[])
 	       sig_notation(&funding_privkey[!lesser_key], &hash, &bitcoinsig[!lesser_key]));
 	printf("   features=%s\n", tal_hex(NULL, features));
 	printf("   chain_hash=%s\n", tal_hexstr(NULL, &chainhash, sizeof(chainhash)));
-	printf("   short_channel_id=%s\n", short_channel_id_to_str(NULL, &scid));
+	printf("   short_channel_id=%s\n", fmt_short_channel_id(NULL, scid));
 	printf("   node_id_1=%s\n",
-	       node_id_to_hexstr(NULL, &nodeid[lesser_key]));
+	       fmt_node_id(NULL, &nodeid[lesser_key]));
 	printf("   node_id_2=%s\n",
-	       node_id_to_hexstr(NULL, &nodeid[!lesser_key]));
+	       fmt_node_id(NULL, &nodeid[!lesser_key]));
 	printf("   bitcoin_key_1=%s\n",
-	       pubkey_to_hexstr(NULL, &bitcoin[lesser_key]));
+	       fmt_pubkey(NULL, &bitcoin[lesser_key]));
 	printf("   bitcoin_key_2=%s\n",
-	       pubkey_to_hexstr(NULL, &bitcoin[!lesser_key]));
+	       fmt_pubkey(NULL, &bitcoin[!lesser_key]));
 
 	printf("\n#Node 1:\n");
-	print_update(&chainhash, &scid, &opts[0], lesser_key == 0,
+	print_update(&chainhash, scid, &opts[0], lesser_key == 0,
 		     &node_privkey[0]);
 	print_nannounce(&nodeid[0], &opts[0], &node_privkey[0]);
 
 	printf("\n#Node 2:\n");
-	print_update(&chainhash, &scid, &opts[1], lesser_key == 1,
+	print_update(&chainhash, scid, &opts[1], lesser_key == 1,
 		     &node_privkey[1]);
 
 	print_nannounce(&nodeid[1], &opts[1], &node_privkey[1]);

@@ -8,7 +8,6 @@
 #include <common/initial_channel.h>
 #include <common/initial_commit_tx.h>
 #include <common/keyset.h>
-#include <common/type_to_string.h>
 
 struct channel *new_initial_channel(const tal_t *ctx,
 				    const struct channel_id *cid,
@@ -231,24 +230,19 @@ static char *fmt_channel_view(const tal_t *ctx, const struct channel_view *view)
 {
 	return tal_fmt(ctx, "{ owed_local=%s,"
 		       " owed_remote=%s }",
-		       type_to_string(tmpctx, struct amount_msat,
-				      &view->owed[LOCAL]),
-		       type_to_string(tmpctx, struct amount_msat,
-				      &view->owed[REMOTE]));
+		       fmt_amount_msat(tmpctx, view->owed[LOCAL]),
+		       fmt_amount_msat(tmpctx, view->owed[REMOTE]));
 }
 
 /* FIXME: This should reference HTLCs somehow, and feerates! */
-static char *fmt_channel(const tal_t *ctx, const struct channel *channel)
+char *fmt_channel(const tal_t *ctx, const struct channel *channel)
 {
 	return tal_fmt(ctx, "{ funding=%s,"
 		       " opener=%s,"
 		       " local=%s,"
 		       " remote=%s }",
-		       type_to_string(tmpctx, struct amount_sat,
-				      &channel->funding_sats),
+		       fmt_amount_sat(tmpctx, channel->funding_sats),
 		       side_to_str(channel->opener),
 		       fmt_channel_view(ctx, &channel->view[LOCAL]),
 		       fmt_channel_view(ctx, &channel->view[REMOTE]));
 }
-/* Magic comment. */
-REGISTER_TYPE_TO_STRING(channel, fmt_channel);

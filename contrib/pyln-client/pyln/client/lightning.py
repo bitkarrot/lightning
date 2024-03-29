@@ -607,15 +607,6 @@ class LightningRpc(UnixDomainSocketRpc):
         }
         return self.call("deldatastore", payload)
 
-    def delexpiredinvoice(self, maxexpirytime=None):
-        """
-        Delete all invoices that have expired on or before the given {maxexpirytime}.
-        """
-        payload = {
-            "maxexpirytime": maxexpirytime
-        }
-        return self.call("delexpiredinvoice", payload)
-
     def delinvoice(self, label, status, desconly=None):
         """
         Delete unpaid invoice {label} with {status} (or, with {desconly} true, remove its description).
@@ -1085,7 +1076,7 @@ class LightningRpc(UnixDomainSocketRpc):
     def pay(self, bolt11, amount_msat=None, label=None, riskfactor=None,
             maxfeepercent=None, retry_for=None,
             maxdelay=None, exemptfee=None, localinvreqid=None, exclude=None,
-            maxfee=None, description=None):
+            maxfee=None, description=None, partial_msat=None):
         """
         Send payment specified by {bolt11} with {amount_msat}
         (ignored if {bolt11} has an amount), optional {label}
@@ -1104,6 +1095,7 @@ class LightningRpc(UnixDomainSocketRpc):
             "exclude": exclude,
             "maxfee": maxfee,
             "description": description,
+            "partial_msat": partial_msat,
         }
         return self.call("pay", payload)
 

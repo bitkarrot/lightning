@@ -11,7 +11,6 @@
 #include <common/memleak.h>
 #include <common/psbt_open.h>
 #include <common/pseudorand.h>
-#include <common/type_to_string.h>
 #include <plugins/spender/multifundchannel.h>
 #include <plugins/spender/openchannel.h>
 
@@ -585,15 +584,14 @@ after_signpsbt(struct command *cmd,
 		/* It should be well-formed? */
 		plugin_err(mfc->cmd->plugin,
 			   "mfc: could not set PSBT version: %s",
-		   		type_to_string(tmpctx, struct wally_psbt,
-					mfc->psbt));
+		   		fmt_wally_psbt(tmpctx, mfc->psbt));
 	}
 
 	if (!psbt_finalize(psbt))
 		plugin_err(mfc->cmd->plugin,
 			   "mfc %"PRIu64": Signed PSBT won't finalize"
 			   "%s", mfc->id,
-			   type_to_string(tmpctx, struct wally_psbt, psbt));
+			   fmt_wally_psbt(tmpctx, psbt));
 
 
 	/* Replace the PSBT.  */
@@ -752,7 +750,7 @@ fundchannel_complete_ok(struct command *cmd,
 	plugin_log(mfc->cmd->plugin, LOG_DBG,
 		   "mfc %"PRIu64", dest %u: fundchannel_complete %s done.",
 		   mfc->id, dest->index,
-		   node_id_to_hexstr(tmpctx, &dest->id));
+		   fmt_node_id(tmpctx, &dest->id));
 
 	channel_id_tok = json_get_member(buf, result, "channel_id");
 	if (!channel_id_tok)
@@ -778,7 +776,7 @@ fundchannel_complete_err(struct command *cmd,
 		   "mfc %"PRIu64", dest %u: "
 		   "failed! fundchannel_complete %s: %.*s",
 		   mfc->id, dest->index,
-		   node_id_to_hexstr(tmpctx, &dest->id),
+		   fmt_node_id(tmpctx, &dest->id),
 		   json_tok_full_len(error), json_tok_full(buf, error));
 
 	fail_destination_tok(dest, buf, error);
@@ -795,7 +793,7 @@ fundchannel_complete_dest(struct multifundchannel_destination *dest)
 	plugin_log(mfc->cmd->plugin, LOG_DBG,
 		   "mfc %"PRIu64", dest %u: fundchannel_complete %s.",
 		   mfc->id, dest->index,
-		   node_id_to_hexstr(tmpctx, &dest->id));
+		   fmt_node_id(tmpctx, &dest->id));
 
 	req = jsonrpc_request_start(cmd->plugin,
 				    cmd,
@@ -860,8 +858,7 @@ perform_funding_tx_finalize(struct multifundchannel_command *mfc)
 		/* It should be well-formed? */
 		plugin_err(mfc->cmd->plugin,
 			   "mfc: could not set PSBT version: %s",
-		   		type_to_string(tmpctx, struct wally_psbt,
-					mfc->psbt));
+		   		fmt_wally_psbt(tmpctx, mfc->psbt));
 	}
 
 	/* Construct a deck of destinations.  */
@@ -906,11 +903,8 @@ perform_funding_tx_finalize(struct multifundchannel_command *mfc)
 		if (v2_dest_count == 0)
 			dest->outnum = outnum;
 		tal_append_fmt(&content, "%s: %s",
-			       type_to_string(tmpctx, struct node_id,
-					      &dest->id),
-			       type_to_string(tmpctx,
-					      struct amount_sat,
-					      &dest->amount));
+			       fmt_node_id(tmpctx, &dest->id),
+			       fmt_amount_sat(tmpctx, dest->amount));
 	}
 
 	if (v2_dest_count > 0) {
@@ -938,16 +932,14 @@ perform_funding_tx_finalize(struct multifundchannel_command *mfc)
 	plugin_log(mfc->cmd->plugin, LOG_DBG,
 		   "mfc %"PRIu64": funding tx %s: %s",
 		   mfc->id,
-		   type_to_string(tmpctx, struct bitcoin_txid,
-				  mfc->txid),
+		   fmt_bitcoin_txid(tmpctx, mfc->txid),
 		   content);
 
 	if (!psbt_set_version(mfc->psbt, psbt_version)) {
 		/* It should be well-formed? */
 		plugin_err(mfc->cmd->plugin,
 			   "mfc: could not set PSBT version: %s",
-		   		type_to_string(tmpctx, struct wally_psbt,
-					mfc->psbt));
+		   		fmt_wally_psbt(tmpctx, mfc->psbt));
 	}
 
 	/* Now we can feed the TXID and outnums to the peer.  */
@@ -1053,7 +1045,7 @@ fundchannel_start_ok(struct command *cmd,
 	plugin_log(mfc->cmd->plugin, LOG_DBG,
 		   "mfc %"PRIu64", dest %u: fundchannel_start %s done.",
 		   mfc->id, dest->index,
-		   node_id_to_hexstr(tmpctx, &dest->id));
+		   fmt_node_id(tmpctx, &dest->id));
 
 	/* May not be set */
 	dest->close_to_script = NULL;
@@ -1085,7 +1077,7 @@ fundchannel_start_err(struct command *cmd,
 		   "mfc %"PRIu64", dest %u: "
 		   "failed! fundchannel_start %s: %.*s.",
 		   dest->mfc->id, dest->index,
-		   node_id_to_hexstr(tmpctx, &dest->id),
+		   fmt_node_id(tmpctx, &dest->id),
 		   json_tok_full_len(error),
 		   json_tok_full(buf, error));
 	/*
@@ -1114,7 +1106,7 @@ fundchannel_start_dest(struct multifundchannel_destination *dest)
 	plugin_log(mfc->cmd->plugin, LOG_DBG,
 		   "mfc %"PRIu64", dest %u: fundchannel_start %s.",
 		   mfc->id, dest->index,
-		   node_id_to_hexstr(tmpctx, &dest->id));
+		   fmt_node_id(tmpctx, &dest->id));
 
 	req = jsonrpc_request_start(cmd->plugin,
 				    cmd,
@@ -1150,7 +1142,7 @@ fundchannel_start_dest(struct multifundchannel_destination *dest)
 	if (dest->reserve)
 		json_add_string(
 		    req->js, "reserve",
-		    type_to_string(tmpctx, struct amount_sat, dest->reserve));
+		    fmt_amount_sat(tmpctx, *dest->reserve));
 
 	send_outreq(cmd->plugin, req);
 }
@@ -1164,7 +1156,7 @@ perform_channel_start(struct multifundchannel_command *mfc)
 		   "mfc %"PRIu64": fundchannel_start parallel "
 		   "with PSBT %s",
 		   mfc->id,
-		   type_to_string(tmpctx, struct wally_psbt, mfc->psbt));
+		   fmt_wally_psbt(tmpctx, mfc->psbt));
 
 	mfc->pending = tal_count(mfc->destinations);
 
@@ -1266,6 +1258,19 @@ after_fundpsbt(struct command *cmd,
 						 field->end - field->start)
 		    || !amount_msat_to_sat(&all->amount, msat))
 			goto fail;
+
+		/* Subtract amounts we're using for the other outputs */
+		for (size_t i = 0; i < tal_count(mfc->destinations); i++) {
+			if (mfc->destinations[i].all)
+				continue;
+			if (!amount_sat_sub(&all->amount,
+					    all->amount,
+					    mfc->destinations[i].amount)) {
+				return mfc_fail(mfc, JSONRPC2_INVALID_PARAMS,
+						"Insufficient funds for `all`"
+						" output");
+			}
+		}
 
 		/* Remove the 'all' flag.  */
 		all->all = false;
@@ -1396,8 +1401,7 @@ perform_fundpsbt(struct multifundchannel_command *mfc, u32 feerate)
 			}
 		}
 		json_add_string(req->js, "satoshi",
-				type_to_string(tmpctx, struct amount_sat,
-					       &sum));
+				fmt_amount_sat(tmpctx, sum));
 	}
 	json_add_string(req->js, "feerate", tal_fmt(tmpctx, "%uperkw", feerate));
 
@@ -1594,7 +1598,7 @@ connect_err(struct command *cmd,
 	plugin_log(mfc->cmd->plugin, LOG_DBG,
 		   "mfc %"PRIu64", dest %u: failed! connect %s: %.*s.",
 		   mfc->id, dest->index,
-		   node_id_to_hexstr(tmpctx, &dest->id),
+		   fmt_node_id(tmpctx, &dest->id),
 		   json_tok_full_len(error),
 		   json_tok_full(buf, error));
 
@@ -1610,7 +1614,7 @@ connect_dest(struct multifundchannel_destination *dest)
 	const char *id;
 	struct out_req *req;
 
-	id = node_id_to_hexstr(tmpctx, &dest->id);
+	id = fmt_node_id(tmpctx, &dest->id);
 	plugin_log(mfc->cmd->plugin, LOG_DBG,
 		   "mfc %"PRIu64", dest %u: connect %s.",
 		   mfc->id, dest->index, id);

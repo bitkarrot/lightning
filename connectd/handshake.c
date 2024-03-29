@@ -8,7 +8,6 @@
 #include <common/crypto_state.h>
 #include <common/ecdh.h>
 #include <common/status.h>
-#include <common/type_to_string.h>
 #include <common/utils.h>
 #include <common/wireaddr.h>
 #include <connectd/handshake.h>
@@ -548,7 +547,7 @@ static struct io_plan *act_two_initiator2(struct io_conn *conn,
 				      h->act2.pubkey, sizeof(h->act2.pubkey)) != 1)
 		return handshake_failed(conn, h);
 
-	SUPERVERBOSE("# re=0x%s", type_to_string(tmpctx, struct pubkey, &h->re));
+	SUPERVERBOSE("# re=0x%s", fmt_pubkey(tmpctx, &h->re));
 
 	/* BOLT #8:
 	 *
@@ -634,7 +633,7 @@ static struct io_plan *act_one_initiator(struct io_conn *conn,
 	SUPERVERBOSE("e.priv: 0x%s",
 		     tal_hexstr(tmpctx, &h->e.priv, sizeof(h->e.priv)));
 	SUPERVERBOSE("e.pub: 0x%s",
-		     type_to_string(tmpctx, struct pubkey, &h->e.pub));
+		     fmt_pubkey(tmpctx, &h->e.pub));
 
 	/* BOLT #8:
 	 *
@@ -811,7 +810,7 @@ static struct io_plan *act_two_responder(struct io_conn *conn,
 	 */
 	h->e = generate_key();
 	SUPERVERBOSE("# e.pub=0x%s e.priv=0x%s",
-		     type_to_string(tmpctx, struct pubkey, &h->e.pub),
+		     fmt_pubkey(tmpctx, &h->e.pub),
 		     tal_hexstr(tmpctx, &h->e.priv, sizeof(h->e.priv)));
 
 	/* BOLT #8:
@@ -900,7 +899,7 @@ static struct io_plan *act_one_responder2(struct io_conn *conn,
 				      h->act1.pubkey, sizeof(h->act1.pubkey)) != 1)
 		return handshake_failed(conn, h);
 
-	SUPERVERBOSE("# re=0x%s", type_to_string(tmpctx, struct pubkey, &h->re));
+	SUPERVERBOSE("# re=0x%s", fmt_pubkey(tmpctx, &h->re));
 
 	/* BOLT #8:
 	 *

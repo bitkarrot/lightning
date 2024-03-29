@@ -90,7 +90,6 @@ CHANNELD_COMMON_OBJS :=				\
 	common/status_wire.o			\
 	common/subdaemon.o			\
 	common/timeout.o			\
-	common/type_to_string.o			\
 	common/utils.o				\
 	common/utxo.o				\
 	common/version.o			\
@@ -104,6 +103,6 @@ CHANNELD_COMMON_OBJS :=				\
 channeld/full_channel_error_names_gen.h: channeld/full_channel_error.h ccan/ccan/cdump/tools/cdump-enumstr
 	ccan/ccan/cdump/tools/cdump-enumstr channeld/full_channel_error.h > $@
 
-lightningd/lightning_channeld: $(CHANNELD_OBJS) $(WIRE_ONION_OBJS) $(CHANNELD_COMMON_OBJS) $(WIRE_OBJS) $(BITCOIN_OBJS) $(HSMD_CLIENT_OBJS)
+lightningd/lightning_channeld: $(CHANNELD_OBJS) $(CHANNELD_COMMON_OBJS) $(WIRE_OBJS) $(BITCOIN_OBJS) $(HSMD_CLIENT_OBJS)
 
 include channeld/test/Makefile

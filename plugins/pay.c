@@ -14,7 +14,6 @@
 #include <common/json_stream.h>
 #include <common/memleak.h>
 #include <common/pseudorand.h>
-#include <common/type_to_string.h>
 #include <plugins/libplugin-pay.h>
 #include <stdio.h>
 
@@ -123,7 +122,7 @@ static void json_add_sendpay_result(struct json_stream *s, const struct payment_
 
 		if (r->erring_channel)
 			json_add_short_channel_id(s, "erring_channel",
-						  r->erring_channel);
+						  *r->erring_channel);
 
 		if (r->erring_direction)
 			json_add_num(s, "erring_direction",
@@ -214,7 +213,7 @@ static struct command_result *json_paystatus(struct command *cmd,
 
 		if (p->invstring)
 			json_add_invstring(ret, p->invstring);
-		json_add_amount_msat(ret, "amount_msat", p->amount);
+		json_add_amount_msat(ret, "amount_msat", p->our_amount);
 
 		json_add_node_id(ret, "destination", p->destination);
 
@@ -339,8 +338,8 @@ static void add_amount_sent(struct plugin *p,
 		plugin_log(p, LOG_BROKEN,
 			   "Cannot add amount_sent_msat for %s: %s + %s",
 			   invstring,
-			   type_to_string(tmpctx, struct amount_msat, &mpp->amount_sent),
-			   type_to_string(tmpctx, struct amount_msat, &sent));
+			   fmt_amount_msat(tmpctx, mpp->amount_sent),
+			   fmt_amount_msat(tmpctx, sent));
 
 	msattok = json_get_member(buf, t, "amount_msat");
 
@@ -366,8 +365,8 @@ static void add_amount_sent(struct plugin *p,
 		plugin_log(p, LOG_BROKEN,
 			   "Cannot add amount_msat for %s: %s + %s",
 			   invstring,
-			   type_to_string(tmpctx, struct amount_msat, mpp->amount),
-			   type_to_string(tmpctx, struct amount_msat, &sent));
+			   fmt_amount_msat(tmpctx, *mpp->amount),
+			   fmt_amount_msat(tmpctx, sent));
 }
 
 static void add_new_entry(struct json_stream *ret,
@@ -625,7 +624,7 @@ static void on_payment_success(struct payment *payment)
 		json_add_timeabs(ret, "created_at", p->start_time);
 		json_add_num(ret, "parts", result.attempts);
 
-		json_add_amount_msat(ret, "amount_msat", p->amount);
+		json_add_amount_msat(ret, "amount_msat", p->our_amount);
 		json_add_amount_msat(ret, "amount_sent_msat", result.sent);
 
 		if (result.leafstates != PAYMENT_STEP_SUCCESS)
@@ -663,7 +662,7 @@ static void payment_add_attempt(struct json_stream *s, const char *fieldname, st
 		json_add_string(s, "failreason", p->failreason);
 
 	json_add_u64(s, "partid", p->partid);
-	json_add_amount_msat(s, "amount_msat", p->amount);
+	json_add_amount_msat(s, "amount_msat", p->our_amount);
 	if (p->parent != NULL)
 		json_add_u64(s, "parent_partid", p->parent->partid);
 
@@ -763,7 +762,7 @@ static void on_payment_failure(struct payment *payment)
 				json_add_string(ret, "status", "failed");
 			}
 
-			json_add_amount_msat(ret, "amount_msat", p->amount);
+			json_add_amount_msat(ret, "amount_msat", p->our_amount);
 
 			json_add_amount_msat(ret, "amount_sent_msat",
 					     result.sent);
@@ -780,7 +779,7 @@ static void on_payment_failure(struct payment *payment)
 				if (failure->erring_channel)
 					json_add_short_channel_id(
 					    ret, "erring_channel",
-					    failure->erring_channel);
+					    *failure->erring_channel);
 
 				if (failure->erring_direction)
 					json_add_num(
@@ -830,7 +829,9 @@ static struct command_result *selfpay(struct command *cmd, struct payment *p)
 	json_add_sha256(req->js, "payment_hash", p->payment_hash);
 	if (p->label)
 		json_add_string(req->js, "label", p->label);
-	json_add_amount_msat(req->js, "amount_msat", p->amount);
+	/* FIXME: This will fail if we try to do a partial amount to
+	 * ourselves! */
+	json_add_amount_msat(req->js, "amount_msat", p->our_amount);
 	json_add_string(req->js, "bolt11", p->invstring);
 	if (p->payment_secret)
 		json_add_secret(req->js, "payment_secret", p->payment_secret);
@@ -1019,7 +1020,7 @@ static struct command_result *json_pay(struct command *cmd,
 	char *b11_fail, *b12_fail;
 	u64 *maxfee_pct_millionths;
 	u32 *maxdelay;
-	struct amount_msat *exemptfee, *msat, *maxfee;
+	struct amount_msat *exemptfee, *msat, *maxfee, *partial;
 	const char *label, *description;
 	unsigned int *retryfor;
 	u64 *riskfactor_millionths;
@@ -1052,6 +1053,7 @@ static struct command_result *json_pay(struct command *cmd,
 		   p_opt("exclude", param_route_exclusion_array, &exclusions),
 		   p_opt("maxfee", param_msat, &maxfee),
 		   p_opt("description", param_escaped_string, &description),
+		   p_opt("partial_msat", param_msat, &partial),
 		   p_opt_dev("dev_use_shadow", param_bool, &dev_use_shadow, true),
 		      NULL))
 		return command_param_failed();
@@ -1187,27 +1189,48 @@ static struct command_result *json_pay(struct command *cmd,
 			return command_fail(cmd, JSONRPC2_INVALID_PARAMS,
 					    "msatoshi parameter unnecessary");
 		}
-		p->amount = *invmsat;
+		p->final_amount = *invmsat;
 		tal_free(invmsat);
 	} else {
 		if (!msat) {
 			return command_fail(cmd, JSONRPC2_INVALID_PARAMS,
 					    "msatoshi parameter required");
 		}
-		p->amount = *msat;
+		p->final_amount = *msat;
+	}
+
+	if (partial) {
+		if (amount_msat_greater(*partial, p->final_amount)) {
+			return command_fail(cmd, JSONRPC2_INVALID_PARAMS,
+					    "partial_msat must be less or equal to total amount %s",
+					    fmt_amount_msat(tmpctx, p->final_amount));
+		}
+		if (node_id_eq(&my_id, p->destination)) {
+			return command_fail(cmd, JSONRPC2_INVALID_PARAMS,
+					    "partial_msat not supported (yet?) for self-pay");
+		}
+
+		p->our_amount = *partial;
+	} else {
+		p->our_amount = p->final_amount;
 	}
 
 	/* We replace real final values if we're using a blinded path */
 	if (p->blindedpath) {
 		p->blindedfinalcltv = p->min_final_cltv_expiry;
-		p->blindedfinalamount = p->amount;
+		p->blindedouramount = p->our_amount;
+		p->blindedfinalamount = p->final_amount;
 
 		p->min_final_cltv_expiry += p->blindedpay->cltv_expiry_delta;
-		if (!amount_msat_add_fee(&p->amount,
+		if (!amount_msat_add_fee(&p->final_amount,
 					 p->blindedpay->fee_base_msat,
-					 p->blindedpay->fee_proportional_millionths))
+					 p->blindedpay->fee_proportional_millionths)
+		    || !amount_msat_add_fee(&p->our_amount,
+					    p->blindedpay->fee_base_msat,
+					    p->blindedpay->fee_proportional_millionths)) {
 			return command_fail(cmd, PAY_ROUTE_TOO_EXPENSIVE,
 					    "This payment blinded path fee overflows!");
+		}
 	}
 
 	p->local_id = &my_id;
@@ -1236,7 +1259,7 @@ static struct command_result *json_pay(struct command *cmd,
 			maxppm = *maxfee_pct_millionths / 100;
 		else
 			maxppm = 500000 / 100;
-		if (!amount_msat_fee(&p->constraints.fee_budget, p->amount, 0,
+		if (!amount_msat_fee(&p->constraints.fee_budget, p->our_amount, 0,
 				     maxppm)) {
 			return command_fail(
 				cmd, JSONRPC2_INVALID_PARAMS,
