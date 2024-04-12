@@ -1866,6 +1866,74 @@ def test_pay_retry(node_factory, bitcoind, executor, chainparams):
 
 
 @pytest.mark.slow_test
+def test_pay_avoid_low_fee_chan(node_factory, bitcoind, executor, chainparams):
+    """Make sure we're able to route around a low fee depleted channel """
+
+    # NOTE: This test did not consistently fail. If this test is flaky, that
+    # probably means it needs to be fixed!
+
+    # Setup:
+    # sender - router --------- dest
+    #             \              /
+    #              - randomnode -
+    # router is connected to the destination
+    # randomnode is also connected to router and the destination, with a low fee
+    # path. The channel however, is depleted.
+    sender, router, randomnode, dest = node_factory.get_nodes(4)
+    sender.rpc.connect(router.info['id'], 'localhost', router.port)
+    sender.fundchannel(router, 200000, wait_for_active=True)
+    router.rpc.connect(dest.info['id'], 'localhost', dest.port)
+    router_dest_scid, _ = router.fundchannel(dest, 10**6, wait_for_active=True)
+    randomnode.rpc.connect(dest.info['id'], 'localhost', dest.port)
+    randomnode_dest_scid, _ = randomnode.fundchannel(dest, 10**6, wait_for_active=True)
+
+    # Router has a depleted channel to randomnode. Mimic this by opening the
+    # channel the other way around.
+    randomnode.rpc.connect(router.info['id'], 'localhost', router.port)
+    scid_router_random, _ = randomnode.fundchannel(router, 10**6, wait_for_active=True)
+
+    # Set relevant fees:
+    # - High fee from router to dest
+    # - Low fee from router to randomnode and randomnode to dest
+    router.rpc.setchannel(router_dest_scid, feebase=0, feeppm=2000, htlcmin=1)
+    router.rpc.setchannel(scid_router_random, feebase=0, feeppm=1, htlcmin=1)
+    randomnode.rpc.setchannel(randomnode_dest_scid, feebase=0, feeppm=1, htlcmin=1)
+
+    def has_gossip():
+        channels = sender.rpc.listchannels()['channels']
+        if sum(1 for c in channels if c['fee_per_millionth'] == 1) != 2:
+            return False
+
+        if sum(1 for c in channels if c['fee_per_millionth'] == 2000) != 1:
+            return False
+
+        return True
+
+    # Make sure all relevant gossip reached the sender.
+    mine_funding_to_announce(bitcoind, [sender, router, randomnode, dest])
+    wait_for(has_gossip)
+
+    def listpays_nofail(b11):
+        while True:
+            pays = sender.rpc.listpays(b11)['pays']
+            if len(pays) != 0:
+                if only_one(pays)['status'] == 'complete':
+                    return
+                assert only_one(pays)['status'] != 'failed'
+
+    inv = dest.rpc.invoice(100000000, 'test_low_fee', 'test_low_fee')
+
+    # Make sure listpays doesn't transiently show failure while pay
+    # is retrying.
+    fut = executor.submit(listpays_nofail, inv['bolt11'])
+
+    # Pay sender->dest should succeed via non-depleted channel
+    sender.dev_pay(inv['bolt11'], dev_use_shadow=False)
+
+    fut.result()
+
+
+@pytest.mark.slow_test
 def test_pay_routeboost(node_factory, bitcoind):
     """Make sure we can use routeboost information. """
     # l1->l2->l3--private-->l4
@@ -2167,55 +2235,55 @@ def test_setchannel_usage(node_factory, bitcoind):
 def test_setchannel_state(node_factory, bitcoind):
     # TEST SETUP
     #
-    # [l0] --> [l1] --> [l2]
+    # [l1] --> [l2] --> [l3]
     #
-    # Initiate channel [l1,l2] and try to set feerates other states than
+    # Initiate channel [l2,l3] and try to set feerates other states than
     # CHANNELD_NORMAL or CHANNELD_AWAITING_LOCKIN. Should raise error.
-    # Use l0 to make a forward through l1/l2 for testing.
+    # Use l1 to make a forward through l2/l3 for testing.
     DEF_BASE = 0
     DEF_PPM = 0
 
-    l0, l1, l2 = node_factory.get_nodes(3, opts={
+    l1, l2, l3 = node_factory.get_nodes(3, opts={
         'fee-base': DEF_BASE,
         'fee-per-satoshi': DEF_PPM
     })
 
     # connection and funding
-    l0.rpc.connect(l1.info['id'], 'localhost', l1.port)
-    l0.fundchannel(l1, 1000000, wait_for_active=True)
     l1.rpc.connect(l2.info['id'], 'localhost', l2.port)
-    scid, _ = l1.fundchannel(l2, 1000000, wait_for_active=False)
+    l1.fundchannel(l2, 1000000, wait_for_active=True)
+    l2.rpc.connect(l3.info['id'], 'localhost', l3.port)
+    scid, _ = l2.fundchannel(l3, 1000000, wait_for_active=False)
 
     # try setting the fee in state AWAITING_LOCKIN should be possible
-    # assert(l1.channel_state(l2) == "CHANNELD_AWAITING_LOCKIN")
-    result = l1.rpc.setchannel(l2.info['id'], 42, 0)
-    assert(result['channels'][0]['peer_id'] == l2.info['id'])
+    # assert(l2.channel_state(l3) == "CHANNELD_AWAITING_LOCKIN")
+    result = l2.rpc.setchannel(l3.info['id'], 42, 0)
+    assert(result['channels'][0]['peer_id'] == l3.info['id'])
     # cid = result['channels'][0]['channel_id']
 
     # test routing correct new fees once routing is established
-    mine_funding_to_announce(bitcoind, [l0, l1, l2])
+    mine_funding_to_announce(bitcoind, [l1, l2, l3])
 
-    l0.wait_for_route(l2)
-    inv = l2.rpc.invoice(100000, 'test_setchannel_state', 'desc')['bolt11']
-    result = l0.dev_pay(inv, dev_use_shadow=False)
+    l1.wait_for_route(l3)
+    inv = l3.rpc.invoice(100000, 'test_setchannel_state', 'desc')['bolt11']
+    result = l1.dev_pay(inv, dev_use_shadow=False)
     assert result['status'] == 'complete'
     assert result['amount_sent_msat'] == 100042
 
-    # Disconnect and unilaterally close from l2 to l1
-    l2.rpc.disconnect(l1.info['id'], force=True)
-    result = l2.rpc.close(scid, 1)
+    # Disconnect and unilaterally close from l3 to l2
+    l3.rpc.disconnect(l2.info['id'], force=True)
+    result = l3.rpc.close(scid, 1)
     assert result['type'] == 'unilateral'
 
-    # wait for l1 to see unilateral close via bitcoin network
-    while l1.channel_state(l2) == "CHANNELD_NORMAL":
+    # wait for l2 to see unilateral close via bitcoin network
+    while l2.channel_state(l3) == "CHANNELD_NORMAL":
         bitcoind.generate_block(1)
-    # assert l1.channel_state(l2) == "FUNDING_SPEND_SEEN"
+    # assert l2.channel_state(l3) == "FUNDING_SPEND_SEEN"
 
     # Try to setchannel in order to raise expected error.
     # To reduce false positive flakes, only test if state is not NORMAL anymore.
     with pytest.raises(RpcError, match=r'-1.*'):
-        # l1.rpc.setchannel(l2.info['id'], 10, 1)
-        l1.rpc.setchannel(l2.info['id'], 10, 1)
+        # l2.rpc.setchannel(l3.info['id'], 10, 1)
+        l2.rpc.setchannel(l3.info['id'], 10, 1)
 
 
 def test_setchannel_routing(node_factory, bitcoind):
