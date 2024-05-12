@@ -17,6 +17,7 @@ import json
 import os
 import pytest
 import re
+import resource
 import shutil
 import signal
 import socket
@@ -107,7 +108,7 @@ def test_bitcoin_failure(node_factory, bitcoind):
 
     # Ignore BROKEN log message about blocksonly mode.
     l2 = node_factory.get_node(start=False, expect_fail=True,
-                               allow_broken_log=True)
+                               broken_log="plugin-bcli: The 'blocksonly' mode of bitcoind, or any option deactivating transaction relay is not supported.")
     l2.daemon.start(wait_for_initialized=False, stderr_redir=True)
     # Will exit with failure code.
     assert l2.daemon.wait() == 1
@@ -136,6 +137,101 @@ def test_bitcoin_ibd(node_factory, bitcoind):
 
     l1.daemon.wait_for_log('Bitcoin backend now synced')
     assert 'warning_bitcoind_sync' not in l1.rpc.getinfo()
+
+
+def test_bitcoin_pruned(node_factory, bitcoind):
+    """Test that we try to fetch blocks from a peer if we can not find
+    them on our local bitcoind.
+    """
+    fetched_peerblock = False
+
+    def mock_getblock(r):
+        # Simulate a pruned node that reutrns an error when asked for a block.
+        nonlocal fetched_peerblock
+        if fetched_peerblock:
+            fetched_peerblock = False
+            conf_file = os.path.join(bitcoind.bitcoin_dir, "bitcoin.conf")
+            brpc = RawProxy(btc_conf_file=conf_file)
+            return {
+                "result": brpc._call(r["method"], *r["params"]),
+                "error": None,
+                "id": r["id"],
+            }
+        return {
+            "id": r["id"],
+            "result": None,
+            "error": {"code": -1, "message": "Block not available (pruned data)"},
+        }
+
+    def mock_getpeerinfo(r, error=False):
+        if error:
+            return {"id": r["id"], "error": {"code": -1, "message": "unknown"}}
+        return {
+            "id": r["id"],
+            "result": [
+                {
+                    "id": 1,
+                },
+                {
+                    "id": 2,
+                },
+                {
+                    "id": 3,
+                },
+            ],
+        }
+
+    def mock_getblockfrompeer(error=False, release_after=0):
+        getblock_counter = 0
+
+        def mock_getblockfrompeer_inner(r):
+            nonlocal getblock_counter
+            getblock_counter += 1
+
+            if error and getblock_counter < release_after:
+                return {
+                    "id": r["id"],
+                    "error": {"code": -1, "message": "peer unknown"},
+                }
+            if getblock_counter >= release_after:
+                nonlocal fetched_peerblock
+                fetched_peerblock = True
+            return {
+                "id": r["id"],
+                "result": {},
+            }
+        return mock_getblockfrompeer_inner
+
+    l1 = node_factory.get_node(start=False)
+
+    l1.daemon.rpcproxy.mock_rpc("getblock", mock_getblock)
+    l1.daemon.rpcproxy.mock_rpc("getpeerinfo", mock_getpeerinfo)
+    l1.daemon.rpcproxy.mock_rpc("getblockfrompeer", mock_getblockfrompeer())
+    l1.start(wait_for_bitcoind_sync=False)
+
+    # check that we fetched a block from a peer (1st peer (from the back) in this case).
+    pruned_block = bitcoind.rpc.getblockhash(bitcoind.rpc.getblockcount())
+    l1.daemon.wait_for_log(f"failed to fetch block {pruned_block} from the bitcoin backend")
+    l1.daemon.wait_for_log(rf"try to fetch block {pruned_block} from peer 3")
+    l1.daemon.wait_for_log(rf"Adding block (\d+): {pruned_block}")
+
+    # check that we can also fetch from a peer > 1st (from the back).
+    l1.daemon.rpcproxy.mock_rpc("getblockfrompeer", mock_getblockfrompeer(error=True, release_after=2))
+    bitcoind.generate_block(1)
+
+    pruned_block = bitcoind.rpc.getblockhash(bitcoind.rpc.getblockcount())
+    l1.daemon.wait_for_log(f"failed to fetch block {pruned_block} from the bitcoin backend")
+    l1.daemon.wait_for_log(rf"failed to fetch block {pruned_block} from peer 3")
+    l1.daemon.wait_for_log(rf"try to fetch block {pruned_block} from peer (\d+)")
+    l1.daemon.wait_for_log(rf"Adding block (\d+): {pruned_block}")
+
+    # check that we retry if we could not fetch any block
+    l1.daemon.rpcproxy.mock_rpc("getblockfrompeer", mock_getblockfrompeer(error=True, release_after=10))
+    bitcoind.generate_block(1)
+
+    pruned_block = bitcoind.rpc.getblockhash(bitcoind.rpc.getblockcount())
+    l1.daemon.wait_for_log(f"asked all known peers about block {pruned_block}, retry")
+    l1.daemon.wait_for_log(rf"Adding block (\d+): {pruned_block}")
 
 
 @pytest.mark.openchannel('v1')
@@ -1262,7 +1358,6 @@ def test_funding_reorg_private(node_factory, bitcoind):
     opts = {'funding-confirms': 2, 'rescan': 10, 'may_reconnect': True,
             'allow_bad_gossip': True,
             # gossipd send lightning update for original channel.
-            'allow_broken_log': True,
             'allow_warning': True,
             'dev-fast-reconnect': None,
             # if it's not zeroconf, we'll terminate on reorg.
@@ -1353,7 +1448,7 @@ def test_funding_reorg_remote_lags(node_factory, bitcoind):
 @pytest.mark.openchannel('v1')
 @pytest.mark.openchannel('v2')
 def test_funding_reorg_get_upset(node_factory, bitcoind):
-    l1, l2 = node_factory.line_graph(2, opts=[{}, {'allow_broken_log': True}])
+    l1, l2 = node_factory.line_graph(2, opts=[{}, {'broken_log': 'Funding transaction has been reorged out in state CHANNELD_NORMAL'}])
     bitcoind.simple_reorg(103, 1)
 
     # l1 is ok, as funder.
@@ -1367,7 +1462,7 @@ def test_funding_reorg_get_upset(node_factory, bitcoind):
 def test_decode(node_factory, bitcoind):
     """Test the decode option to decode the contents of emergency recovery.
     """
-    l1 = node_factory.get_node(allow_broken_log=True)
+    l1 = node_factory.get_node()
     cmd_line = ["tools/hsmtool", "getemergencyrecover", os.path.join(l1.daemon.lightning_dir, TEST_NETWORK, "emergency.recover")]
     out = subprocess.check_output(cmd_line).decode('utf-8')
     bech32_out = out.strip('\n')
@@ -1494,7 +1589,7 @@ def test_rescan(node_factory, bitcoind):
 
 def test_bitcoind_goes_backwards(node_factory, bitcoind):
     """Check that we refuse to acknowledge bitcoind giving a shorter chain without explicit rescan"""
-    l1 = node_factory.get_node(may_fail=True, allow_broken_log=True)
+    l1 = node_factory.get_node(may_fail=True)
 
     bitcoind.generate_block(10)
     sync_blockheight(bitcoind, [l1])
@@ -1827,7 +1922,7 @@ def test_logging(node_factory):
 @unittest.skipIf(VALGRIND,
                  "Valgrind sometimes fails assert on injected SEGV")
 def test_crashlog(node_factory):
-    l1 = node_factory.get_node(may_fail=True, allow_broken_log=True)
+    l1 = node_factory.get_node(may_fail=True)
 
     def has_crash_log(n):
         files = os.listdir(os.path.join(n.daemon.lightning_dir, TEST_NETWORK))
@@ -2019,6 +2114,7 @@ def test_newaddr(node_factory, chainparams):
     both = l1.rpc.newaddr('all')
     assert 'p2sh-segwit' not in both
     assert both['bech32'].startswith(chainparams['bip173_prefix'])
+    assert both['p2tr'].startswith(chainparams['bip173_prefix'])
 
 
 def test_bitcoind_fail_first(node_factory, bitcoind):
@@ -2032,7 +2128,7 @@ def test_bitcoind_fail_first(node_factory, bitcoind):
     # first.
     timeout = 5 if 5 < TIMEOUT // 3 else TIMEOUT // 3
     l1 = node_factory.get_node(start=False,
-                               allow_broken_log=True,
+                               broken_log=r'plugin-bcli: .*-stdinrpcpass getblockhash 100 exited 1 \(after [0-9]* other errors\)',
                                may_fail=True,
                                options={'bitcoin-retry-timeout': timeout})
 
@@ -2210,7 +2306,7 @@ def test_dev_force_bip32_seed(node_factory):
 
 
 def test_dev_demux(node_factory):
-    l1 = node_factory.get_node(may_fail=True, allow_broken_log=True)
+    l1 = node_factory.get_node(may_fail=True)
 
     # Check should work.
     l1.rpc.check(command_to_check='dev', subcommand='crash')
@@ -2776,7 +2872,8 @@ def test_emergencyrecover(node_factory, bitcoind):
     """
     Test emergencyrecover
     """
-    l1, l2 = node_factory.get_nodes(2, opts=[{'allow_broken_log': True, 'may_reconnect': True},
+    l1, l2 = node_factory.get_nodes(2, opts=[{'may_reconnect': True,
+                                              'broken_log': 'ERROR: Unknown commitment #.*, recovering our funds'},
                                              {'may_reconnect': True}])
 
     l1.rpc.connect(l2.info['id'], 'localhost', l2.port)
@@ -2827,7 +2924,7 @@ def test_recover_plugin(node_factory, bitcoind):
     l2 = node_factory.get_node(
         may_reconnect=True,
         feerates=(7500, 7500, 7500, 7500),
-        allow_broken_log=True,
+        broken_log='.*',
         allow_bad_gossip=True,
         options={
             'log-level': 'info',
@@ -2883,7 +2980,7 @@ def test_restorefrompeer(node_factory, bitcoind):
     """
     Test restorefrompeer
     """
-    l1, l2 = node_factory.get_nodes(2, [{'allow_broken_log': True,
+    l1, l2 = node_factory.get_nodes(2, [{'broken_log': 'ERROR: Unknown commitment #.*, recovering our funds!',
                                          'experimental-peer-storage': None,
                                          'may_reconnect': True,
                                          'allow_bad_gossip': True},
@@ -3205,7 +3302,7 @@ def test_version_reexec(node_factory, bitcoind):
 
     l1, l2 = node_factory.get_nodes(2, opts=[{'subdaemon': 'openingd:' + badopeningd,
                                               'start': False,
-                                              'allow_broken_log': True},
+                                              'broken_log': "openingd.*version 'badversion' not '.*': restarting"},
                                              {}])
     # We use a file to tell our openingd wrapper where the real one is
     with open(os.path.join(l1.daemon.lightning_dir, TEST_NETWORK, "openingd-real"), 'w') as f:
@@ -3785,6 +3882,22 @@ def test_setconfig(node_factory, bitcoind):
     with pytest.raises(RpcError, match='is not a number'):
         l2.rpc.setconfig(config='min-capacity-sat', val="abcd")
 
+    # Check will fail the same way.
+    with pytest.raises(RpcError, match='requires a value'):
+        l2.rpc.check('setconfig', config='min-capacity-sat')
+
+    with pytest.raises(RpcError, match='is not a number'):
+        l2.rpc.check('setconfig', config='min-capacity-sat', val="abcd")
+
+    # Check will pass, but NOT change value.
+    assert l2.rpc.check(command_to_check='setconfig', config='min-capacity-sat', val=500000) == {'command_to_check': 'setconfig'}
+
+    assert (l2.rpc.listconfigs('min-capacity-sat')['configs']
+            == {'min-capacity-sat':
+                {'source': 'default',
+                 'value_int': 10000,
+                 'dynamic': True}})
+
     ret = l2.rpc.setconfig(config='min-capacity-sat', val=500000)
     assert ret == {'config':
                    {'config': 'min-capacity-sat',
@@ -3982,3 +4095,120 @@ def test_set_feerate_offset(node_factory, bitcoind):
 
     l1.daemon.wait_for_log(' to CLOSINGD_COMPLETE')
     l2.daemon.wait_for_log(' to CLOSINGD_COMPLETE')
+
+
+def test_low_fd_limit(node_factory, bitcoind):
+    limits = resource.getrlimit(resource.RLIMIT_NOFILE)
+
+    # We assume this, otherwise l2 cannot increase limits!
+    if limits[0] == limits[1]:
+        limits = (limits[1] // 2, limits[1])
+        resource.setrlimit(resource.RLIMIT_NOFILE, limits)
+
+    # l1 asks for too much, l2 asks for more than it has, but enough.
+    l1, l2 = node_factory.line_graph(2, opts=[{'dev-fd-limit-multiplier': limits[1] + 1,
+                                               'allow_warning': True},
+                                              {'dev-fd-limit-multiplier': limits[1],
+                                               'allow_warning': True}])
+
+    # fd check is done at start, so restart.
+    l1.restart()
+
+    # Github CI seems to give children a lower fd hard limit that we have (32768 vs 65536?)
+    # so we don't check the actual numbers here.
+
+    # It should warn that FD limit is "low".
+    assert l1.daemon.is_in_log('UNUSUAL.*WARNING: we have 1 channels but file descriptors limited')
+
+    l2.restart()
+
+    assert l2.daemon.is_in_log(r'Increasing file descriptor limit')
+
+
+@pytest.mark.parametrize("preapprove", [False, True])
+def test_preapprove(node_factory, bitcoind, preapprove):
+    # l1 uses old routine which doesn't support check.
+    opts = [{'dev-hsmd-no-preapprove-check': None}, {}]
+    if preapprove is False:
+        opts[0]['dev-hsmd-fail-preapprove'] = None
+        opts[1]['dev-hsmd-fail-preapprove'] = None
+
+    l1, l2 = node_factory.line_graph(2, opts=opts)
+
+    inv = l1.rpc.invoice(123000, 'label', 'description', 3700)['bolt11']
+    if preapprove:
+        l2.rpc.check('preapproveinvoice', bolt11=inv)
+    else:
+        with pytest.raises(RpcError, match='invoice was declined'):
+            l2.rpc.check('preapproveinvoice', bolt11=inv)
+
+    l2.daemon.wait_for_log("preapprove_invoice: check_only=1")
+
+    # But l1 can't check properly, will always pass.
+    inv = l2.rpc.invoice(123000, 'label', 'description', 3700)['bolt11']
+    l1.rpc.check('preapproveinvoice', bolt11=inv)
+
+    assert not l1.daemon.is_in_log("preapprove_invoice: check_only=1")
+
+    # But if we try to actually preapprove we fail if told.
+    if preapprove:
+        l1.rpc.preapproveinvoice(inv)
+    else:
+        with pytest.raises(RpcError, match='invoice was declined'):
+            l1.rpc.preapproveinvoice(bolt11=inv)
+    l1.daemon.wait_for_log("preapprove_invoice: check_only=0")
+
+    # Same for keysend
+    if preapprove:
+        l2.rpc.check('preapprovekeysend',
+                     destination=l1.info['id'],
+                     payment_hash='00' * 32,
+                     amount_msat=1000)
+    else:
+        with pytest.raises(RpcError, match='keysend was declined'):
+            l2.rpc.check('preapprovekeysend',
+                         destination=l1.info['id'],
+                         payment_hash='00' * 32,
+                         amount_msat=1000)
+
+    l2.daemon.wait_for_log("preapprove_keysend: check_only=1")
+
+    # But l1 can't check properly, will always pass.
+    l1.rpc.check('preapprovekeysend',
+                 destination=l2.info['id'],
+                 payment_hash='00' * 32,
+                 amount_msat=1000)
+
+    assert not l1.daemon.is_in_log("preapprove_keysend: check_only=1")
+
+    # But if we try to actually preapprove we fail if told.
+    if preapprove:
+        l1.rpc.preapprovekeysend(l2.info['id'], '00' * 32, 1000)
+    else:
+        with pytest.raises(RpcError, match='keysend was declined'):
+            l1.rpc.preapprovekeysend(l2.info['id'], '00' * 32, 1000)
+    l1.daemon.wait_for_log("preapprove_keysend: check_only=0")
+
+
+def test_preapprove_use(node_factory, bitcoind):
+    """Test preapprove calls implicitly made by pay and keysend"""
+    l1, l2 = node_factory.line_graph(2, opts=[{}, {'dev-hsmd-fail-preapprove': None}])
+
+    # Create some balance, make sure it's entirely settled.
+    l1.pay(l2, 200000000)
+    wait_for(lambda: only_one(l2.rpc.listpeerchannels()['channels'])['htlcs'] == [])
+
+    # This will fail at the preapprove step.
+    inv = l1.rpc.invoice(123000, 'label', 'description', 3700)['bolt11']
+    with pytest.raises(RpcError, match='invoice was declined'):
+        l2.rpc.pay(inv)
+
+    # This will fail the same way
+    with pytest.raises(RpcError, match='invoice was declined'):
+        l2.rpc.check('pay', bolt11=inv)
+
+    # Now keysend.
+    with pytest.raises(RpcError, match='keysend was declined'):
+        l2.rpc.keysend(l1.info['id'], 1000)
+    with pytest.raises(RpcError, match='keysend was declined'):
+        l2.rpc.check('keysend', destination=l1.info['id'], amount_msat=1000)

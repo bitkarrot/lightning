@@ -68,6 +68,18 @@ static char *opt_set_u64(const char *arg, u64 *u)
 		return tal_fmt(tmpctx, "'%s' is out of range", arg);
 	return NULL;
 }
+
+static char *opt_set_u64_dynamic(const char *arg, u64 *u)
+{
+	u64 ignored;
+
+	/* In case we're called for arg checking only */
+	if (!u)
+		u = &ignored;
+
+	return opt_set_u64(arg, u);
+}
+
 static char *opt_set_u32(const char *arg, u32 *u)
 {
 	char *endp;
@@ -337,7 +349,7 @@ static char *opt_add_addr_withtype(const char *arg,
 					       arg + strlen("dns:"),
 					       arg);
 			}
-			/* BOLT-hostnames #7:
+			/* BOLT #7:
 			 * The origin node:
 			 * ...
 			 *   - MUST NOT announce more than one `type 5` DNS hostname.
@@ -673,6 +685,15 @@ static char *opt_set_hsm_password(struct lightningd *ld)
 	return NULL;
 }
 
+static char *opt_set_max_htlc_cltv(const char *arg, struct lightningd *ld)
+{
+	if (!opt_deprecated_ok(ld, "max-locktime-blocks", NULL,
+			       "v24.05", "v24.11"))
+		return "--max-locktime-blocks has been deprecated (BOLT #4 says 2016)";
+
+	return opt_set_u32(arg, &ld->config.max_htlc_cltv);
+}
+
 static char *opt_force_privkey(const char *optarg, struct lightningd *ld)
 {
 	tal_free(ld->dev_force_privkey);
@@ -919,6 +940,18 @@ static void dev_register_opts(struct lightningd *ld)
 		     opt_set_bool,
 		     &ld->dev_allow_shutdown_destination_change,
 		     "Allow destination override on close, even if risky");
+	clnopt_noarg("--dev-hsmd-no-preapprove-check", OPT_DEV,
+		     opt_set_bool,
+		     &ld->dev_hsmd_no_preapprove_check,
+		     "Tell hsmd not to support preapprove_check msgs");
+	clnopt_noarg("--dev-hsmd-fail-preapprove", OPT_DEV,
+		     opt_set_bool,
+		     &ld->dev_hsmd_fail_preapprove,
+		     "Tell hsmd to always deny preapprove_invoice / preapprove_keysend");
+	clnopt_witharg("--dev-fd-limit-multiplier", OPT_DEV|OPT_SHOWINT,
+		       opt_set_u32, opt_show_u32,
+		       &ld->fd_limit_multiplier,
+		       "Try to set fd limit to this many times by number of channels (default: 2)");
 	/* This is handled directly in daemon_developer_mode(), so we ignore it here */
 	clnopt_noarg("--dev-debug-self", OPT_DEV,
 		     opt_ignore,
@@ -930,9 +963,14 @@ static const struct config testnet_config = {
 	/* 6 blocks to catch cheating attempts. */
 	.locktime_blocks = 6,
 
-	/* They can have up to 14 days, maximumu value that lnd will ask for by default. */
-	/* FIXME Convince lnd to use more reasonable defaults... */
-	.locktime_max = 14 * 24 * 6,
+	/* BOLT #4:
+	 * ## `max_htlc_cltv` Selection
+	 *
+	 * This ... value is defined as 2016 blocks, based on historical value
+	 * deployed by Lightning implementations.
+	 */
+	/* FIXME: Typo in spec for CLTV in descripton!  But it breaks our spelling check, so we omit it above */
+	.max_htlc_cltv = 2016,
 
 	/* We're fairly trusting, under normal circumstances. */
 	.anchor_confirms = 1,
@@ -995,9 +1033,14 @@ static const struct config mainnet_config = {
 	/* ~one day to catch cheating attempts. */
 	.locktime_blocks = 6 * 24,
 
-	/* They can have up to 14 days, maximumu value that lnd will ask for by default. */
-	/* FIXME Convince lnd to use more reasonable defaults... */
-	.locktime_max = 14 * 24 * 6,
+	/* BOLT #4:
+	 * ## `max_htlc_cltv` Selection
+	 *
+	 * This ... value is defined as 2016 blocks, based on historical value
+	 * deployed by Lightning implementations.
+	 */
+	/* FIXME: Typo in spec for CLTV in descripton!  But it breaks our spelling check, so we omit it above */
+	.max_htlc_cltv = 2016,
 
 	/* We're fairly trusting, under normal circumstances. */
 	.anchor_confirms = 3,
@@ -1488,9 +1531,8 @@ static void register_opts(struct lightningd *ld)
 	clnopt_witharg("--watchtime-blocks", OPT_SHOWINT, opt_set_u32, opt_show_u32,
 			 &ld->config.locktime_blocks,
 			 "Blocks before peer can unilaterally spend funds");
-	clnopt_witharg("--max-locktime-blocks", OPT_SHOWINT, opt_set_u32, opt_show_u32,
-			 &ld->config.locktime_max,
-			 "Maximum blocks funds may be locked for");
+	opt_register_arg("--max-locktime-blocks", opt_set_max_htlc_cltv, NULL,
+			 ld, opt_hidden);
 	clnopt_witharg("--funding-confirms", OPT_SHOWINT, opt_set_u32, opt_show_u32,
 			 &ld->config.anchor_confirms,
 			 "Confirmations required for funding transaction");
@@ -1533,9 +1575,10 @@ static void register_opts(struct lightningd *ld)
 		       opt_set_msat,
 		       opt_show_msat, &ld->config.max_dust_htlc_exposure_msat,
 		       "Max HTLC amount that can be trimmed");
-	clnopt_witharg("--min-capacity-sat", OPT_SHOWINT|OPT_DYNAMIC, opt_set_u64, opt_show_u64,
-			 &ld->config.min_capacity_sat,
-			 "Minimum capacity in satoshis for accepting channels");
+	clnopt_witharg("--min-capacity-sat", OPT_SHOWINT|OPT_DYNAMIC,
+		       opt_set_u64_dynamic, opt_show_u64,
+		       &ld->config.min_capacity_sat,
+		       "Minimum capacity in satoshis for accepting channels");
 	clnopt_witharg("--addr", OPT_MULTI, opt_add_addr, NULL,
 		       ld,
 		       "Set an IP address (v4 or v6) to listen on and announce to the network for incoming connections");

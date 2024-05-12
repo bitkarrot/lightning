@@ -15,6 +15,8 @@ service Node {
 	rpc ListChannels(ListchannelsRequest) returns (ListchannelsResponse) {}
 	rpc AddGossip(AddgossipRequest) returns (AddgossipResponse) {}
 	rpc AutoCleanInvoice(AutocleaninvoiceRequest) returns (AutocleaninvoiceResponse) {}
+	rpc AutoCleanOnce(AutocleanonceRequest) returns (AutocleanonceResponse) {}
+	rpc AutoCleanStatus(AutocleanstatusRequest) returns (AutocleanstatusResponse) {}
 	rpc CheckMessage(CheckmessageRequest) returns (CheckmessageResponse) {}
 	rpc Close(CloseRequest) returns (CloseResponse) {}
 	rpc ConnectPeer(ConnectRequest) returns (ConnectResponse) {}
@@ -49,16 +51,29 @@ service Node {
 	rpc ListClosedChannels(ListclosedchannelsRequest) returns (ListclosedchannelsResponse) {}
 	rpc DecodePay(DecodepayRequest) returns (DecodepayResponse) {}
 	rpc Decode(DecodeRequest) returns (DecodeResponse) {}
+	rpc DelPay(DelpayRequest) returns (DelpayResponse) {}
+	rpc DelForward(DelforwardRequest) returns (DelforwardResponse) {}
+	rpc DisableOffer(DisableofferRequest) returns (DisableofferResponse) {}
 	rpc Disconnect(DisconnectRequest) returns (DisconnectResponse) {}
 	rpc Feerates(FeeratesRequest) returns (FeeratesResponse) {}
 	rpc FetchInvoice(FetchinvoiceRequest) returns (FetchinvoiceResponse) {}
+	rpc FundChannel_Cancel(Fundchannel_cancelRequest) returns (Fundchannel_cancelResponse) {}
+	rpc FundChannel_Complete(Fundchannel_completeRequest) returns (Fundchannel_completeResponse) {}
 	rpc FundChannel(FundchannelRequest) returns (FundchannelResponse) {}
+	rpc FundChannel_Start(Fundchannel_startRequest) returns (Fundchannel_startResponse) {}
+	rpc GetLog(GetlogRequest) returns (GetlogResponse) {}
 	rpc GetRoute(GetrouteRequest) returns (GetrouteResponse) {}
 	rpc ListForwards(ListforwardsRequest) returns (ListforwardsResponse) {}
 	rpc ListOffers(ListoffersRequest) returns (ListoffersResponse) {}
 	rpc ListPays(ListpaysRequest) returns (ListpaysResponse) {}
 	rpc ListHtlcs(ListhtlcsRequest) returns (ListhtlcsResponse) {}
+	rpc MultiFundChannel(MultifundchannelRequest) returns (MultifundchannelResponse) {}
 	rpc Offer(OfferRequest) returns (OfferResponse) {}
+	rpc OpenChannel_Abort(Openchannel_abortRequest) returns (Openchannel_abortResponse) {}
+	rpc OpenChannel_Bump(Openchannel_bumpRequest) returns (Openchannel_bumpResponse) {}
+	rpc OpenChannel_Init(Openchannel_initRequest) returns (Openchannel_initResponse) {}
+	rpc OpenChannel_Signed(Openchannel_signedRequest) returns (Openchannel_signedResponse) {}
+	rpc OpenChannel_Update(Openchannel_updateRequest) returns (Openchannel_updateResponse) {}
 	rpc Ping(PingRequest) returns (PingResponse) {}
 	rpc SendCustomMsg(SendcustommsgRequest) returns (SendcustommsgResponse) {}
 	rpc SetChannel(SetchannelRequest) returns (SetchannelResponse) {}
@@ -70,6 +85,11 @@ service Node {
 	rpc PreApproveKeysend(PreapprovekeysendRequest) returns (PreapprovekeysendResponse) {}
 	rpc PreApproveInvoice(PreapproveinvoiceRequest) returns (PreapproveinvoiceResponse) {}
 	rpc StaticBackup(StaticbackupRequest) returns (StaticbackupResponse) {}
+	rpc BkprChannelsApy(BkprchannelsapyRequest) returns (BkprchannelsapyResponse) {}
+	rpc BkprDumpIncomeCsv(BkprdumpincomecsvRequest) returns (BkprdumpincomecsvResponse) {}
+	rpc BkprInspect(BkprinspectRequest) returns (BkprinspectResponse) {}
+	rpc BkprListAccountEvents(BkprlistaccounteventsRequest) returns (BkprlistaccounteventsResponse) {}
+	rpc BkprListBalances(BkprlistbalancesRequest) returns (BkprlistbalancesResponse) {}
 	rpc BkprListIncome(BkprlistincomeRequest) returns (BkprlistincomeResponse) {}
 }
 
@@ -121,16 +141,17 @@ message GetinfoBinding {
 	// Getinfo.binding[].type
 	enum GetinfoBindingType {
 		LOCAL_SOCKET = 0;
-		WEBSOCKET = 5;
 		IPV4 = 1;
 		IPV6 = 2;
 		TORV2 = 3;
 		TORV3 = 4;
+		WEBSOCKET = 5;
 	}
 	GetinfoBindingType item_type = 1;
 	optional string address = 2;
 	optional uint32 port = 3;
 	optional string socket = 4;
+	optional string subtype = 5;
 }
 
 message ListpeersRequest {
@@ -140,6 +161,7 @@ message ListpeersRequest {
 		DEBUG = 1;
 		INFO = 2;
 		UNUSUAL = 3;
+		TRACE = 4;
 	}
 	optional bytes id = 1;
 	optional ListpeersLevel level = 2;
@@ -152,11 +174,11 @@ message ListpeersResponse {
 message ListpeersPeers {
 	bytes id = 1;
 	bool connected = 2;
-	optional uint32 num_channels = 8;
 	repeated ListpeersPeersLog log = 3;
 	repeated string netaddr = 5;
-	optional string remote_addr = 7;
 	optional bytes features = 6;
+	optional string remote_addr = 7;
+	optional uint32 num_channels = 8;
 }
 
 message ListpeersPeersLog {
@@ -169,6 +191,7 @@ message ListpeersPeersLog {
 		DEBUG = 4;
 		IO_IN = 5;
 		IO_OUT = 6;
+		TRACE = 7;
 	}
 	ListpeersPeersLogType item_type = 1;
 	optional uint32 num_skipped = 2;
@@ -203,8 +226,9 @@ message ListfundsOutputs {
 	optional string address = 5;
 	optional bytes redeemscript = 6;
 	ListfundsOutputsStatus status = 7;
-	bool reserved = 9;
 	optional uint32 blockheight = 8;
+	bool reserved = 9;
+	optional uint32 reserved_to_block = 10;
 }
 
 message ListfundsChannels {
@@ -215,20 +239,20 @@ message ListfundsChannels {
 	uint32 funding_output = 5;
 	bool connected = 6;
 	ChannelState state = 7;
-	optional bytes channel_id = 9;
 	optional string short_channel_id = 8;
+	optional bytes channel_id = 9;
 }
 
 message SendpayRequest {
 	repeated SendpayRoute route = 1;
 	bytes payment_hash = 2;
 	optional string label = 3;
-	optional Amount amount_msat = 10;
 	optional string bolt11 = 5;
 	optional bytes payment_secret = 6;
 	optional uint64 partid = 7;
-	optional bytes localinvreqid = 11;
 	optional uint64 groupid = 9;
+	optional Amount amount_msat = 10;
+	optional bytes localinvreqid = 11;
 	optional bytes payment_metadata = 12;
 	optional string description = 13;
 }
@@ -239,8 +263,6 @@ message SendpayResponse {
 		PENDING = 0;
 		COMPLETE = 1;
 	}
-	optional uint64 created_index = 16;
-	optional uint64 updated_index = 17;
 	uint64 id = 1;
 	optional uint64 groupid = 2;
 	bytes payment_hash = 3;
@@ -248,7 +270,6 @@ message SendpayResponse {
 	optional Amount amount_msat = 5;
 	optional bytes destination = 6;
 	uint64 created_at = 7;
-	optional uint64 completed_at = 15;
 	Amount amount_sent_msat = 8;
 	optional string label = 9;
 	optional uint64 partid = 10;
@@ -256,12 +277,15 @@ message SendpayResponse {
 	optional string bolt12 = 12;
 	optional bytes payment_preimage = 13;
 	optional string message = 14;
+	optional uint64 completed_at = 15;
+	optional uint64 created_index = 16;
+	optional uint64 updated_index = 17;
 }
 
 message SendpayRoute {
 	bytes id = 2;
-	string channel = 4;
 	uint32 delay = 3;
+	string channel = 4;
 	Amount amount_msat = 5;
 }
 
@@ -279,7 +303,6 @@ message ListchannelsChannels {
 	bytes source = 1;
 	bytes destination = 2;
 	string short_channel_id = 3;
-	uint32 direction = 16;
 	bool public = 4;
 	Amount amount_msat = 5;
 	uint32 message_flags = 6;
@@ -292,6 +315,7 @@ message ListchannelsChannels {
 	Amount htlc_minimum_msat = 13;
 	optional Amount htlc_maximum_msat = 14;
 	bytes features = 15;
+	uint32 direction = 16;
 }
 
 message AddgossipRequest {
@@ -310,6 +334,107 @@ message AutocleaninvoiceResponse {
 	bool enabled = 1;
 	optional uint64 expired_by = 2;
 	optional uint64 cycle_seconds = 3;
+}
+
+message AutocleanonceRequest {
+	AutocleanSubsystem subsystem = 1;
+	uint64 age = 2;
+}
+
+message AutocleanonceResponse {
+	AutocleanonceAutoclean autoclean = 1;
+}
+
+message AutocleanonceAutoclean {
+	optional AutocleanonceAutocleanSucceededforwards succeededforwards = 1;
+	optional AutocleanonceAutocleanFailedforwards failedforwards = 2;
+	optional AutocleanonceAutocleanSucceededpays succeededpays = 3;
+	optional AutocleanonceAutocleanFailedpays failedpays = 4;
+	optional AutocleanonceAutocleanPaidinvoices paidinvoices = 5;
+	optional AutocleanonceAutocleanExpiredinvoices expiredinvoices = 6;
+}
+
+message AutocleanonceAutocleanSucceededforwards {
+	uint64 cleaned = 1;
+	uint64 uncleaned = 2;
+}
+
+message AutocleanonceAutocleanFailedforwards {
+	uint64 cleaned = 1;
+	uint64 uncleaned = 2;
+}
+
+message AutocleanonceAutocleanSucceededpays {
+	uint64 cleaned = 1;
+	uint64 uncleaned = 2;
+}
+
+message AutocleanonceAutocleanFailedpays {
+	uint64 cleaned = 1;
+	uint64 uncleaned = 2;
+}
+
+message AutocleanonceAutocleanPaidinvoices {
+	uint64 cleaned = 1;
+	uint64 uncleaned = 2;
+}
+
+message AutocleanonceAutocleanExpiredinvoices {
+	uint64 cleaned = 1;
+	uint64 uncleaned = 2;
+}
+
+message AutocleanstatusRequest {
+	optional AutocleanSubsystem subsystem = 1;
+}
+
+message AutocleanstatusResponse {
+	AutocleanstatusAutoclean autoclean = 1;
+}
+
+message AutocleanstatusAutoclean {
+	optional AutocleanstatusAutocleanSucceededforwards succeededforwards = 1;
+	optional AutocleanstatusAutocleanFailedforwards failedforwards = 2;
+	optional AutocleanstatusAutocleanSucceededpays succeededpays = 3;
+	optional AutocleanstatusAutocleanFailedpays failedpays = 4;
+	optional AutocleanstatusAutocleanPaidinvoices paidinvoices = 5;
+	optional AutocleanstatusAutocleanExpiredinvoices expiredinvoices = 6;
+}
+
+message AutocleanstatusAutocleanSucceededforwards {
+	bool enabled = 1;
+	uint64 cleaned = 2;
+	optional uint64 age = 3;
+}
+
+message AutocleanstatusAutocleanFailedforwards {
+	bool enabled = 1;
+	uint64 cleaned = 2;
+	optional uint64 age = 3;
+}
+
+message AutocleanstatusAutocleanSucceededpays {
+	bool enabled = 1;
+	uint64 cleaned = 2;
+	optional uint64 age = 3;
+}
+
+message AutocleanstatusAutocleanFailedpays {
+	bool enabled = 1;
+	uint64 cleaned = 2;
+	optional uint64 age = 3;
+}
+
+message AutocleanstatusAutocleanPaidinvoices {
+	bool enabled = 1;
+	uint64 cleaned = 2;
+	optional uint64 age = 3;
+}
+
+message AutocleanstatusAutocleanExpiredinvoices {
+	bool enabled = 1;
+	uint64 cleaned = 2;
+	optional uint64 age = 3;
 }
 
 message CheckmessageRequest {
@@ -399,14 +524,14 @@ message CreateinvoiceResponse {
 	CreateinvoiceStatus status = 6;
 	string description = 7;
 	uint64 expires_at = 8;
-	optional uint64 created_index = 16;
 	optional uint64 pay_index = 9;
 	optional Amount amount_received_msat = 10;
 	optional uint64 paid_at = 11;
-	optional CreateinvoicePaid_outpoint paid_outpoint = 17;
 	optional bytes payment_preimage = 12;
 	optional bytes local_offer_id = 13;
 	optional string invreq_payer_note = 15;
+	optional uint64 created_index = 16;
+	optional CreateinvoicePaid_outpoint paid_outpoint = 17;
 }
 
 message CreateinvoicePaid_outpoint {
@@ -423,18 +548,18 @@ message DatastoreRequest {
 		MUST_APPEND = 3;
 		CREATE_OR_APPEND = 4;
 	}
-	repeated string key = 5;
-	optional string string = 6;
 	optional bytes hex = 2;
 	optional DatastoreMode mode = 3;
 	optional uint64 generation = 4;
+	repeated string key = 5;
+	optional string string = 6;
 }
 
 message DatastoreResponse {
-	repeated string key = 5;
 	optional uint64 generation = 2;
 	optional bytes hex = 3;
 	optional string string = 4;
+	repeated string key = 5;
 }
 
 message DatastoreusageRequest {
@@ -468,15 +593,15 @@ message CreateonionHops {
 }
 
 message DeldatastoreRequest {
-	repeated string key = 3;
 	optional uint64 generation = 2;
+	repeated string key = 3;
 }
 
 message DeldatastoreResponse {
-	repeated string key = 5;
 	optional uint64 generation = 2;
 	optional bytes hex = 3;
 	optional string string = 4;
+	repeated string key = 5;
 }
 
 message DelinvoiceRequest {
@@ -504,23 +629,27 @@ message DelinvoiceResponse {
 	optional Amount amount_msat = 4;
 	optional string description = 5;
 	bytes payment_hash = 6;
-	optional uint64 created_index = 12;
-	optional uint64 updated_index = 13;
 	DelinvoiceStatus status = 7;
 	uint64 expires_at = 8;
 	optional bytes local_offer_id = 9;
 	optional string invreq_payer_note = 11;
+	optional uint64 created_index = 12;
+	optional uint64 updated_index = 13;
+	optional uint64 pay_index = 14;
+	optional Amount amount_received_msat = 15;
+	optional uint64 paid_at = 16;
+	optional bytes payment_preimage = 17;
 }
 
 message InvoiceRequest {
-	AmountOrAny amount_msat = 10;
-	string label = 3;
 	string description = 2;
-	optional uint64 expiry = 7;
+	string label = 3;
 	repeated string fallbacks = 4;
 	optional bytes preimage = 5;
 	optional uint32 cltv = 6;
+	optional uint64 expiry = 7;
 	optional bool deschashonly = 9;
+	AmountOrAny amount_msat = 10;
 }
 
 message InvoiceResponse {
@@ -528,12 +657,12 @@ message InvoiceResponse {
 	bytes payment_hash = 2;
 	bytes payment_secret = 3;
 	uint64 expires_at = 4;
-	optional uint64 created_index = 10;
 	optional string warning_capacity = 5;
 	optional string warning_offline = 6;
 	optional string warning_deadends = 7;
 	optional string warning_private_unused = 8;
 	optional string warning_mpp = 9;
+	optional uint64 created_index = 10;
 }
 
 message ListdatastoreRequest {
@@ -586,14 +715,14 @@ message ListinvoicesInvoices {
 	optional string bolt11 = 7;
 	optional string bolt12 = 8;
 	optional bytes local_offer_id = 9;
-	optional string invreq_payer_note = 15;
-	optional uint64 created_index = 16;
-	optional uint64 updated_index = 17;
 	optional uint64 pay_index = 11;
 	optional Amount amount_received_msat = 12;
 	optional uint64 paid_at = 13;
-	optional ListinvoicesInvoicesPaid_outpoint paid_outpoint = 18;
 	optional bytes payment_preimage = 14;
+	optional string invreq_payer_note = 15;
+	optional uint64 created_index = 16;
+	optional uint64 updated_index = 17;
+	optional ListinvoicesInvoicesPaid_outpoint paid_outpoint = 18;
 }
 
 message ListinvoicesInvoicesPaid_outpoint {
@@ -609,10 +738,10 @@ message SendonionRequest {
 	repeated bytes shared_secrets = 5;
 	optional uint32 partid = 6;
 	optional string bolt11 = 7;
-	optional Amount amount_msat = 12;
 	optional bytes destination = 9;
-	optional bytes localinvreqid = 13;
 	optional uint64 groupid = 11;
+	optional Amount amount_msat = 12;
+	optional bytes localinvreqid = 13;
 	optional string description = 14;
 }
 
@@ -622,7 +751,6 @@ message SendonionResponse {
 		PENDING = 0;
 		COMPLETE = 1;
 	}
-	optional uint64 created_index = 14;
 	uint64 id = 1;
 	bytes payment_hash = 2;
 	SendonionStatus status = 3;
@@ -633,10 +761,11 @@ message SendonionResponse {
 	optional string label = 8;
 	optional string bolt11 = 9;
 	optional string bolt12 = 10;
-	optional uint64 partid = 13;
-	optional uint64 updated_index = 15;
 	optional bytes payment_preimage = 11;
 	optional string message = 12;
+	optional uint64 partid = 13;
+	optional uint64 created_index = 14;
+	optional uint64 updated_index = 15;
 }
 
 message SendonionFirst_hop {
@@ -676,12 +805,9 @@ message ListsendpaysPayments {
 		FAILED = 1;
 		COMPLETE = 2;
 	}
-	optional uint64 created_index = 16;
 	uint64 id = 1;
 	uint64 groupid = 2;
-	optional uint64 partid = 15;
 	bytes payment_hash = 3;
-	optional uint64 updated_index = 17;
 	ListsendpaysPaymentsStatus status = 4;
 	optional Amount amount_msat = 5;
 	optional bytes destination = 6;
@@ -689,11 +815,14 @@ message ListsendpaysPayments {
 	Amount amount_sent_msat = 8;
 	optional string label = 9;
 	optional string bolt11 = 10;
-	optional string description = 14;
 	optional string bolt12 = 11;
-	optional uint64 completed_at = 18;
 	optional bytes payment_preimage = 12;
 	optional bytes erroronion = 13;
+	optional string description = 14;
+	optional uint64 partid = 15;
+	optional uint64 created_index = 16;
+	optional uint64 updated_index = 17;
+	optional uint64 completed_at = 18;
 }
 
 message ListtransactionsRequest {
@@ -722,23 +851,23 @@ message ListtransactionsTransactionsInputs {
 
 message ListtransactionsTransactionsOutputs {
 	uint32 index = 1;
-	Amount amount_msat = 6;
 	bytes scriptPubKey = 3;
+	Amount amount_msat = 6;
 }
 
 message PayRequest {
 	string bolt11 = 1;
-	optional Amount amount_msat = 13;
 	optional string label = 3;
-	optional double riskfactor = 8;
 	optional double maxfeepercent = 4;
 	optional uint32 retry_for = 5;
 	optional uint32 maxdelay = 6;
 	optional Amount exemptfee = 7;
-	optional bytes localinvreqid = 14;
+	optional double riskfactor = 8;
 	repeated string exclude = 10;
 	optional Amount maxfee = 11;
 	optional string description = 12;
+	optional Amount amount_msat = 13;
+	optional bytes localinvreqid = 14;
 	optional Amount partial_msat = 15;
 }
 
@@ -775,6 +904,16 @@ message ListnodesNodes {
 	optional bytes color = 4;
 	optional bytes features = 5;
 	repeated ListnodesNodesAddresses addresses = 6;
+	optional ListnodesNodesOption_will_fund option_will_fund = 7;
+}
+
+message ListnodesNodesOption_will_fund {
+	Amount lease_fee_base_msat = 1;
+	uint32 lease_fee_basis = 2;
+	uint32 funding_weight = 3;
+	Amount channel_fee_max_base_msat = 4;
+	uint32 channel_fee_max_proportional_thousandths = 5;
+	bytes compact_lease = 6;
 }
 
 message ListnodesNodesAddresses {
@@ -810,13 +949,13 @@ message WaitanyinvoiceResponse {
 	optional Amount amount_msat = 6;
 	optional string bolt11 = 7;
 	optional string bolt12 = 8;
-	optional uint64 created_index = 13;
-	optional uint64 updated_index = 14;
 	optional uint64 pay_index = 9;
 	optional Amount amount_received_msat = 10;
 	optional uint64 paid_at = 11;
-	optional WaitanyinvoicePaid_outpoint paid_outpoint = 15;
 	optional bytes payment_preimage = 12;
+	optional uint64 created_index = 13;
+	optional uint64 updated_index = 14;
+	optional WaitanyinvoicePaid_outpoint paid_outpoint = 15;
 }
 
 message WaitanyinvoicePaid_outpoint {
@@ -842,13 +981,13 @@ message WaitinvoiceResponse {
 	optional Amount amount_msat = 6;
 	optional string bolt11 = 7;
 	optional string bolt12 = 8;
-	optional uint64 created_index = 13;
-	optional uint64 updated_index = 14;
 	optional uint64 pay_index = 9;
 	optional Amount amount_received_msat = 10;
 	optional uint64 paid_at = 11;
-	optional WaitinvoicePaid_outpoint paid_outpoint = 15;
 	optional bytes payment_preimage = 12;
+	optional uint64 created_index = 13;
+	optional uint64 updated_index = 14;
+	optional WaitinvoicePaid_outpoint paid_outpoint = 15;
 }
 
 message WaitinvoicePaid_outpoint {
@@ -858,8 +997,8 @@ message WaitinvoicePaid_outpoint {
 
 message WaitsendpayRequest {
 	bytes payment_hash = 1;
-	optional uint32 timeout = 3;
 	optional uint64 partid = 2;
+	optional uint32 timeout = 3;
 	optional uint64 groupid = 4;
 }
 
@@ -868,7 +1007,6 @@ message WaitsendpayResponse {
 	enum WaitsendpayStatus {
 		COMPLETE = 0;
 	}
-	optional uint64 created_index = 15;
 	uint64 id = 1;
 	optional uint64 groupid = 2;
 	bytes payment_hash = 3;
@@ -876,37 +1014,38 @@ message WaitsendpayResponse {
 	optional Amount amount_msat = 5;
 	optional bytes destination = 6;
 	uint64 created_at = 7;
-	optional uint64 updated_index = 16;
-	optional double completed_at = 14;
 	Amount amount_sent_msat = 8;
 	optional string label = 9;
 	optional uint64 partid = 10;
 	optional string bolt11 = 11;
 	optional string bolt12 = 12;
 	optional bytes payment_preimage = 13;
+	optional double completed_at = 14;
+	optional uint64 created_index = 15;
+	optional uint64 updated_index = 16;
 }
 
 message NewaddrRequest {
 	// NewAddr.addresstype
 	enum NewaddrAddresstype {
 		BECH32 = 0;
-		P2TR = 3;
 		ALL = 2;
+		P2TR = 3;
 	}
 	optional NewaddrAddresstype addresstype = 1;
 }
 
 message NewaddrResponse {
-	optional string p2tr = 3;
 	optional string bech32 = 1;
+	optional string p2tr = 3;
 }
 
 message WithdrawRequest {
 	string destination = 1;
 	AmountOrAll satoshi = 2;
-	optional Feerate feerate = 5;
 	optional uint32 minconf = 3;
 	repeated Outpoint utxos = 4;
+	optional Feerate feerate = 5;
 }
 
 message WithdrawResponse {
@@ -917,7 +1056,6 @@ message WithdrawResponse {
 
 message KeysendRequest {
 	bytes destination = 1;
-	Amount amount_msat = 10;
 	optional string label = 3;
 	optional double maxfeepercent = 4;
 	optional uint32 retry_for = 5;
@@ -925,6 +1063,7 @@ message KeysendRequest {
 	optional Amount exemptfee = 7;
 	optional RoutehintList routehints = 8;
 	optional TlvStream extratlvs = 9;
+	Amount amount_msat = 10;
 }
 
 message KeysendResponse {
@@ -998,9 +1137,9 @@ message UtxopsbtRequest {
 	uint32 startweight = 3;
 	repeated Outpoint utxos = 4;
 	optional uint32 reserve = 5;
-	optional bool reservedok = 8;
 	optional uint32 locktime = 6;
 	optional uint32 min_witness_weight = 7;
+	optional bool reservedok = 8;
 	optional bool excess_as_change = 9;
 	optional bool opening_anchor_channel = 10;
 }
@@ -1032,10 +1171,10 @@ message TxdiscardResponse {
 }
 
 message TxprepareRequest {
-	repeated OutputDesc outputs = 5;
 	optional Feerate feerate = 2;
 	optional uint32 minconf = 3;
 	repeated Outpoint utxos = 4;
+	repeated OutputDesc outputs = 5;
 }
 
 message TxprepareResponse {
@@ -1082,12 +1221,8 @@ message ListpeerchannelsChannels {
 	}
 	optional bytes peer_id = 1;
 	optional bool peer_connected = 2;
-	optional bool reestablished = 58;
 	optional ListpeerchannelsChannelsState state = 3;
 	optional bytes scratch_txid = 4;
-	optional ListpeerchannelsChannelsUpdates updates = 55;
-	optional bool ignore_fee_limits = 54;
-	optional bool lost_state = 57;
 	optional ListpeerchannelsChannelsFeerate feerate = 6;
 	optional string owner = 7;
 	optional string short_channel_id = 8;
@@ -1132,9 +1267,15 @@ message ListpeerchannelsChannels {
 	optional Amount out_offered_msat = 49;
 	optional uint64 out_payments_fulfilled = 50;
 	optional Amount out_fulfilled_msat = 51;
-	optional uint64 last_stable_connection = 56;
 	repeated ListpeerchannelsChannelsHtlcs htlcs = 52;
 	optional string close_to_addr = 53;
+	optional bool ignore_fee_limits = 54;
+	optional ListpeerchannelsChannelsUpdates updates = 55;
+	optional uint64 last_stable_connection = 56;
+	optional bool lost_state = 57;
+	optional bool reestablished = 58;
+	optional Amount last_tx_fee_msat = 59;
+	optional uint32 direction = 60;
 }
 
 message ListpeerchannelsChannelsUpdates {
@@ -1168,9 +1309,9 @@ message ListpeerchannelsChannelsInflight {
 	optional uint32 funding_outnum = 2;
 	optional string feerate = 3;
 	optional Amount total_funding_msat = 4;
-	optional sint64 splice_amount = 7;
 	optional Amount our_funding_msat = 5;
 	optional bytes scratch_txid = 6;
+	optional sint64 splice_amount = 7;
 }
 
 message ListpeerchannelsChannelsFunding {
@@ -1377,6 +1518,11 @@ message DecodeResponse {
 	optional string warning_rune_invalid_utf8 = 74;
 	optional bytes hex = 75;
 	optional bytes decrypted = 76;
+	optional string signature = 77;
+	optional string currency = 78;
+	optional Amount amount_msat = 79;
+	optional string description = 80;
+	optional bytes features = 81;
 }
 
 message DecodeOffer_paths {
@@ -1402,7 +1548,18 @@ message DecodeInvoice_fallbacks {
 }
 
 message DecodeFallbacks {
+	// Decode.fallbacks[].type
+	enum DecodeFallbacksType {
+		P2PKH = 0;
+		P2SH = 1;
+		P2WPKH = 2;
+		P2WSH = 3;
+		P2TR = 4;
+	}
 	optional string warning_invoice_fallbacks_version_invalid = 1;
+	DecodeFallbacksType item_type = 2;
+	optional string addr = 3;
+	bytes hex = 4;
 }
 
 message DecodeExtra {
@@ -1413,6 +1570,76 @@ message DecodeExtra {
 message DecodeRestrictions {
 	repeated string alternatives = 1;
 	string summary = 2;
+}
+
+message DelpayRequest {
+	// DelPay.status
+	enum DelpayStatus {
+		COMPLETE = 0;
+		FAILED = 1;
+	}
+	bytes payment_hash = 1;
+	DelpayStatus status = 2;
+	optional uint64 partid = 3;
+	optional uint64 groupid = 4;
+}
+
+message DelpayResponse {
+	repeated DelpayPayments payments = 1;
+}
+
+message DelpayPayments {
+	// DelPay.payments[].status
+	enum DelpayPaymentsStatus {
+		PENDING = 0;
+		FAILED = 1;
+		COMPLETE = 2;
+	}
+	optional uint64 created_index = 1;
+	uint64 id = 2;
+	bytes payment_hash = 3;
+	DelpayPaymentsStatus status = 4;
+	Amount amount_sent_msat = 5;
+	optional uint64 partid = 6;
+	optional bytes destination = 7;
+	optional Amount amount_msat = 8;
+	uint64 created_at = 9;
+	optional uint64 updated_index = 10;
+	optional uint64 completed_at = 11;
+	optional uint64 groupid = 12;
+	optional bytes payment_preimage = 13;
+	optional string label = 14;
+	optional string bolt11 = 15;
+	optional string bolt12 = 16;
+	optional bytes erroronion = 17;
+}
+
+message DelforwardRequest {
+	// DelForward.status
+	enum DelforwardStatus {
+		SETTLED = 0;
+		LOCAL_FAILED = 1;
+		FAILED = 2;
+	}
+	string in_channel = 1;
+	uint64 in_htlc_id = 2;
+	DelforwardStatus status = 3;
+}
+
+message DelforwardResponse {
+}
+
+message DisableofferRequest {
+	bytes offer_id = 1;
+}
+
+message DisableofferResponse {
+	bytes offer_id = 1;
+	bool active = 2;
+	bool single_use = 3;
+	string bolt12 = 4;
+	bool used = 5;
+	optional string label = 6;
 }
 
 message DisconnectRequest {
@@ -1442,15 +1669,15 @@ message FeeratesResponse {
 message FeeratesPerkb {
 	uint32 min_acceptable = 1;
 	uint32 max_acceptable = 2;
-	optional uint32 floor = 10;
-	repeated FeeratesPerkbEstimates estimates = 9;
 	optional uint32 opening = 3;
 	optional uint32 mutual_close = 4;
 	optional uint32 unilateral_close = 5;
-	optional uint32 unilateral_anchor_close = 11;
 	optional uint32 delayed_to_us = 6;
 	optional uint32 htlc_resolution = 7;
 	optional uint32 penalty = 8;
+	repeated FeeratesPerkbEstimates estimates = 9;
+	optional uint32 floor = 10;
+	optional uint32 unilateral_anchor_close = 11;
 }
 
 message FeeratesPerkbEstimates {
@@ -1462,15 +1689,15 @@ message FeeratesPerkbEstimates {
 message FeeratesPerkw {
 	uint32 min_acceptable = 1;
 	uint32 max_acceptable = 2;
-	optional uint32 floor = 10;
-	repeated FeeratesPerkwEstimates estimates = 9;
 	optional uint32 opening = 3;
 	optional uint32 mutual_close = 4;
 	optional uint32 unilateral_close = 5;
-	optional uint32 unilateral_anchor_close = 11;
 	optional uint32 delayed_to_us = 6;
 	optional uint32 htlc_resolution = 7;
 	optional uint32 penalty = 8;
+	repeated FeeratesPerkwEstimates estimates = 9;
+	optional uint32 floor = 10;
+	optional uint32 unilateral_anchor_close = 11;
 }
 
 message FeeratesPerkwEstimates {
@@ -1483,9 +1710,9 @@ message FeeratesOnchain_fee_estimates {
 	uint64 opening_channel_satoshis = 1;
 	uint64 mutual_close_satoshis = 2;
 	uint64 unilateral_close_satoshis = 3;
-	optional uint64 unilateral_close_nonanchor_satoshis = 6;
 	uint64 htlc_timeout_satoshis = 4;
 	uint64 htlc_success_satoshis = 5;
+	optional uint64 unilateral_close_nonanchor_satoshis = 6;
 }
 
 message FetchinvoiceRequest {
@@ -1521,16 +1748,34 @@ message FetchinvoiceNext_period {
 	uint64 paywindow_end = 5;
 }
 
+message Fundchannel_cancelRequest {
+	bytes id = 1;
+}
+
+message Fundchannel_cancelResponse {
+	string cancelled = 1;
+}
+
+message Fundchannel_completeRequest {
+	bytes id = 1;
+	string psbt = 2;
+}
+
+message Fundchannel_completeResponse {
+	bytes channel_id = 1;
+	bool commitments_secured = 2;
+}
+
 message FundchannelRequest {
-	bytes id = 9;
 	AmountOrAll amount = 1;
 	optional Feerate feerate = 2;
 	optional bool announce = 3;
-	optional uint32 minconf = 10;
 	optional Amount push_msat = 5;
 	optional string close_to = 6;
 	optional Amount request_amt = 7;
 	optional string compact_lease = 8;
+	bytes id = 9;
+	optional uint32 minconf = 10;
 	repeated Outpoint utxos = 11;
 	optional uint32 mindepth = 12;
 	optional Amount reserve = 13;
@@ -1542,9 +1787,9 @@ message FundchannelResponse {
 	bytes txid = 2;
 	uint32 outnum = 3;
 	bytes channel_id = 4;
-	optional FundchannelChannel_type channel_type = 7;
 	optional bytes close_to = 5;
 	optional uint32 mindepth = 6;
+	optional FundchannelChannel_type channel_type = 7;
 }
 
 message FundchannelChannel_type {
@@ -1552,15 +1797,82 @@ message FundchannelChannel_type {
 	repeated ChannelTypeName names = 2;
 }
 
+message Fundchannel_startRequest {
+	bytes id = 1;
+	Amount amount = 2;
+	optional Feerate feerate = 3;
+	optional bool announce = 4;
+	optional string close_to = 5;
+	optional Amount push_msat = 6;
+	optional uint32 mindepth = 7;
+	optional Amount reserve = 8;
+	repeated uint32 channel_type = 9;
+}
+
+message Fundchannel_startResponse {
+	string funding_address = 1;
+	bytes scriptpubkey = 2;
+	optional Fundchannel_startChannel_type channel_type = 3;
+	optional bytes close_to = 4;
+	string warning_usage = 5;
+	optional uint32 mindepth = 6;
+}
+
+message Fundchannel_startChannel_type {
+	repeated uint32 bits = 1;
+	repeated ChannelTypeName names = 2;
+}
+
+message GetlogRequest {
+	// GetLog.level
+	enum GetlogLevel {
+		BROKEN = 0;
+		UNUSUAL = 1;
+		INFO = 2;
+		DEBUG = 3;
+		IO = 4;
+		TRACE = 5;
+	}
+	optional GetlogLevel level = 1;
+}
+
+message GetlogResponse {
+	string created_at = 1;
+	uint32 bytes_used = 2;
+	uint32 bytes_max = 3;
+	repeated GetlogLog log = 4;
+}
+
+message GetlogLog {
+	// GetLog.log[].type
+	enum GetlogLogType {
+		SKIPPED = 0;
+		BROKEN = 1;
+		UNUSUAL = 2;
+		INFO = 3;
+		DEBUG = 4;
+		IO_IN = 5;
+		IO_OUT = 6;
+		TRACE = 7;
+	}
+	GetlogLogType item_type = 1;
+	optional uint32 num_skipped = 2;
+	optional string time = 3;
+	optional string source = 4;
+	optional string log = 5;
+	optional bytes node_id = 6;
+	optional bytes data = 7;
+}
+
 message GetrouteRequest {
 	bytes id = 1;
-	Amount amount_msat = 9;
 	uint64 riskfactor = 3;
 	optional uint32 cltv = 4;
 	optional bytes fromid = 5;
 	optional uint32 fuzzpercent = 6;
 	repeated string exclude = 7;
 	optional uint32 maxhops = 8;
+	Amount amount_msat = 9;
 }
 
 message GetrouteResponse {
@@ -1618,18 +1930,21 @@ message ListforwardsForwards {
 		LEGACY = 0;
 		TLV = 1;
 	}
-	optional uint64 created_index = 12;
 	string in_channel = 1;
-	optional uint64 in_htlc_id = 10;
 	Amount in_msat = 2;
 	ListforwardsForwardsStatus status = 3;
 	double received_time = 4;
 	optional string out_channel = 5;
-	optional uint64 out_htlc_id = 11;
-	optional uint64 updated_index = 13;
-	optional ListforwardsForwardsStyle style = 9;
 	optional Amount fee_msat = 7;
 	optional Amount out_msat = 8;
+	optional ListforwardsForwardsStyle style = 9;
+	optional uint64 in_htlc_id = 10;
+	optional uint64 out_htlc_id = 11;
+	optional uint64 created_index = 12;
+	optional uint64 updated_index = 13;
+	optional double resolved_time = 14;
+	optional uint32 failcode = 15;
+	optional string failreason = 16;
 }
 
 message ListoffersRequest {
@@ -1677,16 +1992,16 @@ message ListpaysPays {
 	ListpaysPaysStatus status = 2;
 	optional bytes destination = 3;
 	uint64 created_at = 4;
-	optional uint64 completed_at = 12;
 	optional string label = 5;
 	optional string bolt11 = 6;
-	optional string description = 11;
 	optional string bolt12 = 7;
 	optional Amount amount_msat = 8;
 	optional Amount amount_sent_msat = 9;
+	optional bytes erroronion = 10;
+	optional string description = 11;
+	optional uint64 completed_at = 12;
 	optional bytes preimage = 13;
 	optional uint64 number_of_parts = 14;
-	optional bytes erroronion = 10;
 }
 
 message ListhtlcsRequest {
@@ -1712,6 +2027,65 @@ message ListhtlcsHtlcs {
 	HtlcState state = 7;
 }
 
+message MultifundchannelRequest {
+	repeated MultifundchannelDestinations destinations = 1;
+	optional Feerate feerate = 2;
+	optional sint64 minconf = 3;
+	repeated Outpoint utxos = 4;
+	optional sint64 minchannels = 5;
+	optional Feerate commitment_feerate = 6;
+}
+
+message MultifundchannelResponse {
+	bytes tx = 1;
+	bytes txid = 2;
+	repeated MultifundchannelChannel_ids channel_ids = 3;
+	repeated MultifundchannelFailed failed = 4;
+}
+
+message MultifundchannelDestinations {
+	string id = 1;
+	AmountOrAll amount = 2;
+	optional bool announce = 3;
+	optional Amount push_msat = 4;
+	optional string close_to = 5;
+	optional Amount request_amt = 6;
+	optional string compact_lease = 7;
+	optional uint32 mindepth = 8;
+	optional Amount reserve = 9;
+}
+
+message MultifundchannelChannel_ids {
+	bytes id = 1;
+	uint32 outnum = 2;
+	bytes channel_id = 3;
+	optional MultifundchannelChannel_idsChannel_type channel_type = 4;
+	optional bytes close_to = 5;
+}
+
+message MultifundchannelChannel_idsChannel_type {
+	repeated uint32 bits = 1;
+	repeated ChannelTypeName names = 2;
+}
+
+message MultifundchannelFailed {
+	// MultiFundChannel.failed[].method
+	enum MultifundchannelFailedMethod {
+		CONNECT = 0;
+		OPENCHANNEL_INIT = 1;
+		FUNDCHANNEL_START = 2;
+		FUNDCHANNEL_COMPLETE = 3;
+	}
+	bytes id = 1;
+	MultifundchannelFailedMethod method = 2;
+	MultifundchannelFailedError error = 3;
+}
+
+message MultifundchannelFailedError {
+	sint64 code = 1;
+	string message = 2;
+}
+
 message OfferRequest {
 	string amount = 1;
 	string description = 2;
@@ -1734,6 +2108,95 @@ message OfferResponse {
 	bool used = 5;
 	bool created = 6;
 	optional string label = 7;
+}
+
+message Openchannel_abortRequest {
+	bytes channel_id = 1;
+}
+
+message Openchannel_abortResponse {
+	bytes channel_id = 1;
+	bool channel_canceled = 2;
+	string reason = 3;
+}
+
+message Openchannel_bumpRequest {
+	bytes channel_id = 1;
+	string initialpsbt = 2;
+	optional Feerate funding_feerate = 3;
+	Amount amount = 4;
+}
+
+message Openchannel_bumpResponse {
+	bytes channel_id = 1;
+	optional Openchannel_bumpChannel_type channel_type = 2;
+	string psbt = 3;
+	bool commitments_secured = 4;
+	uint64 funding_serial = 5;
+	optional bool requires_confirmed_inputs = 6;
+}
+
+message Openchannel_bumpChannel_type {
+	repeated uint32 bits = 1;
+	repeated ChannelTypeName names = 2;
+}
+
+message Openchannel_initRequest {
+	bytes id = 1;
+	string initialpsbt = 2;
+	optional Feerate commitment_feerate = 3;
+	optional Feerate funding_feerate = 4;
+	optional bool announce = 5;
+	optional string close_to = 6;
+	optional Amount request_amt = 7;
+	optional bytes compact_lease = 8;
+	repeated uint32 channel_type = 9;
+	Amount amount = 10;
+}
+
+message Openchannel_initResponse {
+	bytes channel_id = 1;
+	string psbt = 2;
+	optional Openchannel_initChannel_type channel_type = 3;
+	bool commitments_secured = 4;
+	uint64 funding_serial = 5;
+	optional bool requires_confirmed_inputs = 6;
+}
+
+message Openchannel_initChannel_type {
+	repeated uint32 bits = 1;
+	repeated ChannelTypeName names = 2;
+}
+
+message Openchannel_signedRequest {
+	bytes channel_id = 1;
+	string signed_psbt = 2;
+}
+
+message Openchannel_signedResponse {
+	bytes channel_id = 1;
+	bytes tx = 2;
+	bytes txid = 3;
+}
+
+message Openchannel_updateRequest {
+	bytes channel_id = 1;
+	string psbt = 2;
+}
+
+message Openchannel_updateResponse {
+	bytes channel_id = 1;
+	optional Openchannel_updateChannel_type channel_type = 2;
+	string psbt = 3;
+	bool commitments_secured = 4;
+	uint32 funding_outnum = 5;
+	optional bytes close_to = 6;
+	optional bool requires_confirmed_inputs = 7;
+}
+
+message Openchannel_updateChannel_type {
+	repeated uint32 bits = 1;
+	repeated ChannelTypeName names = 2;
 }
 
 message PingRequest {
@@ -1775,11 +2238,11 @@ message SetchannelChannels {
 	optional string short_channel_id = 3;
 	Amount fee_base_msat = 4;
 	uint32 fee_proportional_millionths = 5;
-	optional bool ignore_fee_limits = 10;
 	Amount minimum_htlc_out_msat = 6;
 	optional string warning_htlcmin_too_low = 7;
 	Amount maximum_htlc_out_msat = 8;
 	optional string warning_htlcmax_too_high = 9;
+	optional bool ignore_fee_limits = 10;
 }
 
 message SigninvoiceRequest {
@@ -1838,6 +2301,34 @@ message WaitResponse {
 	optional uint64 created = 2;
 	optional uint64 updated = 3;
 	optional uint64 deleted = 4;
+	optional WaitDetails details = 5;
+}
+
+message WaitDetails {
+	// Wait.details.status
+	enum WaitDetailsStatus {
+		UNPAID = 0;
+		PAID = 1;
+		EXPIRED = 2;
+		PENDING = 3;
+		FAILED = 4;
+		COMPLETE = 5;
+		OFFERED = 6;
+		SETTLED = 7;
+		LOCAL_FAILED = 8;
+	}
+	optional WaitDetailsStatus status = 1;
+	optional string label = 2;
+	optional string description = 3;
+	optional string bolt11 = 4;
+	optional string bolt12 = 5;
+	optional uint64 partid = 6;
+	optional uint64 groupid = 7;
+	optional bytes payment_hash = 8;
+	optional string in_channel = 9;
+	optional uint64 in_htlc_id = 10;
+	optional Amount in_msat = 11;
+	optional string out_channel = 12;
 }
 
 message StopRequest {
@@ -1872,6 +2363,144 @@ message StaticbackupRequest {
 
 message StaticbackupResponse {
 	repeated bytes scb = 1;
+}
+
+message BkprchannelsapyRequest {
+	optional uint64 start_time = 1;
+	optional uint64 end_time = 2;
+}
+
+message BkprchannelsapyResponse {
+	repeated BkprchannelsapyChannels_apy channels_apy = 1;
+}
+
+message BkprchannelsapyChannels_apy {
+	string account = 1;
+	Amount routed_out_msat = 2;
+	Amount routed_in_msat = 3;
+	Amount lease_fee_paid_msat = 4;
+	Amount lease_fee_earned_msat = 5;
+	Amount pushed_out_msat = 6;
+	Amount pushed_in_msat = 7;
+	Amount our_start_balance_msat = 8;
+	Amount channel_start_balance_msat = 9;
+	Amount fees_out_msat = 10;
+	optional Amount fees_in_msat = 11;
+	string utilization_out = 12;
+	optional string utilization_out_initial = 13;
+	string utilization_in = 14;
+	optional string utilization_in_initial = 15;
+	string apy_out = 16;
+	optional string apy_out_initial = 17;
+	string apy_in = 18;
+	optional string apy_in_initial = 19;
+	string apy_total = 20;
+	optional string apy_total_initial = 21;
+	optional string apy_lease = 22;
+}
+
+message BkprdumpincomecsvRequest {
+	string csv_format = 1;
+	optional string csv_file = 2;
+	optional bool consolidate_fees = 3;
+	optional uint64 start_time = 4;
+	optional uint64 end_time = 5;
+}
+
+message BkprdumpincomecsvResponse {
+	// Bkpr-DumpIncomeCsv.csv_format
+	enum BkprdumpincomecsvCsv_format {
+		COINTRACKER = 0;
+		KOINLY = 1;
+		HARMONY = 2;
+		QUICKBOOKS = 3;
+	}
+	string csv_file = 1;
+	BkprdumpincomecsvCsv_format csv_format = 2;
+}
+
+message BkprinspectRequest {
+	string account = 1;
+}
+
+message BkprinspectResponse {
+	repeated BkprinspectTxs txs = 1;
+}
+
+message BkprinspectTxs {
+	bytes txid = 1;
+	optional uint32 blockheight = 2;
+	Amount fees_paid_msat = 3;
+	repeated BkprinspectTxsOutputs outputs = 4;
+}
+
+message BkprinspectTxsOutputs {
+	string account = 1;
+	uint32 outnum = 2;
+	Amount output_value_msat = 3;
+	string currency = 4;
+	optional Amount credit_msat = 5;
+	optional Amount debit_msat = 6;
+	optional string originating_account = 7;
+	optional string output_tag = 8;
+	optional string spend_tag = 9;
+	optional bytes spending_txid = 10;
+	optional bytes payment_id = 11;
+}
+
+message BkprlistaccounteventsRequest {
+	optional string account = 1;
+}
+
+message BkprlistaccounteventsResponse {
+	repeated BkprlistaccounteventsEvents events = 1;
+}
+
+message BkprlistaccounteventsEvents {
+	// Bkpr-ListAccountEvents.events[].type
+	enum BkprlistaccounteventsEventsType {
+		ONCHAIN_FEE = 0;
+		CHAIN = 1;
+		CHANNEL = 2;
+	}
+	string account = 1;
+	BkprlistaccounteventsEventsType item_type = 2;
+	string tag = 3;
+	Amount credit_msat = 4;
+	Amount debit_msat = 5;
+	string currency = 6;
+	uint32 timestamp = 7;
+	optional string outpoint = 8;
+	optional uint32 blockheight = 9;
+	optional string origin = 10;
+	optional bytes payment_id = 11;
+	optional bytes txid = 12;
+	optional string description = 13;
+	optional Amount fees_msat = 14;
+	optional bool is_rebalance = 15;
+	optional uint32 part_id = 16;
+}
+
+message BkprlistbalancesRequest {
+}
+
+message BkprlistbalancesResponse {
+	repeated BkprlistbalancesAccounts accounts = 1;
+}
+
+message BkprlistbalancesAccounts {
+	string account = 1;
+	repeated BkprlistbalancesAccountsBalances balances = 2;
+	optional bytes peer_id = 3;
+	optional bool we_opened = 4;
+	optional bool account_closed = 5;
+	optional bool account_resolved = 6;
+	optional uint32 resolved_at_block = 7;
+}
+
+message BkprlistbalancesAccountsBalances {
+	Amount balance_msat = 1;
+	string coin_type = 2;
 }
 
 message BkprlistincomeRequest {

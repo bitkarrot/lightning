@@ -118,6 +118,7 @@ struct payment *payment_new(tal_t *ctx, struct command *cmd,
 		p->invstring = parent->invstring;
 		p->description = parent->description;
 		p->mods = parent->mods;
+		p->chainlag = parent->chainlag;
 	} else {
 		assert(cmd != NULL);
 		p->partid = 0;
@@ -132,6 +133,7 @@ struct payment *payment_new(tal_t *ctx, struct command *cmd,
 		p->local_invreq_id = NULL;
 		p->groupid = 0;
 		p->mods = NULL;
+		p->chainlag = 0;
 	}
 
 	/* Initialize all modifier data so we can point to the fields when
@@ -276,16 +278,53 @@ struct payment_tree_result payment_collect_result(struct payment *p)
 	return res;
 }
 
+static struct command_result *payment_waitblockheight_cb(struct command *cmd,
+							 const char *buffer,
+							 const jsmntok_t *toks,
+							 struct payment *p)
+{
+	u32 syncheight;
+	json_scan(tmpctx, buffer, toks, "{blockheight:%}",
+		  JSON_SCAN(json_to_u32, &syncheight));
+	paymod_log(p, LOG_DBG, "waitblockheight reports syncheight=%d",
+		   syncheight);
+	p->chainlag = p->start_block - syncheight;
+	if (p->chainlag > 0)
+		paymod_log(p, LOG_INFORM,
+			   "Starting the payment with chainlag=%d "
+			   "(syncheight=%d < headercount=%d)",
+			   p->chainlag, syncheight, p->start_block);
+
+	payment_continue(p);
+	return command_still_pending(cmd);
+}
+
 static struct command_result *
 payment_getblockheight_success(struct command *cmd,
 			       const char *buffer,
 			       const jsmntok_t *toks,
 			       struct payment *p)
 {
-	const jsmntok_t *blockheighttok =
-	    json_get_member(buffer, toks, "blockheight");
-	json_to_number(buffer, blockheighttok, &p->start_block);
-	payment_continue(p);
+	struct out_req *req;
+	u32 blockcount, headercount;
+
+	json_scan(tmpctx, buffer, toks, "{blockcount:%,headercount:%}",
+		  JSON_SCAN(json_to_u32, &blockcount),
+		  JSON_SCAN(json_to_u32, &headercount));
+	paymod_log(p, LOG_DBG,
+		   "Received getchaininfo blockcount=%d, headercount=%d",
+		   blockcount, headercount);
+
+	p->start_block = headercount;
+
+	/* Now we just need to ask `lightningd` what height it has
+	 * synced up to, and we remember that as chainlag. */
+	req = jsonrpc_request_start(p->plugin, NULL, "waitblockheight",
+				    &payment_waitblockheight_cb,
+				    &payment_rpc_failure, p);
+	json_add_u32(req->js, "blockheight", 0);
+	send_outreq(p->plugin, req);
+
 	return command_still_pending(cmd);
 }
 
@@ -323,17 +362,15 @@ void payment_start_at_blockheight(struct payment *p, u32 blockheight)
 		return payment_continue(p);
 	}
 
-	/* `waitblockheight 0` can be used as a query for the current
-	 * block height.
-	 * This is slightly better than `getinfo` since `getinfo`
-	 * counts the channels and addresses and pushes more data
-	 * onto the RPC but all we care about is the blockheight.
+	/* Check with the backend what it believes the network's
+	 * height to be. We'll base all of our offsets based on that
+	 * height, allowing us to send while still syncing.
 	 */
 	struct out_req *req;
-	req = jsonrpc_request_start(p->plugin, NULL, "waitblockheight",
+	req = jsonrpc_request_start(p->plugin, NULL, "getchaininfo",
 				    &payment_getblockheight_success,
 				    &payment_rpc_failure, p);
-	json_add_u32(req->js, "blockheight", 0);
+	json_add_u32(req->js, "last_height", 0);
 	send_outreq(p->plugin, req);
 }
 
@@ -1640,6 +1677,13 @@ static struct command_result *payment_createonion_success(struct command *cmd,
 	struct secret *secrets;
 	struct payment *root = payment_root(p);
 
+	/* The delay on the first hop needs to be offset by chainlag,
+	 * as it would otherwise use the current height in
+	 * `lightningd`. All other hops have already been adjusted
+	 * during the payload encoding.
+	 */
+	u32 delay = first->delay + p->chainlag;
+
 	p->createonion_response = json_to_createonion_response(p, buffer, toks);
 
 	req = jsonrpc_request_start(p->plugin, NULL, "sendonion",
@@ -1649,7 +1693,7 @@ static struct command_result *payment_createonion_success(struct command *cmd,
 
 	json_object_start(req->js, "first_hop");
 	json_add_amount_msat(req->js, "amount_msat", first->amount);
-	json_add_num(req->js, "delay", first->delay);
+	json_add_num(req->js, "delay", delay);
 	json_add_node_id(req->js, "id", &first->node_id);
 	json_add_short_channel_id(req->js, "channel", first->scid);
 	json_object_end(req->js);
@@ -1711,6 +1755,9 @@ static void payment_add_hop_onion_payload(struct payment *p,
 					  const u8 *payment_metadata)
 {
 	struct createonion_request *cr = p->createonion_request;
+
+	/* The start_block takes chainlag into consideration, so no
+	 * need to adjust it here. */
 	u32 cltv = p->start_block + next->delay + 1;
 	u64 msat = next->amount.millisatoshis; /* Raw: TLV payload generation*/
 	struct tlv_field **fields;
@@ -1724,6 +1771,7 @@ static void payment_add_hop_onion_payload(struct payment *p,
 	fields = &dst->tlv_payload->fields;
 	tlvstream_set_tu64(fields, TLV_PAYLOAD_AMT_TO_FORWARD,
 			   msat);
+
 	tlvstream_set_tu32(fields, TLV_PAYLOAD_OUTGOING_CLTV_VALUE,
 			   cltv);
 
@@ -3419,100 +3467,6 @@ static struct direct_pay_data *direct_pay_init(struct payment *p)
 REGISTER_PAYMENT_MODIFIER(directpay, struct direct_pay_data *, direct_pay_init,
 			  direct_pay_cb);
 
-static struct command_result *waitblockheight_rpc_cb(struct command *cmd,
-						     const char *buffer,
-						     const jsmntok_t *toks,
-						     struct payment *p)
-{
-	const jsmntok_t *blockheighttok, *codetok;
-
-	u32 blockheight;
-	int code;
-	struct payment *subpayment;
-
-	blockheighttok = json_get_member(buffer, toks, "blockheight");
-
-	if (!blockheighttok ||
-	    !json_to_number(buffer, blockheighttok, &blockheight)) {
-		codetok = json_get_member(buffer, toks, "code");
-		json_to_int(buffer, codetok, &code);
-		if (code == WAIT_TIMEOUT) {
-			payment_fail(
-			    p,
-			    "Timed out while attempting to sync to blockheight "
-			    "returned by destination. Please finish syncing "
-			    "with the blockchain and try again.");
-
-		} else {
-			plugin_err(
-			    p->plugin,
-			    "Unexpected result from waitblockheight: %.*s",
-			    json_tok_full_len(toks),
-			    json_tok_full(buffer, toks));
-		}
-	} else {
-		subpayment = payment_new(p, NULL, p, p->modifiers);
-		payment_start_at_blockheight(subpayment, blockheight);
-		payment_set_step(p, PAYMENT_STEP_RETRY);
-		subpayment->why = tal_fmt(
-		    subpayment, "Retrying after waiting for blockchain sync.");
-		paymod_log(
-		    p, LOG_DBG,
-		    "Retrying after waitblockheight, new partid %" PRIu32,
-		    subpayment->partid);
-		payment_continue(p);
-	}
-	return command_still_pending(cmd);
-}
-
-static void waitblockheight_cb(void *d, struct payment *p)
-{
-	struct out_req *req;
-	struct timeabs now = time_now();
-	struct timerel remaining;
-	u32 blockheight;
-	if (p->step != PAYMENT_STEP_FAILED)
-		return payment_continue(p);
-
-	/* If we don't have an error message to parse we can't wait for blockheight. */
-	if (p->result == NULL)
-		return payment_continue(p);
-
-	/* Check if we'd be waiting more than 0 seconds. If we have
-	 * less than a second then waitblockheight would return
-	 * immediately resulting in a loop. */
-	if (time_after(now, p->deadline))
-		return payment_continue(p);
-
-	remaining = time_between(p->deadline, now);
-	if (time_to_sec(remaining) < 1)
-		return payment_continue(p);
-
-	/* *Was* it a blockheight disagreement that caused the failure?  */
-	if (!failure_is_blockheight_disagreement(p, &blockheight))
-		return payment_continue(p);
-
-	paymod_log(p, LOG_INFORM,
-		   "Remote node appears to be on a longer chain, which causes "
-		   "CLTV timeouts to be incorrect. Waiting up to %" PRIu64
-		   " seconds to catch up to block %d before retrying.",
-		   time_to_sec(remaining), blockheight);
-
-	/* Set temporarily set the state of the payment to not failed, so
-	 * interim status queries don't show this as terminally failed. We're
-	 * in control for this payment so nobody else could be fooled by
-	 * this. The callback will set it to retry anyway. */
-	payment_set_step(p, PAYMENT_STEP_RETRY);
-
-	req = jsonrpc_request_start(p->plugin, NULL, "waitblockheight",
-				    waitblockheight_rpc_cb,
-				    waitblockheight_rpc_cb, p);
-	json_add_u32(req->js, "blockheight", blockheight);
-	json_add_u32(req->js, "timeout", time_to_sec(remaining));
-	send_outreq(p->plugin, req);
-}
-
-REGISTER_PAYMENT_MODIFIER(waitblockheight, void *, NULL, waitblockheight_cb);
 
 static u32 payment_max_htlcs(const struct payment *p)
 {
@@ -3808,87 +3762,6 @@ static void payee_incoming_limit_step_cb(void *d UNUSED, struct payment *p)
 
 REGISTER_PAYMENT_MODIFIER(payee_incoming_limit, void *, NULL,
 			  payee_incoming_limit_step_cb);
-
-/*****************************************************************************
- * check_preapproveinvoice
- *
- * @desc submit the invoice to the HSM for approval, fail the payment if not approved.
- *
- * This paymod checks the invoice for approval with the HSM, which might:
- * - check with the user for specific approval
- * - enforce velocity controls
- * - automatically approve the invoice (default)
- */
-
-static struct command_result *
-check_preapproveinvoice_allow(struct command *cmd,
-			      const char *buf,
-			      const jsmntok_t *result,
-			      struct payment *p)
-{
-	/* On success, an empty object is returned. */
-//	struct preapproveinvoice_data *d
-
-	struct preapproveinvoice_data *d = payment_mod_check_preapproveinvoice_get_data(payment_root(p));
-	d->approved = true;
-	paymod_log(p, LOG_DBG, "Result from preapproveinvoice: allow");
-	payment_continue(p);
-	return command_still_pending(cmd);
-}
-
-static struct command_result *preapproveinvoice_rpc_failure(struct command *cmd,
-							    const char *buffer,
-							    const jsmntok_t *toks,
-							    struct payment *p)
-{
-	payment_abort(p,
-		      "Failing payment due to a failed RPC call: %.*s",
-		      toks->end - toks->start, buffer + toks->start);
-	return command_still_pending(cmd);
-}
-
-static void check_preapproveinvoice_start(struct preapproveinvoice_data *d UNUSED, struct payment *p)
-{
-	struct payment *root = payment_root(p);
-
-	struct preapproveinvoice_data *data =
-	    payment_mod_check_preapproveinvoice_get_data(root);
-	/* If the root payment was used to send the
-	 * `preapproveinvoice` message to the signer, we don't need to
-	 * do that again. */
-	if (data->approved) {
-		return payment_continue(p);
-	}
-
-	paymod_log(p, LOG_DBG, "Calling preapproveinvoice on signer for payment=%"PRIu64, root->id);
-	/* Ask the HSM if the invoice is OK to pay */
-	struct out_req *req;
-	req = jsonrpc_request_start(p->plugin, NULL, "preapproveinvoice",
-				    &check_preapproveinvoice_allow,
-				    &preapproveinvoice_rpc_failure, p);
-	/* FIXME: rename parameter to invstring */
-	json_add_string(req->js, "bolt11", p->invstring);
-	(void) send_outreq(p->plugin, req);
-}
-
-static struct preapproveinvoice_data* preapproveinvoice_data_init(struct payment *p)
-{
-	struct preapproveinvoice_data *d;
-	/* Only keep state on the root. We will use the root's flag
-	 * for all payments. */
-	if (p == payment_root(p)) {
-		d = tal(p, struct preapproveinvoice_data);
-		d->approved = false;
-		return d;
-	} else {
-		return NULL;
-	}
-}
-
-REGISTER_PAYMENT_MODIFIER(check_preapproveinvoice,
-			  struct preapproveinvoice_data *,
-			  preapproveinvoice_data_init,
-			  check_preapproveinvoice_start);
 
 static struct route_exclusions_data *
 route_exclusions_data_init(struct payment *p)

@@ -301,10 +301,6 @@ struct channel *new_unsaved_channel(struct peer *peer,
 					     ld->our_features,
 					     peer->their_features);
 
-	/* BOLT-7b04b1461739c5036add61782d58ac490842d98b #9
-	 * | 222/223 | `option_dual_fund`
-	 * | Use v2 of channel open, enables dual funding
-	 * | IN9 */
 	channel->static_remotekey_start[LOCAL]
 		= channel->static_remotekey_start[REMOTE] = 0;
 
@@ -1014,7 +1010,7 @@ void channel_internal_error(struct channel *channel, const char *fmt, ...)
 	char *why;
 
 	va_start(ap, fmt);
-	why = tal_vfmt(channel, fmt, ap);
+	why = tal_vfmt(tmpctx, fmt, ap);
 	va_end(ap);
 
 	log_broken(channel->log, "Internal error %s: %s",
@@ -1026,7 +1022,6 @@ void channel_internal_error(struct channel *channel, const char *fmt, ...)
 	if (channel_state_uncommitted(channel->state)) {
 		channel_set_owner(channel, NULL);
 		delete_channel(channel);
-		tal_free(why);
 		return;
 	}
 
@@ -1036,7 +1031,6 @@ void channel_internal_error(struct channel *channel, const char *fmt, ...)
 				       REASON_LOCAL, "Internal error: %s", why);
 	else
 		channel_fail_permanent(channel, REASON_LOCAL, "Internal error");
-	tal_free(why);
 }
 
 void channel_set_billboard(struct channel *channel, bool perm, const char *str)

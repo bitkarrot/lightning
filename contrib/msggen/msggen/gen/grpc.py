@@ -34,7 +34,7 @@ typemap = {
     "feerate": "Feerate",
     "outputdesc": "OutputDesc",
     "secret": "bytes",
-    "bip340sig": "bytes",
+    "bip340sig": "string",
     "hash": "bytes",
 }
 
@@ -95,8 +95,10 @@ class GrpcGenerator(IGenerator):
     def enumerate_fields(self, message_name, fields):
         """Use the meta map to identify which number this field will get.
         """
-        for f in fields:
-            yield (self.field2number(message_name, f), f)
+        enumerated_values = [(self.field2number(message_name, f), f) for f in fields]
+        sorted_enumerated_values = sorted(enumerated_values, key=lambda x: x[0])
+        for i, v in sorted_enumerated_values:
+            yield (i, v)
 
     def enumvar2number(self, typename: TypeName, variant):
         """Find an existing variant number of generate a new one.
@@ -122,8 +124,10 @@ class GrpcGenerator(IGenerator):
         return m[typename][variant]
 
     def enumerate_enum(self, typename, variants):
-        for v in variants:
-            yield (self.enumvar2number(typename, v), v)
+        enumerated_values = [(self.enumvar2number(typename, v), v) for v in variants]
+        sorted_enumerated_values = sorted(enumerated_values, key=lambda x: x[0])
+        for i, v in sorted_enumerated_values:
+            yield (i, v)
 
     def gather_types(self, service):
         """Gather all types that might need to be defined.
@@ -249,6 +253,8 @@ class GrpcConverterGenerator(IGenerator):
         if field.omit():
             return
 
+        field.sort()
+
         # First pass: generate any sub-fields before we generate the
         # top-level field itself.
         for f in field.fields:
@@ -325,7 +331,6 @@ class GrpcConverterGenerator(IGenerator):
                     'hash?': f'c.{name}.map(|v| <Sha256 as AsRef<[u8]>>::as_ref(&v).to_vec())',
                     'secret': f'c.{name}.to_vec()',
                     'secret?': f'c.{name}.map(|v| v.to_vec())',
-
                     'msat_or_any': f'Some(c.{name}.into())',
                     'msat_or_all': f'Some(c.{name}.into())',
                     'msat_or_all?': f'c.{name}.map(|o|o.into())',
@@ -362,8 +367,15 @@ class GrpcConverterGenerator(IGenerator):
     def to_camel_case(self, snake_str):
         components = snake_str.split('_')
         # We capitalize the first letter of each component except the first one
-        # with the 'title' method and join them together.
-        return components[0] + ''.join(x.title() for x in components[1:])
+        # with the 'capitalize' method and join them together, while preserving
+        # existing camel cases.
+        camel_case = components[0]
+        for word in components[1:]:
+            if not word.isupper():
+                camel_case += word[0].upper() + word[1:]
+            else:
+                camel_case += word.capitalize()
+        return camel_case
 
     def generate_requests(self, service):
         for meth in service.methods:
@@ -565,14 +577,16 @@ class GrpcServerGenerator(GrpcConverterGenerator):
         for method in service.methods:
             mname = method_name_overrides.get(method.name, method.name)
             # Tonic will convert to snake-case, so we have to do it here too
-            name = re.sub(r'(?<!^)(?=[A-Z])', '_', mname).lower()
+            name = re.sub(r'(?<!_)(?<!^)(?=[A-Z])', '_', mname).lower()
             name = name.replace("-", "")
             method.name = method.name.replace("-", "")
+            pbname_request = self.to_camel_case(str(method.request.typename))
+            pbname_response = self.to_camel_case(str(method.response.typename))
             self.write(f"""\
             async fn {name}(
                 &self,
-                request: tonic::Request<pb::{method.request.typename}>,
-            ) -> Result<tonic::Response<pb::{method.response.typename}>, tonic::Status> {{
+                request: tonic::Request<pb::{pbname_request}>,
+            ) -> Result<tonic::Response<pb::{pbname_response}>, tonic::Status> {{
                 let req = request.into_inner();
                 let req: requests::{method.request.typename} = req.into();
                 debug!("Client asked for {name}");

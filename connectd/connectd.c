@@ -58,33 +58,6 @@
 #define HSM_FD 3
 #define GOSSIPCTL_FD 4
 
-/* Peers we're trying to reach: we iterate through addrs until we succeed
- * or fail. */
-struct connecting {
-	/* daemon->connecting */
-	struct list_node list;
-
-	struct daemon *daemon;
-
-	struct io_conn *conn;
-
-	/* The ID of the peer (not necessarily unique, in transit!) */
-	struct node_id id;
-
-	/* We iterate through the tal_count(addrs) */
-	size_t addrnum;
-	struct wireaddr_internal *addrs;
-
-	/* NULL if there wasn't a hint. */
-	struct wireaddr_internal *addrhint;
-
-	/* How far did we get? */
-	const char *connstate;
-
-	/* Accumulated errors */
-	char *errors;
-};
-
 /*~ C programs should generally be written bottom-to-top, with the root
  * function at the bottom, and functions it calls above it.  That avoids
  * us having to pre-declare functions; but in the case of mutual recursion
@@ -132,17 +105,11 @@ static bool broken_resolver(struct daemon *daemon)
 }
 
 /*~ Here we see our first tal destructor: in this case the 'struct connect'
- * simply removes itself from the list of all 'connect' structs. */
+ * simply removes itself from the table of all 'connecting' structs. */
 static void destroy_connecting(struct connecting *connect)
 {
-	/*~ We don't *need* the list_head here; `list_del(&connect->list)`
-	 * would work.  But we have access to it, and `list_del_from()` is
-	 * clearer for readers, and also does a very brief sanity check that
-	 * the list isn't already empty which catches a surprising number of
-	 * bugs!  (If CCAN_LIST_DEBUG were defined, it would perform a
-	 * complete list traverse to check it was in the list before
-	 * deletion). */
-	list_del_from(&connect->daemon->connecting, &connect->list);
+	if (!connecting_htable_del(connect->daemon->connecting, connect))
+		abort();
 }
 
 /*~ Most simple search functions start with find_; in this case, search
@@ -150,57 +117,7 @@ static void destroy_connecting(struct connecting *connect)
 static struct connecting *find_connecting(struct daemon *daemon,
 					  const struct node_id *id)
 {
-	struct connecting *i;
-
-	/*~ Note the node_id_eq function: this is generally preferred over
-	 * doing a memcmp() manually, as it is both typesafe and can handle
-	 * any padding which the C compiler is allowed to insert between
-	 * members (unnecessary here, as there's no padding in a `struct
-	 * node_id`). */
-	list_for_each(&daemon->connecting, i, list)
-		if (node_id_eq(id, &i->id))
-			return i;
-	return NULL;
-}
-
-/*~ Once we've connected out, we disable the callback which would cause us to
- * to try the next address. */
-static void connected_out_to_peer(struct daemon *daemon,
-				  struct io_conn *conn,
-				  const struct node_id *id)
-{
-	struct connecting *connect = find_connecting(daemon, id);
-
-	/* We allocate 'conn' as a child of 'connect': we don't want to free
-	 * it just yet though.  tal_steal() it onto the permanent 'daemon'
-	 * struct. */
-	tal_steal(daemon, conn);
-
-	/* We only allow one outgoing attempt at a time */
-	assert(connect->conn == conn);
-
-	/* Don't call destroy_io_conn, since we're done. */
-	io_set_finish(conn, NULL, NULL);
-
-	/* Now free the 'connecting' struct. */
-	tal_free(connect);
-}
-
-/*~ Once they've connected in, stop trying to connect out (if we were). */
-static void peer_connected_in(struct daemon *daemon,
-			      struct io_conn *conn,
-			      const struct node_id *id)
-{
-	struct connecting *connect = find_connecting(daemon, id);
-
-	if (!connect)
-		return;
-
-	/* Don't call destroy_io_conn, since we're done. */
-	io_set_finish(connect->conn, NULL, NULL);
-
-	/* Now free the 'connecting' struct since we succeeded. */
-	tal_free(connect);
+	return connecting_htable_get(daemon->connecting, id);
 }
 
 /*~ When we free a peer, we remove it from the daemon's hashtable.
@@ -235,6 +152,7 @@ static struct peer *new_peer(struct daemon *daemon,
 			     const u8 *their_features,
 			     enum is_websocket is_websocket,
 			     struct io_conn *conn STEALS,
+			     bool deliberate_connection,
 			     int *fd_for_subd)
 {
 	struct peer *peer = tal(daemon, struct peer);
@@ -251,6 +169,7 @@ static struct peer *new_peer(struct daemon *daemon,
 	peer->peer_outq = msg_queue_new(peer, false);
 	peer->last_recv_time = time_now();
 	peer->is_websocket = is_websocket;
+	peer->deliberate_connection = deliberate_connection;
 	peer->dev_writes_enabled = NULL;
 	peer->dev_read_enabled = true;
 
@@ -282,6 +201,8 @@ struct io_plan *peer_connected(struct io_conn *conn,
 	size_t depender, missing;
 	int subd_fd;
 	bool option_gossip_queries;
+	struct connecting *connect;
+	bool deliberate_connection;
 
 	/* We remove any previous connection immediately, on the assumption it's dead */
 	peer = peer_htable_get(daemon->peers, id);
@@ -321,20 +242,33 @@ struct io_plan *peer_connected(struct io_conn *conn,
 		return io_write_wire(conn, take(msg), io_close_cb, NULL);
 	}
 
-	/* We've successfully connected. */
-	if (incoming)
-		peer_connected_in(daemon, conn, id);
-	else
-		connected_out_to_peer(daemon, conn, id);
+	/* We've successfully connected! */
 
-	if (find_connecting(daemon, id))
-		status_failed(STATUS_FAIL_INTERNAL_ERROR,
-			      "After %s connection on %p, still trying to connect conn %p?",
-			      incoming ? "incoming" : "outgoing",
-			      conn, find_connecting(daemon, id)->conn);
+	/* Were we trying to connect deliberately? (Always true for outbound connections!) */
+	connect = find_connecting(daemon, id);
+	if (!incoming) {
+		/* We allocated 'conn' as a child of 'connect': we don't want
+		 * to free it just yet though.  tal_steal() it onto the
+		 * permanent 'daemon' struct. */
+		tal_steal(daemon, conn);
+
+		/* We only allow one outgoing attempt at a time */
+		assert(connect->conn == conn);
+	}
+
+	if (connect) {
+		deliberate_connection = true;
+		/*~ Now we've connected, disable the callback which would
+		 * cause us to to try the next address on failure. */
+		io_set_finish(connect->conn, NULL, NULL);
+		tal_free(connect);
+	} else {
+		deliberate_connection = false;
+	}
 
 	/* This contains the per-peer state info; gossipd fills in pps->gs */
-	peer = new_peer(daemon, id, cs, their_features, is_websocket, conn, &subd_fd);
+	peer = new_peer(daemon, id, cs, their_features, is_websocket, conn,
+			deliberate_connection, &subd_fd);
 	/* Only takes over conn if it succeeds. */
 	if (!peer)
 		return io_close(conn);
@@ -458,12 +392,70 @@ static struct io_plan *conn_in(struct io_conn *conn,
 				   handshake_in_success, daemon);
 }
 
+/* How much is peer worth (when considering disconnet)? */
+static size_t peer_score(const struct peer *peer)
+{
+#define PEER_SCORE_MAX 2
+
+	/* We deliberately connected to it?  Highest prio */
+	if (peer->deliberate_connection)
+		return 2;
+	/* It has subds now?  Higher prio */
+	if (tal_count(peer->subds))
+		return 1;
+	return 0;
+}
+
+/*~ When file descriptors are exhausted, we might be better to try to
+ * free an existing connection, rather than ignoring new ones. */
+void close_random_connection(struct daemon *daemon)
+{
+	struct peer *peer, *best_peer = NULL;
+	size_t best_peer_score = PEER_SCORE_MAX + 1;
+	struct peer_htable_iter it;
+
+	/* Prefer ones with no subds (just chatting), or failing that,
+	 * ones we didn't deliberately connect to. */
+	peer = peer_htable_pick(daemon->peers, pseudorand_u64(), &it);
+
+	for (size_t i = 0; i < peer_htable_count(daemon->peers); i++) {
+		size_t score = peer_score(peer);
+		if (score < best_peer_score) {
+			best_peer = peer;
+			best_peer_score = score;
+			/* Don't continue if we can't improve! */
+			if (best_peer_score == 0)
+				break;
+		}
+		peer = peer_htable_next(daemon->peers, &it);
+	}
+
+	if (best_peer) {
+		status_debug("due to stress, randomly closing peer %s (score %zu)",
+			     fmt_node_id(tmpctx, &best_peer->id), best_peer_score);
+		io_close(best_peer->to_peer);
+	}
+}
+
 /*~ When we get a direct connection in we set up its network address
  * then call handshake.c to set up the crypto state. */
 static struct io_plan *connection_in(struct io_conn *conn,
 				     struct daemon *daemon)
 {
 	struct conn_in conn_in_arg;
+
+	/* Did we fail to accept? */
+	if (!conn) {
+		static bool accept_logged = false;
+		if (!accept_logged) {
+			status_broken("accepting incoming fd failed: %s",
+				      strerror(errno));
+			accept_logged = true;
+		}
+		/* Maybe free up some fds by closing something. */
+		close_random_connection(daemon);
+		return NULL;
+	}
 
 	conn_in_arg.addr.u.wireaddr.is_websocket = false;
 	if (!get_remote_address(conn, &conn_in_arg.addr))
@@ -1642,10 +1634,15 @@ static void try_connect_peer(struct daemon *daemon,
 	struct wireaddr_internal *addrs;
 	bool use_proxy = daemon->always_use_proxy;
 	struct connecting *connect;
+	struct peer *peer;
 
 	/* Already existing?  Must have crossed over, it'll know soon. */
-	if (peer_htable_get(daemon->peers, id))
+	peer = peer_htable_get(daemon->peers, id);
+	if (peer) {
+		/* Note now that we explicitly tried to connect */
+		peer->deliberate_connection = true;
 		return;
+	}
 
 	/* If we're trying to connect it right now, that's OK. */
 	if ((connect = find_connecting(daemon, id))) {
@@ -1717,7 +1714,7 @@ static void try_connect_peer(struct daemon *daemon,
 	connect->addrhint = tal_steal(connect, addrhint);
 	connect->errors = tal_strdup(connect, "");
 	connect->conn = NULL;
-	list_add_tail(&daemon->connecting, &connect->list);
+	connecting_htable_add(daemon->connecting, connect);
 	tal_add_destructor(connect, destroy_connecting);
 
 	/* Now we kick it off by recursively trying connect->addrs[connect->addrnum] */
@@ -2129,6 +2126,7 @@ static struct io_plan *recv_gossip(struct io_conn *conn,
 static void memleak_daemon_cb(struct htable *memtable, struct daemon *daemon)
 {
 	memleak_scan_htable(memtable, &daemon->peers->raw);
+	memleak_scan_htable(memtable, &daemon->connecting->raw);
 }
 
 static void gossipd_failed(struct daemon_conn *gossipd)
@@ -2154,7 +2152,8 @@ int main(int argc, char *argv[])
 	daemon->listeners = tal_arr(daemon, struct io_listener *, 0);
 	peer_htable_init(daemon->peers);
 	memleak_add_helper(daemon, memleak_daemon_cb);
-	list_head_init(&daemon->connecting);
+	daemon->connecting = tal(daemon, struct connecting_htable);
+	connecting_htable_init(daemon->connecting);
 	timers_init(&daemon->timers, time_mono());
 	daemon->gossip_store_fd = -1;
 	daemon->shutting_down = false;
@@ -2183,6 +2182,9 @@ int main(int argc, char *argv[])
 	/* Set up ecdh() function so it uses our HSM fd, and calls
 	 * status_failed on error. */
 	ecdh_hsmd_setup(HSM_FD, status_failed);
+
+	/* We want to know about accept() and recvmsg failures */
+	io_set_extended_errors(true);
 
 	for (;;) {
 		struct timer *expired;

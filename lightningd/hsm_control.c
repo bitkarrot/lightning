@@ -26,7 +26,6 @@ static int hsm_get_fd(struct lightningd *ld,
 		      u64 dbid,
 		      u64 permissions)
 {
-	int hsm_fd;
 	const u8 *msg;
 
 	msg = towire_hsmd_client_hsmfd(NULL, id, dbid, permissions);
@@ -34,10 +33,7 @@ static int hsm_get_fd(struct lightningd *ld,
 	if (!fromwire_hsmd_client_hsmfd_reply(msg))
 		fatal("Bad reply from HSM: %s", tal_hex(tmpctx, msg));
 
-	hsm_fd = fdpass_recv(ld->hsm_fd);
-	if (hsm_fd < 0)
-		fatal("Could not read fd from HSM: %s", strerror(errno));
-	return hsm_fd;
+	return fdpass_recv(ld->hsm_fd);
 }
 
 int hsm_get_client_fd(struct lightningd *ld,
@@ -52,7 +48,11 @@ int hsm_get_client_fd(struct lightningd *ld,
 
 int hsm_get_global_fd(struct lightningd *ld, u64 permissions)
 {
-	return hsm_get_fd(ld, &ld->id, 0, permissions);
+	int fd = hsm_get_fd(ld, &ld->id, 0, permissions);
+
+	if (fd < 0)
+		fatal("Could not read fd from HSM: %s", strerror(errno));
+	return fd;
 }
 
 static unsigned int hsm_msg(struct subd *hsmd,
@@ -109,6 +109,21 @@ struct ext_key *hsm_init(struct lightningd *ld)
 	}
 
 	ld->hsm_fd = fds[0];
+
+	if (ld->developer) {
+		struct tlv_hsmd_dev_preinit_tlvs *tlv;
+
+		tlv = tlv_hsmd_dev_preinit_tlvs_new(tmpctx);
+		tlv->fail_preapprove = tal_dup(tlv, bool,
+					       &ld->dev_hsmd_fail_preapprove);
+		tlv->no_preapprove_check = tal_dup(tlv, bool,
+						   &ld->dev_hsmd_no_preapprove_check);
+
+		msg = towire_hsmd_dev_preinit(tmpctx, tlv);
+		if (!wire_sync_write(ld->hsm_fd, msg))
+		    err(EXITCODE_HSM_GENERIC_ERROR, "Writing preinit msg to hsm");
+	}
+
 	if (!wire_sync_write(ld->hsm_fd, towire_hsmd_init(tmpctx,
 							  &chainparams->bip32_key_version,
 							  chainparams,

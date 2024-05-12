@@ -442,6 +442,17 @@ static struct arc node_adjacency_next(
 	return linear_network->node_adjacency_next_arc[arc.idx];
 }
 
+static bool channel_is_available(const struct gossmap_chan *c, int dir,
+				 const struct gossmap *gossmap,
+				 const bitmap *disabled)
+{
+	if (!gossmap_chan_set(c, dir))
+		return false;
+
+	const u32 chan_id = gossmap_chan_idx(gossmap, c);
+	return !bitmap_test_bit(disabled, chan_id);
+}
+
 // TODO(eduardo): unit test this
 /* Split a directed channel into parts with linear cost function. */
 static bool linearize_channel(const struct pay_parameters *params,
@@ -706,20 +717,15 @@ init_linear_network(const tal_t *ctx, const struct pay_parameters *params,
 
 		for(size_t j=0;j<node->num_chans;++j)
 		{
-
-
 			int half;
 			const struct gossmap_chan *c = gossmap_nth_chan(params->gossmap,
 			                                                node, j, &half);
 
-			if (!gossmap_chan_set(c,half))
+			if (!channel_is_available(c, half, params->gossmap,
+						  params->disabled))
 				continue;
 
 			const u32 chan_id = gossmap_chan_idx(params->gossmap, c);
-
-			if (params->disabled && bitmap_test_bit(params->disabled,chan_id))
-				continue;
-
 
 			const struct gossmap_node *next = gossmap_nth_node(params->gossmap,
 									   c,!half);
@@ -1166,6 +1172,7 @@ struct chan_flow
  * positive balance. */
 static u32 find_positive_balance(
 		const struct gossmap *gossmap,
+		const bitmap *disabled,
 		const struct chan_flow *chan_flow,
 		const u32 start_idx,
 		const s64 *balance,
@@ -1198,7 +1205,7 @@ static u32 find_positive_balance(
 				= gossmap_nth_chan(gossmap,
 				                   cur,i,&dir);
 
-			if (!gossmap_chan_set(c,dir))
+			if (!channel_is_available(c, dir, gossmap, disabled))
 				continue;
 
 			const u32 c_idx = gossmap_chan_idx(gossmap,c);
@@ -1246,6 +1253,7 @@ static inline uint64_t pseudorand_interval(uint64_t a, uint64_t b)
  * gossmap that corresponds to this flow. */
 static struct flow **
 get_flow_paths(const tal_t *ctx, const struct gossmap *gossmap,
+	       const bitmap *disabled,
 
 	       // chan_extra_map cannot be const because we use it to keep
 	       // track of htlcs and in_flight sats.
@@ -1261,7 +1269,6 @@ get_flow_paths(const tal_t *ctx, const struct gossmap *gossmap,
 	       char **fail)
 {
 	tal_t *this_ctx = tal(ctx,tal_t);
-	char *errmsg;
 	struct flow **flows = tal_arr(ctx,struct flow*,0);
 
 	assert(amount_msat_less(excess, AMOUNT_MSAT(1000)));
@@ -1323,8 +1330,9 @@ get_flow_paths(const tal_t *ctx, const struct gossmap *gossmap,
 		while(balance[node_idx]<0)
 		{
 			prev_chan[node_idx]=NULL;
-			u32 final_idx = find_positive_balance(gossmap,chan_flow,node_idx,balance,
-							prev_chan,prev_dir,prev_idx);
+			u32 final_idx = find_positive_balance(
+			    gossmap, disabled, chan_flow, node_idx, balance,
+			    prev_chan, prev_dir, prev_idx);
 
 			/* For each route we will compute the highest htlc_min
 			 * and the smallest htlc_max and use those to constraint
@@ -1427,16 +1435,15 @@ get_flow_paths(const tal_t *ctx, const struct gossmap *gossmap,
 				goto function_fail;
 			}
 			excess = amount_msat(0);
+			fp->amount = delivered;
 
-			// complete the flow path by adding real fees and
-			// probabilities.
-			if (!flow_complete(this_ctx, fp, gossmap,
-					   chan_extra_map, delivered,
-					   &errmsg)) {
+			fp->success_prob =
+			    flow_probability(fp, gossmap, chan_extra_map);
+			if (fp->success_prob < 0) {
 				if (fail)
-				*fail = tal_fmt(
-				    ctx, "flow_complete failed: %s",
-				    errmsg);
+					*fail =
+					    tal_fmt(ctx, "failed to compute "
+							 "flow probability");
 				goto function_fail;
 			}
 
@@ -1451,6 +1458,8 @@ get_flow_paths(const tal_t *ctx, const struct gossmap *gossmap,
 		flows[i] = tal_steal(flows,flows[i]);
 		assert(flows[i]);
 	}
+	if (fail)
+		*fail = NULL;
 	tal_free(this_ctx);
 	return flows;
 
@@ -1545,6 +1554,32 @@ static bool is_better(
 	return amount_msat_less_eq(A_fee,B_fee);
 }
 
+/* Channels that are not in the chan_extra_map should be disabled. */
+static bool check_disabled(const bitmap *disabled,
+			   const struct gossmap *gossmap,
+			   const struct chan_extra_map *chan_extra_map)
+{
+	assert(disabled);
+	assert(gossmap);
+	assert(chan_extra_map);
+
+	if(tal_bytelen(disabled) != bitmap_sizeof(gossmap_max_chan_idx(gossmap)))
+		return false;
+
+	for (struct gossmap_chan *chan = gossmap_first_chan(gossmap); chan;
+	     chan = gossmap_next_chan(gossmap, chan)) {
+		const u32 chan_id = gossmap_chan_idx(gossmap, chan);
+		if (bitmap_test_bit(disabled, chan_id))
+			continue;
+
+		struct short_channel_id scid = gossmap_chan_scid(gossmap, chan);
+		struct chan_extra *ce =
+		    chan_extra_map_get(chan_extra_map, scid);
+		if (!ce)
+			return false;
+	}
+	return true;
+}
 
 // TODO(eduardo): choose some default values for the minflow parameters
 /* eduardo: I think it should be clear that this module deals with linear
@@ -1556,7 +1591,6 @@ static bool is_better(
  * TODO(eduardo): notice that we don't pay fees to forward payments with local
  * channels and we can tell with absolute certainty the liquidity on them.
  * Check that local channels have fee costs = 0 and bounds with certainty (min=max). */
-
 // TODO(eduardo): we should LOG_DBG the process of finding the MCF while
 // adjusting the frugality factor.
 struct flow **minflow(const tal_t *ctx, struct gossmap *gossmap,
@@ -1581,8 +1615,12 @@ struct flow **minflow(const tal_t *ctx, struct gossmap *gossmap,
 	params->chan_extra_map = chan_extra_map;
 
 	params->disabled = disabled;
-	assert(!disabled
-	       || tal_bytelen(disabled) == bitmap_sizeof(gossmap_max_chan_idx(gossmap)));
+
+	if (!check_disabled(disabled, gossmap, chan_extra_map)) {
+		if (fail)
+			*fail = tal_fmt(ctx, "Invalid disabled bitmap.");
+		goto function_fail;
+	}
 
 	params->amount = amount;
 
@@ -1665,9 +1703,9 @@ struct flow **minflow(const tal_t *ctx, struct gossmap *gossmap,
 	}
 
 	// first flow found
-	best_flow_paths =
-	    get_flow_paths(this_ctx, params->gossmap, params->chan_extra_map,
-			   linear_network, residual_network, excess, &errmsg);
+	best_flow_paths = get_flow_paths(
+	    this_ctx, params->gossmap, params->disabled, params->chan_extra_map,
+	    linear_network, residual_network, excess, &errmsg);
 	if (!best_flow_paths) {
 		if (fail)
 		*fail =
@@ -1719,9 +1757,10 @@ struct flow **minflow(const tal_t *ctx, struct gossmap *gossmap,
 		/* We dissect the solution of the MCF into payment routes.
 		 * Actual amounts considering fees are computed for every
 		 * channel in the routes. */
-		flow_paths = get_flow_paths(
-		    this_ctx, params->gossmap, params->chan_extra_map,
-		    linear_network, residual_network, excess, &errmsg);
+		flow_paths =
+		    get_flow_paths(this_ctx, params->gossmap, params->disabled,
+				   params->chan_extra_map, linear_network,
+				   residual_network, excess, &errmsg);
 		if(!flow_paths)
 		{
 			// get_flow_paths doesn't fail unless there is a bug.

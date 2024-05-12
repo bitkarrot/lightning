@@ -924,12 +924,12 @@ static void NON_NULL_ARGS(1, 2, 4, 5) json_add_channel(struct lightningd *ld,
 				tal_fmt(tmpctx, "%d%s", last_feerate,
 					feerate_style_name(FEERATE_PER_KSIPA)));
 
-		/* BOLT-9e7723387c8859b511e178485605a0b9133b9869 #2:
-		 * - MUST set `funding_feerate_perkw` greater than or equal to
-		 *   65/64 times the last sent `funding_feerate_perkw`
-		 *   rounded down.
+		/* BOLT #2:
+		 * - MUST set `feerate` greater than or equal to 25/24
+		 * times the `feerate` of the previously constructed
+		 * transaction, rounded down.
 		 */
-		next_feerate = last_feerate * 65 / 64;
+		next_feerate = last_feerate * 25 / 24;
 		assert(next_feerate > last_feerate);
 		json_add_string(response, "next_feerate",
 				tal_fmt(tmpctx, "%d%s", next_feerate,
@@ -2509,7 +2509,8 @@ void setup_peers(struct lightningd *ld)
 }
 
 /* Pull peers, channels and HTLCs from db, and wire them up. */
-struct htlc_in_map *load_channels_from_wallet(struct lightningd *ld)
+struct htlc_in_map *load_channels_from_wallet(struct lightningd *ld,
+					      size_t *num_channels)
 {
 	struct peer *peer;
 	struct htlc_in_map *unconnected_htlcs_in = tal(ld, struct htlc_in_map);
@@ -2519,6 +2520,7 @@ struct htlc_in_map *load_channels_from_wallet(struct lightningd *ld)
 	if (!wallet_init_channels(ld->wallet))
 		fatal("Could not load channels from the database");
 
+	*num_channels = 0;
 	/* First we load the incoming htlcs */
 	for (peer = peer_node_id_map_first(ld->peers, &it);
 	     peer;
@@ -2531,6 +2533,7 @@ struct htlc_in_map *load_channels_from_wallet(struct lightningd *ld)
 							      ld->htlcs_in)) {
 				fatal("could not load htlcs for channel");
 			}
+			(*num_channels)++;
 		}
 	}
 

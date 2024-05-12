@@ -453,8 +453,11 @@ static void opening_funder_finished(struct subd *openingd, const u8 *resp,
 	if (pbase)
 		wallet_penalty_base_add(ld->wallet, channel->dbid, pbase);
 
+	/* If this fails, it cleans up */
+	if (!peer_start_channeld(channel, peer_fd, NULL, false, NULL))
+		return;
+
 	funding_success(channel);
-	peer_start_channeld(channel, peer_fd, NULL, false, NULL);
 
 cleanup:
 	/* Frees fc too */
@@ -557,10 +560,9 @@ static void opening_fundee_finished(struct subd *openingd,
 	if (pbase)
 		wallet_penalty_base_add(ld->wallet, channel->dbid, pbase);
 
-	/* On to normal operation! */
-	peer_start_channeld(channel, peer_fd, fwd_msg, false, NULL);
-
-	tal_free(uc);
+	/* On to normal operation (frees if it fails!) */
+	if (peer_start_channeld(channel, peer_fd, fwd_msg, false, NULL))
+		tal_free(uc);
 	return;
 
 failed:
@@ -933,6 +935,15 @@ bool peer_start_openingd(struct peer *peer, struct peer_fd *peer_fd)
 	hsmfd = hsm_get_client_fd(peer->ld, &uc->peer->id, uc->dbid,
 				  HSM_PERM_COMMITMENT_POINT
 				  | HSM_PERM_SIGN_REMOTE_TX);
+
+	if (hsmfd < 0) {
+		uncommitted_channel_disconnect(uc, LOG_BROKEN,
+					       tal_fmt(tmpctx,
+						       "Getting hsmfd for lightning_openingd: %s",
+						       strerror(errno)));
+		tal_free(uc);
+		return false;
+	}
 
 	uc->open_daemon = new_channel_subd(peer, peer->ld,
 					"lightning_openingd",

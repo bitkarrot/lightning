@@ -170,7 +170,7 @@ binary.
 
 * **log-level**=*LEVEL*\[:*SUBSYSTEM*\]\[:*PATH*\]
 
-  What log level to print out: options are io, debug, info, unusual,
+  What log level to print out: options are io, trace, debug, info, unusual,
 broken.  If *SUBSYSTEM* is supplied, this sets the logging level
 for any subsystem (or *nodeid*) containing that string. If *PATH* is supplied, it means this log-level filter is only applied to that `log-file`, which is useful for creating logs to capture a specific subsystem.  This option may be specified multiple times.
 Subsystems include:
@@ -408,7 +408,7 @@ use the RPC call lightning-setchannel(7).
 we tell our peer that this is how long they'll have to wait if they
 perform a unilateral close.
 
-* **max-locktime-blocks**=*BLOCKS*
+* (deprecated in v23.05) **max-locktime-blocks**=*BLOCKS*
 
   The longest our funds can be delayed (ie. the longest
 **watchtime-blocks** our peer can ask for, and also the longest HTLC
@@ -663,6 +663,18 @@ authenticate to the Tor control port.
 * **clnrest-csp**=*CSPOLICY*  [plugin `clnrest.py`]
 
   Creates a whitelist of trusted content sources that can run on a webpage and helps mitigate the risk of attacks. Default CSP is `default-src 'self'; font-src 'self'; img-src 'self' data:; frame-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline';`.
+
+* **clnrest-swagger-root**=*URL*  [plugin `clnrest.py`]
+
+  Root url for Swagger UI. Default is `/`.
+
+* **wss-bind-addr**=*\[IPADDRESS\[:PORT\]\]|SOCKETPATH|HOSTNAME\[:PORT\]* [plugin `wss-proxy.py`]
+
+  Sets the WSS address.
+
+* **wss-certs**=*PATH*  [plugin `wss-proxy.py`]
+
+  Defines the path for WSS cert & key. Default path is same as RPC file path to utilize gRPC/clnrest's client certificate. If it is missing at the configured location, new identity (`client.pem` and `client-key.pem`) will be generated.
 
 ### Lightning Plugins
 

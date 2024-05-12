@@ -49,6 +49,16 @@ class NodeStub(object):
                 request_serializer=node__pb2.AutocleaninvoiceRequest.SerializeToString,
                 response_deserializer=node__pb2.AutocleaninvoiceResponse.FromString,
                 )
+        self.AutoCleanOnce = channel.unary_unary(
+                '/cln.Node/AutoCleanOnce',
+                request_serializer=node__pb2.AutocleanonceRequest.SerializeToString,
+                response_deserializer=node__pb2.AutocleanonceResponse.FromString,
+                )
+        self.AutoCleanStatus = channel.unary_unary(
+                '/cln.Node/AutoCleanStatus',
+                request_serializer=node__pb2.AutocleanstatusRequest.SerializeToString,
+                response_deserializer=node__pb2.AutocleanstatusResponse.FromString,
+                )
         self.CheckMessage = channel.unary_unary(
                 '/cln.Node/CheckMessage',
                 request_serializer=node__pb2.CheckmessageRequest.SerializeToString,
@@ -219,6 +229,21 @@ class NodeStub(object):
                 request_serializer=node__pb2.DecodeRequest.SerializeToString,
                 response_deserializer=node__pb2.DecodeResponse.FromString,
                 )
+        self.DelPay = channel.unary_unary(
+                '/cln.Node/DelPay',
+                request_serializer=node__pb2.DelpayRequest.SerializeToString,
+                response_deserializer=node__pb2.DelpayResponse.FromString,
+                )
+        self.DelForward = channel.unary_unary(
+                '/cln.Node/DelForward',
+                request_serializer=node__pb2.DelforwardRequest.SerializeToString,
+                response_deserializer=node__pb2.DelforwardResponse.FromString,
+                )
+        self.DisableOffer = channel.unary_unary(
+                '/cln.Node/DisableOffer',
+                request_serializer=node__pb2.DisableofferRequest.SerializeToString,
+                response_deserializer=node__pb2.DisableofferResponse.FromString,
+                )
         self.Disconnect = channel.unary_unary(
                 '/cln.Node/Disconnect',
                 request_serializer=node__pb2.DisconnectRequest.SerializeToString,
@@ -234,10 +259,30 @@ class NodeStub(object):
                 request_serializer=node__pb2.FetchinvoiceRequest.SerializeToString,
                 response_deserializer=node__pb2.FetchinvoiceResponse.FromString,
                 )
+        self.FundChannel_Cancel = channel.unary_unary(
+                '/cln.Node/FundChannel_Cancel',
+                request_serializer=node__pb2.Fundchannel_cancelRequest.SerializeToString,
+                response_deserializer=node__pb2.Fundchannel_cancelResponse.FromString,
+                )
+        self.FundChannel_Complete = channel.unary_unary(
+                '/cln.Node/FundChannel_Complete',
+                request_serializer=node__pb2.Fundchannel_completeRequest.SerializeToString,
+                response_deserializer=node__pb2.Fundchannel_completeResponse.FromString,
+                )
         self.FundChannel = channel.unary_unary(
                 '/cln.Node/FundChannel',
                 request_serializer=node__pb2.FundchannelRequest.SerializeToString,
                 response_deserializer=node__pb2.FundchannelResponse.FromString,
+                )
+        self.FundChannel_Start = channel.unary_unary(
+                '/cln.Node/FundChannel_Start',
+                request_serializer=node__pb2.Fundchannel_startRequest.SerializeToString,
+                response_deserializer=node__pb2.Fundchannel_startResponse.FromString,
+                )
+        self.GetLog = channel.unary_unary(
+                '/cln.Node/GetLog',
+                request_serializer=node__pb2.GetlogRequest.SerializeToString,
+                response_deserializer=node__pb2.GetlogResponse.FromString,
                 )
         self.GetRoute = channel.unary_unary(
                 '/cln.Node/GetRoute',
@@ -264,10 +309,40 @@ class NodeStub(object):
                 request_serializer=node__pb2.ListhtlcsRequest.SerializeToString,
                 response_deserializer=node__pb2.ListhtlcsResponse.FromString,
                 )
+        self.MultiFundChannel = channel.unary_unary(
+                '/cln.Node/MultiFundChannel',
+                request_serializer=node__pb2.MultifundchannelRequest.SerializeToString,
+                response_deserializer=node__pb2.MultifundchannelResponse.FromString,
+                )
         self.Offer = channel.unary_unary(
                 '/cln.Node/Offer',
                 request_serializer=node__pb2.OfferRequest.SerializeToString,
                 response_deserializer=node__pb2.OfferResponse.FromString,
+                )
+        self.OpenChannel_Abort = channel.unary_unary(
+                '/cln.Node/OpenChannel_Abort',
+                request_serializer=node__pb2.Openchannel_abortRequest.SerializeToString,
+                response_deserializer=node__pb2.Openchannel_abortResponse.FromString,
+                )
+        self.OpenChannel_Bump = channel.unary_unary(
+                '/cln.Node/OpenChannel_Bump',
+                request_serializer=node__pb2.Openchannel_bumpRequest.SerializeToString,
+                response_deserializer=node__pb2.Openchannel_bumpResponse.FromString,
+                )
+        self.OpenChannel_Init = channel.unary_unary(
+                '/cln.Node/OpenChannel_Init',
+                request_serializer=node__pb2.Openchannel_initRequest.SerializeToString,
+                response_deserializer=node__pb2.Openchannel_initResponse.FromString,
+                )
+        self.OpenChannel_Signed = channel.unary_unary(
+                '/cln.Node/OpenChannel_Signed',
+                request_serializer=node__pb2.Openchannel_signedRequest.SerializeToString,
+                response_deserializer=node__pb2.Openchannel_signedResponse.FromString,
+                )
+        self.OpenChannel_Update = channel.unary_unary(
+                '/cln.Node/OpenChannel_Update',
+                request_serializer=node__pb2.Openchannel_updateRequest.SerializeToString,
+                response_deserializer=node__pb2.Openchannel_updateResponse.FromString,
                 )
         self.Ping = channel.unary_unary(
                 '/cln.Node/Ping',
@@ -324,6 +399,31 @@ class NodeStub(object):
                 request_serializer=node__pb2.StaticbackupRequest.SerializeToString,
                 response_deserializer=node__pb2.StaticbackupResponse.FromString,
                 )
+        self.BkprChannelsApy = channel.unary_unary(
+                '/cln.Node/BkprChannelsApy',
+                request_serializer=node__pb2.BkprchannelsapyRequest.SerializeToString,
+                response_deserializer=node__pb2.BkprchannelsapyResponse.FromString,
+                )
+        self.BkprDumpIncomeCsv = channel.unary_unary(
+                '/cln.Node/BkprDumpIncomeCsv',
+                request_serializer=node__pb2.BkprdumpincomecsvRequest.SerializeToString,
+                response_deserializer=node__pb2.BkprdumpincomecsvResponse.FromString,
+                )
+        self.BkprInspect = channel.unary_unary(
+                '/cln.Node/BkprInspect',
+                request_serializer=node__pb2.BkprinspectRequest.SerializeToString,
+                response_deserializer=node__pb2.BkprinspectResponse.FromString,
+                )
+        self.BkprListAccountEvents = channel.unary_unary(
+                '/cln.Node/BkprListAccountEvents',
+                request_serializer=node__pb2.BkprlistaccounteventsRequest.SerializeToString,
+                response_deserializer=node__pb2.BkprlistaccounteventsResponse.FromString,
+                )
+        self.BkprListBalances = channel.unary_unary(
+                '/cln.Node/BkprListBalances',
+                request_serializer=node__pb2.BkprlistbalancesRequest.SerializeToString,
+                response_deserializer=node__pb2.BkprlistbalancesResponse.FromString,
+                )
         self.BkprListIncome = channel.unary_unary(
                 '/cln.Node/BkprListIncome',
                 request_serializer=node__pb2.BkprlistincomeRequest.SerializeToString,
@@ -371,6 +471,18 @@ class NodeServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def AutoCleanInvoice(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def AutoCleanOnce(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def AutoCleanStatus(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -580,6 +692,24 @@ class NodeServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def DelPay(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def DelForward(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def DisableOffer(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def Disconnect(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -598,7 +728,31 @@ class NodeServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def FundChannel_Cancel(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def FundChannel_Complete(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def FundChannel(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def FundChannel_Start(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetLog(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -634,7 +788,43 @@ class NodeServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def MultiFundChannel(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def Offer(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def OpenChannel_Abort(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def OpenChannel_Bump(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def OpenChannel_Init(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def OpenChannel_Signed(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def OpenChannel_Update(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -706,6 +896,36 @@ class NodeServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def BkprChannelsApy(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def BkprDumpIncomeCsv(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def BkprInspect(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def BkprListAccountEvents(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def BkprListBalances(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def BkprListIncome(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -749,6 +969,16 @@ def add_NodeServicer_to_server(servicer, server):
                     servicer.AutoCleanInvoice,
                     request_deserializer=node__pb2.AutocleaninvoiceRequest.FromString,
                     response_serializer=node__pb2.AutocleaninvoiceResponse.SerializeToString,
+            ),
+            'AutoCleanOnce': grpc.unary_unary_rpc_method_handler(
+                    servicer.AutoCleanOnce,
+                    request_deserializer=node__pb2.AutocleanonceRequest.FromString,
+                    response_serializer=node__pb2.AutocleanonceResponse.SerializeToString,
+            ),
+            'AutoCleanStatus': grpc.unary_unary_rpc_method_handler(
+                    servicer.AutoCleanStatus,
+                    request_deserializer=node__pb2.AutocleanstatusRequest.FromString,
+                    response_serializer=node__pb2.AutocleanstatusResponse.SerializeToString,
             ),
             'CheckMessage': grpc.unary_unary_rpc_method_handler(
                     servicer.CheckMessage,
@@ -920,6 +1150,21 @@ def add_NodeServicer_to_server(servicer, server):
                     request_deserializer=node__pb2.DecodeRequest.FromString,
                     response_serializer=node__pb2.DecodeResponse.SerializeToString,
             ),
+            'DelPay': grpc.unary_unary_rpc_method_handler(
+                    servicer.DelPay,
+                    request_deserializer=node__pb2.DelpayRequest.FromString,
+                    response_serializer=node__pb2.DelpayResponse.SerializeToString,
+            ),
+            'DelForward': grpc.unary_unary_rpc_method_handler(
+                    servicer.DelForward,
+                    request_deserializer=node__pb2.DelforwardRequest.FromString,
+                    response_serializer=node__pb2.DelforwardResponse.SerializeToString,
+            ),
+            'DisableOffer': grpc.unary_unary_rpc_method_handler(
+                    servicer.DisableOffer,
+                    request_deserializer=node__pb2.DisableofferRequest.FromString,
+                    response_serializer=node__pb2.DisableofferResponse.SerializeToString,
+            ),
             'Disconnect': grpc.unary_unary_rpc_method_handler(
                     servicer.Disconnect,
                     request_deserializer=node__pb2.DisconnectRequest.FromString,
@@ -935,10 +1180,30 @@ def add_NodeServicer_to_server(servicer, server):
                     request_deserializer=node__pb2.FetchinvoiceRequest.FromString,
                     response_serializer=node__pb2.FetchinvoiceResponse.SerializeToString,
             ),
+            'FundChannel_Cancel': grpc.unary_unary_rpc_method_handler(
+                    servicer.FundChannel_Cancel,
+                    request_deserializer=node__pb2.Fundchannel_cancelRequest.FromString,
+                    response_serializer=node__pb2.Fundchannel_cancelResponse.SerializeToString,
+            ),
+            'FundChannel_Complete': grpc.unary_unary_rpc_method_handler(
+                    servicer.FundChannel_Complete,
+                    request_deserializer=node__pb2.Fundchannel_completeRequest.FromString,
+                    response_serializer=node__pb2.Fundchannel_completeResponse.SerializeToString,
+            ),
             'FundChannel': grpc.unary_unary_rpc_method_handler(
                     servicer.FundChannel,
                     request_deserializer=node__pb2.FundchannelRequest.FromString,
                     response_serializer=node__pb2.FundchannelResponse.SerializeToString,
+            ),
+            'FundChannel_Start': grpc.unary_unary_rpc_method_handler(
+                    servicer.FundChannel_Start,
+                    request_deserializer=node__pb2.Fundchannel_startRequest.FromString,
+                    response_serializer=node__pb2.Fundchannel_startResponse.SerializeToString,
+            ),
+            'GetLog': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetLog,
+                    request_deserializer=node__pb2.GetlogRequest.FromString,
+                    response_serializer=node__pb2.GetlogResponse.SerializeToString,
             ),
             'GetRoute': grpc.unary_unary_rpc_method_handler(
                     servicer.GetRoute,
@@ -965,10 +1230,40 @@ def add_NodeServicer_to_server(servicer, server):
                     request_deserializer=node__pb2.ListhtlcsRequest.FromString,
                     response_serializer=node__pb2.ListhtlcsResponse.SerializeToString,
             ),
+            'MultiFundChannel': grpc.unary_unary_rpc_method_handler(
+                    servicer.MultiFundChannel,
+                    request_deserializer=node__pb2.MultifundchannelRequest.FromString,
+                    response_serializer=node__pb2.MultifundchannelResponse.SerializeToString,
+            ),
             'Offer': grpc.unary_unary_rpc_method_handler(
                     servicer.Offer,
                     request_deserializer=node__pb2.OfferRequest.FromString,
                     response_serializer=node__pb2.OfferResponse.SerializeToString,
+            ),
+            'OpenChannel_Abort': grpc.unary_unary_rpc_method_handler(
+                    servicer.OpenChannel_Abort,
+                    request_deserializer=node__pb2.Openchannel_abortRequest.FromString,
+                    response_serializer=node__pb2.Openchannel_abortResponse.SerializeToString,
+            ),
+            'OpenChannel_Bump': grpc.unary_unary_rpc_method_handler(
+                    servicer.OpenChannel_Bump,
+                    request_deserializer=node__pb2.Openchannel_bumpRequest.FromString,
+                    response_serializer=node__pb2.Openchannel_bumpResponse.SerializeToString,
+            ),
+            'OpenChannel_Init': grpc.unary_unary_rpc_method_handler(
+                    servicer.OpenChannel_Init,
+                    request_deserializer=node__pb2.Openchannel_initRequest.FromString,
+                    response_serializer=node__pb2.Openchannel_initResponse.SerializeToString,
+            ),
+            'OpenChannel_Signed': grpc.unary_unary_rpc_method_handler(
+                    servicer.OpenChannel_Signed,
+                    request_deserializer=node__pb2.Openchannel_signedRequest.FromString,
+                    response_serializer=node__pb2.Openchannel_signedResponse.SerializeToString,
+            ),
+            'OpenChannel_Update': grpc.unary_unary_rpc_method_handler(
+                    servicer.OpenChannel_Update,
+                    request_deserializer=node__pb2.Openchannel_updateRequest.FromString,
+                    response_serializer=node__pb2.Openchannel_updateResponse.SerializeToString,
             ),
             'Ping': grpc.unary_unary_rpc_method_handler(
                     servicer.Ping,
@@ -1024,6 +1319,31 @@ def add_NodeServicer_to_server(servicer, server):
                     servicer.StaticBackup,
                     request_deserializer=node__pb2.StaticbackupRequest.FromString,
                     response_serializer=node__pb2.StaticbackupResponse.SerializeToString,
+            ),
+            'BkprChannelsApy': grpc.unary_unary_rpc_method_handler(
+                    servicer.BkprChannelsApy,
+                    request_deserializer=node__pb2.BkprchannelsapyRequest.FromString,
+                    response_serializer=node__pb2.BkprchannelsapyResponse.SerializeToString,
+            ),
+            'BkprDumpIncomeCsv': grpc.unary_unary_rpc_method_handler(
+                    servicer.BkprDumpIncomeCsv,
+                    request_deserializer=node__pb2.BkprdumpincomecsvRequest.FromString,
+                    response_serializer=node__pb2.BkprdumpincomecsvResponse.SerializeToString,
+            ),
+            'BkprInspect': grpc.unary_unary_rpc_method_handler(
+                    servicer.BkprInspect,
+                    request_deserializer=node__pb2.BkprinspectRequest.FromString,
+                    response_serializer=node__pb2.BkprinspectResponse.SerializeToString,
+            ),
+            'BkprListAccountEvents': grpc.unary_unary_rpc_method_handler(
+                    servicer.BkprListAccountEvents,
+                    request_deserializer=node__pb2.BkprlistaccounteventsRequest.FromString,
+                    response_serializer=node__pb2.BkprlistaccounteventsResponse.SerializeToString,
+            ),
+            'BkprListBalances': grpc.unary_unary_rpc_method_handler(
+                    servicer.BkprListBalances,
+                    request_deserializer=node__pb2.BkprlistbalancesRequest.FromString,
+                    response_serializer=node__pb2.BkprlistbalancesResponse.SerializeToString,
             ),
             'BkprListIncome': grpc.unary_unary_rpc_method_handler(
                     servicer.BkprListIncome,
@@ -1156,6 +1476,40 @@ class Node(object):
         return grpc.experimental.unary_unary(request, target, '/cln.Node/AutoCleanInvoice',
             node__pb2.AutocleaninvoiceRequest.SerializeToString,
             node__pb2.AutocleaninvoiceResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def AutoCleanOnce(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/cln.Node/AutoCleanOnce',
+            node__pb2.AutocleanonceRequest.SerializeToString,
+            node__pb2.AutocleanonceResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def AutoCleanStatus(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/cln.Node/AutoCleanStatus',
+            node__pb2.AutocleanstatusRequest.SerializeToString,
+            node__pb2.AutocleanstatusResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -1738,6 +2092,57 @@ class Node(object):
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
+    def DelPay(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/cln.Node/DelPay',
+            node__pb2.DelpayRequest.SerializeToString,
+            node__pb2.DelpayResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def DelForward(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/cln.Node/DelForward',
+            node__pb2.DelforwardRequest.SerializeToString,
+            node__pb2.DelforwardResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def DisableOffer(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/cln.Node/DisableOffer',
+            node__pb2.DisableofferRequest.SerializeToString,
+            node__pb2.DisableofferResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
     def Disconnect(request,
             target,
             options=(),
@@ -1789,6 +2194,40 @@ class Node(object):
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
+    def FundChannel_Cancel(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/cln.Node/FundChannel_Cancel',
+            node__pb2.Fundchannel_cancelRequest.SerializeToString,
+            node__pb2.Fundchannel_cancelResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def FundChannel_Complete(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/cln.Node/FundChannel_Complete',
+            node__pb2.Fundchannel_completeRequest.SerializeToString,
+            node__pb2.Fundchannel_completeResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
     def FundChannel(request,
             target,
             options=(),
@@ -1802,6 +2241,40 @@ class Node(object):
         return grpc.experimental.unary_unary(request, target, '/cln.Node/FundChannel',
             node__pb2.FundchannelRequest.SerializeToString,
             node__pb2.FundchannelResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def FundChannel_Start(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/cln.Node/FundChannel_Start',
+            node__pb2.Fundchannel_startRequest.SerializeToString,
+            node__pb2.Fundchannel_startResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetLog(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/cln.Node/GetLog',
+            node__pb2.GetlogRequest.SerializeToString,
+            node__pb2.GetlogResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -1891,6 +2364,23 @@ class Node(object):
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
+    def MultiFundChannel(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/cln.Node/MultiFundChannel',
+            node__pb2.MultifundchannelRequest.SerializeToString,
+            node__pb2.MultifundchannelResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
     def Offer(request,
             target,
             options=(),
@@ -1904,6 +2394,91 @@ class Node(object):
         return grpc.experimental.unary_unary(request, target, '/cln.Node/Offer',
             node__pb2.OfferRequest.SerializeToString,
             node__pb2.OfferResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def OpenChannel_Abort(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/cln.Node/OpenChannel_Abort',
+            node__pb2.Openchannel_abortRequest.SerializeToString,
+            node__pb2.Openchannel_abortResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def OpenChannel_Bump(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/cln.Node/OpenChannel_Bump',
+            node__pb2.Openchannel_bumpRequest.SerializeToString,
+            node__pb2.Openchannel_bumpResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def OpenChannel_Init(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/cln.Node/OpenChannel_Init',
+            node__pb2.Openchannel_initRequest.SerializeToString,
+            node__pb2.Openchannel_initResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def OpenChannel_Signed(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/cln.Node/OpenChannel_Signed',
+            node__pb2.Openchannel_signedRequest.SerializeToString,
+            node__pb2.Openchannel_signedResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def OpenChannel_Update(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/cln.Node/OpenChannel_Update',
+            node__pb2.Openchannel_updateRequest.SerializeToString,
+            node__pb2.Openchannel_updateResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -2091,6 +2666,91 @@ class Node(object):
         return grpc.experimental.unary_unary(request, target, '/cln.Node/StaticBackup',
             node__pb2.StaticbackupRequest.SerializeToString,
             node__pb2.StaticbackupResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def BkprChannelsApy(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/cln.Node/BkprChannelsApy',
+            node__pb2.BkprchannelsapyRequest.SerializeToString,
+            node__pb2.BkprchannelsapyResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def BkprDumpIncomeCsv(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/cln.Node/BkprDumpIncomeCsv',
+            node__pb2.BkprdumpincomecsvRequest.SerializeToString,
+            node__pb2.BkprdumpincomecsvResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def BkprInspect(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/cln.Node/BkprInspect',
+            node__pb2.BkprinspectRequest.SerializeToString,
+            node__pb2.BkprinspectResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def BkprListAccountEvents(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/cln.Node/BkprListAccountEvents',
+            node__pb2.BkprlistaccounteventsRequest.SerializeToString,
+            node__pb2.BkprlistaccounteventsResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def BkprListBalances(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/cln.Node/BkprListBalances',
+            node__pb2.BkprlistbalancesRequest.SerializeToString,
+            node__pb2.BkprlistbalancesResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 

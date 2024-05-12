@@ -1,5 +1,16 @@
 {
     "grpc-enum-map": {
+        "Bkpr-dumpincomecsvCsv_format": {
+            "cointracker": 0,
+            "harmony": 2,
+            "koinly": 1,
+            "quickbooks": 3
+        },
+        "Bkpr-listaccounteventsEventsType": {
+            "chain": 1,
+            "channel": 2,
+            "onchain_fee": 0
+        },
         "CloseType": {
             "mutual": 0,
             "unilateral": 1,
@@ -28,6 +39,13 @@
             "must-create": 0,
             "must-replace": 1
         },
+        "DecodeFallbacksType": {
+            "P2PKH": 0,
+            "P2SH": 1,
+            "P2TR": 4,
+            "P2WPKH": 2,
+            "P2WSH": 3
+        },
         "DecodeType": {
             "bolt11 invoice": 3,
             "bolt12 invoice": 1,
@@ -43,10 +61,24 @@
             "P2WPKH": 2,
             "P2WSH": 3
         },
+        "DelforwardStatus": {
+            "failed": 2,
+            "local_failed": 1,
+            "settled": 0
+        },
         "DelinvoiceStatus": {
             "expired": 1,
             "paid": 0,
             "unpaid": 2
+        },
+        "DelpayPaymentsStatus": {
+            "complete": 2,
+            "failed": 1,
+            "pending": 0
+        },
+        "DelpayStatus": {
+            "complete": 0,
+            "failed": 1
         },
         "FeeratesStyle": {
             "perkb": 0,
@@ -67,6 +99,24 @@
             "torv2": 3,
             "torv3": 4,
             "websocket": 5
+        },
+        "GetlogLevel": {
+            "broken": 0,
+            "debug": 3,
+            "info": 2,
+            "io": 4,
+            "trace": 5,
+            "unusual": 1
+        },
+        "GetlogLogType": {
+            "BROKEN": 1,
+            "DEBUG": 4,
+            "INFO": 3,
+            "IO_IN": 5,
+            "IO_OUT": 6,
+            "SKIPPED": 0,
+            "TRACE": 7,
+            "UNUSUAL": 2
         },
         "GetrouteRouteStyle": {
             "tlv": 0
@@ -239,6 +289,7 @@
             "debug": 1,
             "info": 2,
             "io": 0,
+            "trace": 4,
             "unusual": 3
         },
         "ListpeersPeersChannelsHtlcsDirection": {
@@ -279,6 +330,7 @@
             "IO_IN": 5,
             "IO_OUT": 6,
             "SKIPPED": 0,
+            "TRACE": 7,
             "UNUSUAL": 2
         },
         "ListsendpaysIndex": {
@@ -321,10 +373,15 @@
             "theirs": 0,
             "withdraw": 2
         },
+        "MultifundchannelFailedMethod": {
+            "connect": 0,
+            "fundchannel_complete": 3,
+            "fundchannel_start": 2,
+            "openchannel_init": 1
+        },
         "NewaddrAddresstype": {
             "all": 2,
             "bech32": 0,
-            "p2sh-segwit": 1,
             "p2tr": 3
         },
         "PayStatus": {
@@ -342,6 +399,17 @@
         },
         "StopResult": {
             "Shutdown complete": 0
+        },
+        "WaitDetailsStatus": {
+            "complete": 5,
+            "expired": 2,
+            "failed": 4,
+            "local_failed": 8,
+            "offered": 6,
+            "paid": 1,
+            "pending": 3,
+            "settled": 7,
+            "unpaid": 0
         },
         "WaitIndexname": {
             "created": 0,
@@ -369,6 +437,89 @@
         "AddgossipRequest": {
             "AddGossip.message": 1
         },
+        "Autoclean-onceAutoclean": {
+            "AutoClean-Once.autoclean.expiredinvoices": 6,
+            "AutoClean-Once.autoclean.failedforwards": 2,
+            "AutoClean-Once.autoclean.failedpays": 4,
+            "AutoClean-Once.autoclean.paidinvoices": 5,
+            "AutoClean-Once.autoclean.succeededforwards": 1,
+            "AutoClean-Once.autoclean.succeededpays": 3
+        },
+        "Autoclean-onceAutocleanExpiredinvoices": {
+            "AutoClean-Once.autoclean.expiredinvoices.cleaned": 1,
+            "AutoClean-Once.autoclean.expiredinvoices.uncleaned": 2
+        },
+        "Autoclean-onceAutocleanFailedforwards": {
+            "AutoClean-Once.autoclean.failedforwards.cleaned": 1,
+            "AutoClean-Once.autoclean.failedforwards.uncleaned": 2
+        },
+        "Autoclean-onceAutocleanFailedpays": {
+            "AutoClean-Once.autoclean.failedpays.cleaned": 1,
+            "AutoClean-Once.autoclean.failedpays.uncleaned": 2
+        },
+        "Autoclean-onceAutocleanPaidinvoices": {
+            "AutoClean-Once.autoclean.paidinvoices.cleaned": 1,
+            "AutoClean-Once.autoclean.paidinvoices.uncleaned": 2
+        },
+        "Autoclean-onceAutocleanSucceededforwards": {
+            "AutoClean-Once.autoclean.succeededforwards.cleaned": 1,
+            "AutoClean-Once.autoclean.succeededforwards.uncleaned": 2
+        },
+        "Autoclean-onceAutocleanSucceededpays": {
+            "AutoClean-Once.autoclean.succeededpays.cleaned": 1,
+            "AutoClean-Once.autoclean.succeededpays.uncleaned": 2
+        },
+        "Autoclean-onceRequest": {
+            "AutoClean-Once.age": 2,
+            "AutoClean-Once.subsystem": 1
+        },
+        "Autoclean-onceResponse": {
+            "AutoClean-Once.autoclean": 1
+        },
+        "Autoclean-statusAutoclean": {
+            "AutoClean-Status.autoclean.expiredinvoices": 6,
+            "AutoClean-Status.autoclean.failedforwards": 2,
+            "AutoClean-Status.autoclean.failedpays": 4,
+            "AutoClean-Status.autoclean.paidinvoices": 5,
+            "AutoClean-Status.autoclean.succeededforwards": 1,
+            "AutoClean-Status.autoclean.succeededpays": 3
+        },
+        "Autoclean-statusAutocleanExpiredinvoices": {
+            "AutoClean-Status.autoclean.expiredinvoices.age": 3,
+            "AutoClean-Status.autoclean.expiredinvoices.cleaned": 2,
+            "AutoClean-Status.autoclean.expiredinvoices.enabled": 1
+        },
+        "Autoclean-statusAutocleanFailedforwards": {
+            "AutoClean-Status.autoclean.failedforwards.age": 3,
+            "AutoClean-Status.autoclean.failedforwards.cleaned": 2,
+            "AutoClean-Status.autoclean.failedforwards.enabled": 1
+        },
+        "Autoclean-statusAutocleanFailedpays": {
+            "AutoClean-Status.autoclean.failedpays.age": 3,
+            "AutoClean-Status.autoclean.failedpays.cleaned": 2,
+            "AutoClean-Status.autoclean.failedpays.enabled": 1
+        },
+        "Autoclean-statusAutocleanPaidinvoices": {
+            "AutoClean-Status.autoclean.paidinvoices.age": 3,
+            "AutoClean-Status.autoclean.paidinvoices.cleaned": 2,
+            "AutoClean-Status.autoclean.paidinvoices.enabled": 1
+        },
+        "Autoclean-statusAutocleanSucceededforwards": {
+            "AutoClean-Status.autoclean.succeededforwards.age": 3,
+            "AutoClean-Status.autoclean.succeededforwards.cleaned": 2,
+            "AutoClean-Status.autoclean.succeededforwards.enabled": 1
+        },
+        "Autoclean-statusAutocleanSucceededpays": {
+            "AutoClean-Status.autoclean.succeededpays.age": 3,
+            "AutoClean-Status.autoclean.succeededpays.cleaned": 2,
+            "AutoClean-Status.autoclean.succeededpays.enabled": 1
+        },
+        "Autoclean-statusRequest": {
+            "AutoClean-Status.subsystem": 1
+        },
+        "Autoclean-statusResponse": {
+            "AutoClean-Status.autoclean": 1
+        },
         "AutocleaninvoiceRequest": {
             "AutoCleanInvoice.cycle_seconds": 2,
             "AutoCleanInvoice.expired_by": 1
@@ -377,6 +528,113 @@
             "AutoCleanInvoice.cycle_seconds": 3,
             "AutoCleanInvoice.enabled": 1,
             "AutoCleanInvoice.expired_by": 2
+        },
+        "Bkpr-channelsapyChannels_apy": {
+            "Bkpr-ChannelsApy.channels_apy[].account": 1,
+            "Bkpr-ChannelsApy.channels_apy[].apy_in": 18,
+            "Bkpr-ChannelsApy.channels_apy[].apy_in_initial": 19,
+            "Bkpr-ChannelsApy.channels_apy[].apy_lease": 22,
+            "Bkpr-ChannelsApy.channels_apy[].apy_out": 16,
+            "Bkpr-ChannelsApy.channels_apy[].apy_out_initial": 17,
+            "Bkpr-ChannelsApy.channels_apy[].apy_total": 20,
+            "Bkpr-ChannelsApy.channels_apy[].apy_total_initial": 21,
+            "Bkpr-ChannelsApy.channels_apy[].channel_start_balance_msat": 9,
+            "Bkpr-ChannelsApy.channels_apy[].fees_in_msat": 11,
+            "Bkpr-ChannelsApy.channels_apy[].fees_out_msat": 10,
+            "Bkpr-ChannelsApy.channels_apy[].lease_fee_earned_msat": 5,
+            "Bkpr-ChannelsApy.channels_apy[].lease_fee_paid_msat": 4,
+            "Bkpr-ChannelsApy.channels_apy[].our_start_balance_msat": 8,
+            "Bkpr-ChannelsApy.channels_apy[].pushed_in_msat": 7,
+            "Bkpr-ChannelsApy.channels_apy[].pushed_out_msat": 6,
+            "Bkpr-ChannelsApy.channels_apy[].routed_in_msat": 3,
+            "Bkpr-ChannelsApy.channels_apy[].routed_out_msat": 2,
+            "Bkpr-ChannelsApy.channels_apy[].utilization_in": 14,
+            "Bkpr-ChannelsApy.channels_apy[].utilization_in_initial": 15,
+            "Bkpr-ChannelsApy.channels_apy[].utilization_out": 12,
+            "Bkpr-ChannelsApy.channels_apy[].utilization_out_initial": 13
+        },
+        "Bkpr-channelsapyRequest": {
+            "Bkpr-ChannelsApy.end_time": 2,
+            "Bkpr-ChannelsApy.start_time": 1
+        },
+        "Bkpr-channelsapyResponse": {
+            "Bkpr-ChannelsApy.channels_apy[]": 1
+        },
+        "Bkpr-dumpincomecsvRequest": {
+            "Bkpr-DumpIncomeCsv.consolidate_fees": 3,
+            "Bkpr-DumpIncomeCsv.csv_file": 2,
+            "Bkpr-DumpIncomeCsv.csv_format": 1,
+            "Bkpr-DumpIncomeCsv.end_time": 5,
+            "Bkpr-DumpIncomeCsv.start_time": 4
+        },
+        "Bkpr-dumpincomecsvResponse": {
+            "Bkpr-DumpIncomeCsv.csv_file": 1,
+            "Bkpr-DumpIncomeCsv.csv_format": 2
+        },
+        "Bkpr-inspectRequest": {
+            "Bkpr-Inspect.account": 1
+        },
+        "Bkpr-inspectResponse": {
+            "Bkpr-Inspect.txs[]": 1
+        },
+        "Bkpr-inspectTxs": {
+            "Bkpr-Inspect.txs[].blockheight": 2,
+            "Bkpr-Inspect.txs[].fees_paid_msat": 3,
+            "Bkpr-Inspect.txs[].outputs[]": 4,
+            "Bkpr-Inspect.txs[].txid": 1
+        },
+        "Bkpr-inspectTxsOutputs": {
+            "Bkpr-Inspect.txs[].outputs[].account": 1,
+            "Bkpr-Inspect.txs[].outputs[].credit_msat": 5,
+            "Bkpr-Inspect.txs[].outputs[].currency": 4,
+            "Bkpr-Inspect.txs[].outputs[].debit_msat": 6,
+            "Bkpr-Inspect.txs[].outputs[].originating_account": 7,
+            "Bkpr-Inspect.txs[].outputs[].outnum": 2,
+            "Bkpr-Inspect.txs[].outputs[].output_tag": 8,
+            "Bkpr-Inspect.txs[].outputs[].output_value_msat": 3,
+            "Bkpr-Inspect.txs[].outputs[].payment_id": 11,
+            "Bkpr-Inspect.txs[].outputs[].spend_tag": 9,
+            "Bkpr-Inspect.txs[].outputs[].spending_txid": 10
+        },
+        "Bkpr-listaccounteventsEvents": {
+            "Bkpr-ListAccountEvents.events[].account": 1,
+            "Bkpr-ListAccountEvents.events[].blockheight": 9,
+            "Bkpr-ListAccountEvents.events[].credit_msat": 4,
+            "Bkpr-ListAccountEvents.events[].currency": 6,
+            "Bkpr-ListAccountEvents.events[].debit_msat": 5,
+            "Bkpr-ListAccountEvents.events[].description": 13,
+            "Bkpr-ListAccountEvents.events[].fees_msat": 14,
+            "Bkpr-ListAccountEvents.events[].is_rebalance": 15,
+            "Bkpr-ListAccountEvents.events[].origin": 10,
+            "Bkpr-ListAccountEvents.events[].outpoint": 8,
+            "Bkpr-ListAccountEvents.events[].part_id": 16,
+            "Bkpr-ListAccountEvents.events[].payment_id": 11,
+            "Bkpr-ListAccountEvents.events[].tag": 3,
+            "Bkpr-ListAccountEvents.events[].timestamp": 7,
+            "Bkpr-ListAccountEvents.events[].txid": 12,
+            "Bkpr-ListAccountEvents.events[].type": 2
+        },
+        "Bkpr-listaccounteventsRequest": {
+            "Bkpr-ListAccountEvents.account": 1
+        },
+        "Bkpr-listaccounteventsResponse": {
+            "Bkpr-ListAccountEvents.events[]": 1
+        },
+        "Bkpr-listbalancesAccounts": {
+            "Bkpr-ListBalances.accounts[].account": 1,
+            "Bkpr-ListBalances.accounts[].account_closed": 5,
+            "Bkpr-ListBalances.accounts[].account_resolved": 6,
+            "Bkpr-ListBalances.accounts[].balances[]": 2,
+            "Bkpr-ListBalances.accounts[].peer_id": 3,
+            "Bkpr-ListBalances.accounts[].resolved_at_block": 7,
+            "Bkpr-ListBalances.accounts[].we_opened": 4
+        },
+        "Bkpr-listbalancesAccountsBalances": {
+            "Bkpr-ListBalances.accounts[].balances[].balance_msat": 1,
+            "Bkpr-ListBalances.accounts[].balances[].coin_type": 2
+        },
+        "Bkpr-listbalancesResponse": {
+            "Bkpr-ListBalances.accounts[]": 1
         },
         "Bkpr-listincomeIncome_events": {
             "Bkpr-ListIncome.income_events[].account": 1,
@@ -510,6 +768,9 @@
             "Decode.extra[].tag": 1
         },
         "DecodeFallbacks": {
+            "Decode.fallbacks[].addr": 3,
+            "Decode.fallbacks[].hex": 4,
+            "Decode.fallbacks[].type": 2,
             "Decode.fallbacks[].warning_invoice_fallbacks_version_invalid": 1
         },
         "DecodeInvoice_fallbacks": {
@@ -535,13 +796,17 @@
             "Decode.string": 1
         },
         "DecodeResponse": {
+            "Decode.amount_msat": 79,
             "Decode.created_at": 60,
+            "Decode.currency": 78,
             "Decode.currency_minor_unit": 8,
             "Decode.decrypted": 76,
+            "Decode.description": 80,
             "Decode.description_hash": 64,
             "Decode.expiry": 61,
             "Decode.extra[]": 69,
             "Decode.fallbacks[]": 59,
+            "Decode.features": 81,
             "Decode.hex": 75,
             "Decode.invoice_amount_msat": 44,
             "Decode.invoice_created_at": 41,
@@ -582,6 +847,7 @@
             "Decode.payment_secret": 66,
             "Decode.restrictions[]": 73,
             "Decode.routes[][]": 68,
+            "Decode.signature": 77,
             "Decode.string": 72,
             "Decode.type": 1,
             "Decode.unique_id": 70,
@@ -662,6 +928,11 @@
         "DelexpiredinvoiceRequest": {
             "DelExpiredInvoice.maxexpirytime": 1
         },
+        "DelforwardRequest": {
+            "DelForward.in_channel": 1,
+            "DelForward.in_htlc_id": 2,
+            "DelForward.status": 3
+        },
         "DelinvoiceRequest": {
             "DelInvoice.desconly": 3,
             "DelInvoice.label": 1,
@@ -669,6 +940,7 @@
         },
         "DelinvoiceResponse": {
             "DelInvoice.amount_msat": 4,
+            "DelInvoice.amount_received_msat": 15,
             "DelInvoice.bolt11": 2,
             "DelInvoice.bolt12": 3,
             "DelInvoice.created_index": 12,
@@ -677,10 +949,52 @@
             "DelInvoice.invreq_payer_note": 11,
             "DelInvoice.label": 1,
             "DelInvoice.local_offer_id": 9,
+            "DelInvoice.paid_at": 16,
+            "DelInvoice.pay_index": 14,
             "DelInvoice.payer_note": 10,
             "DelInvoice.payment_hash": 6,
+            "DelInvoice.payment_preimage": 17,
             "DelInvoice.status": 7,
             "DelInvoice.updated_index": 13
+        },
+        "DelpayPayments": {
+            "DelPay.payments[].amount_msat": 8,
+            "DelPay.payments[].amount_sent_msat": 5,
+            "DelPay.payments[].bolt11": 15,
+            "DelPay.payments[].bolt12": 16,
+            "DelPay.payments[].completed_at": 11,
+            "DelPay.payments[].created_at": 9,
+            "DelPay.payments[].created_index": 1,
+            "DelPay.payments[].destination": 7,
+            "DelPay.payments[].erroronion": 17,
+            "DelPay.payments[].groupid": 12,
+            "DelPay.payments[].id": 2,
+            "DelPay.payments[].label": 14,
+            "DelPay.payments[].partid": 6,
+            "DelPay.payments[].payment_hash": 3,
+            "DelPay.payments[].payment_preimage": 13,
+            "DelPay.payments[].status": 4,
+            "DelPay.payments[].updated_index": 10
+        },
+        "DelpayRequest": {
+            "DelPay.groupid": 4,
+            "DelPay.partid": 3,
+            "DelPay.payment_hash": 1,
+            "DelPay.status": 2
+        },
+        "DelpayResponse": {
+            "DelPay.payments[]": 1
+        },
+        "DisableofferRequest": {
+            "DisableOffer.offer_id": 1
+        },
+        "DisableofferResponse": {
+            "DisableOffer.active": 2,
+            "DisableOffer.bolt12": 4,
+            "DisableOffer.label": 6,
+            "DisableOffer.offer_id": 1,
+            "DisableOffer.single_use": 3,
+            "DisableOffer.used": 5
         },
         "DisconnectRequest": {
             "Disconnect.force": 2,
@@ -797,6 +1111,43 @@
             "FundChannel.tx": 1,
             "FundChannel.txid": 2
         },
+        "Fundchannel_cancelRequest": {
+            "FundChannel_Cancel.id": 1
+        },
+        "Fundchannel_cancelResponse": {
+            "FundChannel_Cancel.cancelled": 1
+        },
+        "Fundchannel_completeRequest": {
+            "FundChannel_Complete.id": 1,
+            "FundChannel_Complete.psbt": 2
+        },
+        "Fundchannel_completeResponse": {
+            "FundChannel_Complete.channel_id": 1,
+            "FundChannel_Complete.commitments_secured": 2
+        },
+        "Fundchannel_startChannel_type": {
+            "FundChannel_Start.channel_type.bits[]": 1,
+            "FundChannel_Start.channel_type.names[]": 2
+        },
+        "Fundchannel_startRequest": {
+            "FundChannel_Start.amount": 2,
+            "FundChannel_Start.announce": 4,
+            "FundChannel_Start.channel_type[]": 9,
+            "FundChannel_Start.close_to": 5,
+            "FundChannel_Start.feerate": 3,
+            "FundChannel_Start.id": 1,
+            "FundChannel_Start.mindepth": 7,
+            "FundChannel_Start.push_msat": 6,
+            "FundChannel_Start.reserve": 8
+        },
+        "Fundchannel_startResponse": {
+            "FundChannel_Start.channel_type": 3,
+            "FundChannel_Start.close_to": 4,
+            "FundChannel_Start.funding_address": 1,
+            "FundChannel_Start.mindepth": 6,
+            "FundChannel_Start.scriptpubkey": 2,
+            "FundChannel_Start.warning_usage": 5
+        },
         "FundpsbtRequest": {
             "FundPsbt.excess_as_change": 8,
             "FundPsbt.feerate": 2,
@@ -833,6 +1184,7 @@
             "Getinfo.binding[].address": 2,
             "Getinfo.binding[].port": 3,
             "Getinfo.binding[].socket": 4,
+            "Getinfo.binding[].subtype": 5,
             "Getinfo.binding[].type": 1
         },
         "GetinfoOur_features": {
@@ -860,6 +1212,24 @@
             "Getinfo.version": 8,
             "Getinfo.warning_bitcoind_sync": 16,
             "Getinfo.warning_lightningd_sync": 17
+        },
+        "GetlogLog": {
+            "GetLog.log[].data": 7,
+            "GetLog.log[].log": 5,
+            "GetLog.log[].node_id": 6,
+            "GetLog.log[].num_skipped": 2,
+            "GetLog.log[].source": 4,
+            "GetLog.log[].time": 3,
+            "GetLog.log[].type": 1
+        },
+        "GetlogRequest": {
+            "GetLog.level": 1
+        },
+        "GetlogResponse": {
+            "GetLog.bytes_max": 3,
+            "GetLog.bytes_used": 2,
+            "GetLog.created_at": 1,
+            "GetLog.log[]": 4
         },
         "GetrouteRequest": {
             "GetRoute.amount_msat": 9,
@@ -1009,6 +1379,8 @@
         },
         "ListforwardsForwards": {
             "ListForwards.forwards[].created_index": 12,
+            "ListForwards.forwards[].failcode": 15,
+            "ListForwards.forwards[].failreason": 16,
             "ListForwards.forwards[].fee_msat": 7,
             "ListForwards.forwards[].in_channel": 1,
             "ListForwards.forwards[].in_htlc_id": 10,
@@ -1018,6 +1390,7 @@
             "ListForwards.forwards[].out_msat": 8,
             "ListForwards.forwards[].payment_hash": 6,
             "ListForwards.forwards[].received_time": 4,
+            "ListForwards.forwards[].resolved_time": 14,
             "ListForwards.forwards[].status": 3,
             "ListForwards.forwards[].style": 9,
             "ListForwards.forwards[].updated_index": 13
@@ -1051,6 +1424,7 @@
             "ListFunds.outputs[].output": 2,
             "ListFunds.outputs[].redeemscript": 6,
             "ListFunds.outputs[].reserved": 9,
+            "ListFunds.outputs[].reserved_to_block": 10,
             "ListFunds.outputs[].scriptpubkey": 4,
             "ListFunds.outputs[].status": 7,
             "ListFunds.outputs[].txid": 1
@@ -1119,12 +1493,21 @@
             "ListNodes.nodes[].color": 4,
             "ListNodes.nodes[].features": 5,
             "ListNodes.nodes[].last_timestamp": 2,
-            "ListNodes.nodes[].nodeid": 1
+            "ListNodes.nodes[].nodeid": 1,
+            "ListNodes.nodes[].option_will_fund": 7
         },
         "ListnodesNodesAddresses": {
             "ListNodes.nodes[].addresses[].address": 3,
             "ListNodes.nodes[].addresses[].port": 2,
             "ListNodes.nodes[].addresses[].type": 1
+        },
+        "ListnodesNodesOption_will_fund": {
+            "ListNodes.nodes[].option_will_fund.channel_fee_max_base_msat": 4,
+            "ListNodes.nodes[].option_will_fund.channel_fee_max_proportional_thousandths": 5,
+            "ListNodes.nodes[].option_will_fund.compact_lease": 6,
+            "ListNodes.nodes[].option_will_fund.funding_weight": 3,
+            "ListNodes.nodes[].option_will_fund.lease_fee_base_msat": 1,
+            "ListNodes.nodes[].option_will_fund.lease_fee_basis": 2
         },
         "ListnodesRequest": {
             "ListNodes.id": 1
@@ -1178,6 +1561,7 @@
             "ListPeerChannels.channels[].close_to": 17,
             "ListPeerChannels.channels[].close_to_addr": 53,
             "ListPeerChannels.channels[].closer": 20,
+            "ListPeerChannels.channels[].direction": 60,
             "ListPeerChannels.channels[].dust_limit_msat": 29,
             "ListPeerChannels.channels[].features[]": 21,
             "ListPeerChannels.channels[].fee_base_msat": 27,
@@ -1196,6 +1580,7 @@
             "ListPeerChannels.channels[].initial_feerate": 12,
             "ListPeerChannels.channels[].last_feerate": 13,
             "ListPeerChannels.channels[].last_stable_connection": 56,
+            "ListPeerChannels.channels[].last_tx_fee_msat": 59,
             "ListPeerChannels.channels[].lost_state": 57,
             "ListPeerChannels.channels[].max_accepted_htlcs": 40,
             "ListPeerChannels.channels[].max_to_us_msat": 25,
@@ -1475,12 +1860,87 @@
             "ListTransactions.transactions[].outputs[].scriptPubKey": 3,
             "ListTransactions.transactions[].outputs[].type": 4
         },
+        "MultifundchannelChannel_ids": {
+            "MultiFundChannel.channel_ids[].channel_id": 3,
+            "MultiFundChannel.channel_ids[].channel_type": 4,
+            "MultiFundChannel.channel_ids[].close_to": 5,
+            "MultiFundChannel.channel_ids[].id": 1,
+            "MultiFundChannel.channel_ids[].outnum": 2,
+            "multifundchannel.channel_ids[].channel_id": 3,
+            "multifundchannel.channel_ids[].channel_type": 4,
+            "multifundchannel.channel_ids[].close_to": 5,
+            "multifundchannel.channel_ids[].id": 1,
+            "multifundchannel.channel_ids[].outnum": 2
+        },
+        "MultifundchannelChannel_idsChannel_type": {
+            "MultiFundChannel.channel_ids[].channel_type.bits[]": 1,
+            "MultiFundChannel.channel_ids[].channel_type.names[]": 2,
+            "multifundchannel.channel_ids[].channel_type.bits[]": 1,
+            "multifundchannel.channel_ids[].channel_type.names[]": 2
+        },
+        "MultifundchannelDestinations": {
+            "MultiFundChannel.destinations[].amount": 2,
+            "MultiFundChannel.destinations[].announce": 3,
+            "MultiFundChannel.destinations[].close_to": 5,
+            "MultiFundChannel.destinations[].compact_lease": 7,
+            "MultiFundChannel.destinations[].id": 1,
+            "MultiFundChannel.destinations[].mindepth": 8,
+            "MultiFundChannel.destinations[].push_msat": 4,
+            "MultiFundChannel.destinations[].request_amt": 6,
+            "MultiFundChannel.destinations[].reserve": 9,
+            "multifundchannel.destinations[].amount": 2,
+            "multifundchannel.destinations[].announce": 3,
+            "multifundchannel.destinations[].close_to": 5,
+            "multifundchannel.destinations[].compact_lease": 7,
+            "multifundchannel.destinations[].id": 1,
+            "multifundchannel.destinations[].mindepth": 8,
+            "multifundchannel.destinations[].push_msat": 4,
+            "multifundchannel.destinations[].request_amt": 6,
+            "multifundchannel.destinations[].reserve": 9
+        },
+        "MultifundchannelFailed": {
+            "MultiFundChannel.failed[].error": 3,
+            "MultiFundChannel.failed[].id": 1,
+            "MultiFundChannel.failed[].method": 2,
+            "multifundchannel.failed[].error": 3,
+            "multifundchannel.failed[].id": 1,
+            "multifundchannel.failed[].method": 2
+        },
+        "MultifundchannelFailedError": {
+            "MultiFundChannel.failed[].error.code": 1,
+            "MultiFundChannel.failed[].error.message": 2,
+            "multifundchannel.failed[].error.code": 1,
+            "multifundchannel.failed[].error.message": 2
+        },
+        "MultifundchannelRequest": {
+            "MultiFundChannel.commitment_feerate": 6,
+            "MultiFundChannel.destinations[]": 1,
+            "MultiFundChannel.feerate": 2,
+            "MultiFundChannel.minchannels": 5,
+            "MultiFundChannel.minconf": 3,
+            "MultiFundChannel.utxos[]": 4,
+            "multifundchannel.commitment_feerate": 6,
+            "multifundchannel.destinations[]": 1,
+            "multifundchannel.feerate": 2,
+            "multifundchannel.minchannels": 5,
+            "multifundchannel.minconf": 3,
+            "multifundchannel.utxos[]": 4
+        },
+        "MultifundchannelResponse": {
+            "MultiFundChannel.channel_ids[]": 3,
+            "MultiFundChannel.failed[]": 4,
+            "MultiFundChannel.tx": 1,
+            "MultiFundChannel.txid": 2,
+            "multifundchannel.channel_ids[]": 3,
+            "multifundchannel.failed[]": 4,
+            "multifundchannel.tx": 1,
+            "multifundchannel.txid": 2
+        },
         "NewaddrRequest": {
             "NewAddr.addresstype": 1
         },
         "NewaddrResponse": {
             "NewAddr.bech32": 1,
-            "NewAddr.p2sh-segwit": 2,
             "NewAddr.p2tr": 3
         },
         "OfferRecurrence": {
@@ -1518,6 +1978,82 @@
             "Offer.offer_id": 1,
             "Offer.single_use": 3,
             "Offer.used": 5
+        },
+        "Openchannel_abortRequest": {
+            "OpenChannel_Abort.channel_id": 1
+        },
+        "Openchannel_abortResponse": {
+            "OpenChannel_Abort.channel_canceled": 2,
+            "OpenChannel_Abort.channel_id": 1,
+            "OpenChannel_Abort.reason": 3
+        },
+        "Openchannel_bumpChannel_type": {
+            "OpenChannel_Bump.channel_type.bits[]": 1,
+            "OpenChannel_Bump.channel_type.names[]": 2
+        },
+        "Openchannel_bumpRequest": {
+            "OpenChannel_Bump.amount": 4,
+            "OpenChannel_Bump.channel_id": 1,
+            "OpenChannel_Bump.funding_feerate": 3,
+            "OpenChannel_Bump.initialpsbt": 2
+        },
+        "Openchannel_bumpResponse": {
+            "OpenChannel_Bump.channel_id": 1,
+            "OpenChannel_Bump.channel_type": 2,
+            "OpenChannel_Bump.commitments_secured": 4,
+            "OpenChannel_Bump.funding_serial": 5,
+            "OpenChannel_Bump.psbt": 3,
+            "OpenChannel_Bump.requires_confirmed_inputs": 6
+        },
+        "Openchannel_initChannel_type": {
+            "OpenChannel_Init.channel_type.bits[]": 1,
+            "OpenChannel_Init.channel_type.names[]": 2
+        },
+        "Openchannel_initRequest": {
+            "OpenChannel_Init.amount": 10,
+            "OpenChannel_Init.announce": 5,
+            "OpenChannel_Init.channel_type[]": 9,
+            "OpenChannel_Init.close_to": 6,
+            "OpenChannel_Init.commitment_feerate": 3,
+            "OpenChannel_Init.compact_lease": 8,
+            "OpenChannel_Init.funding_feerate": 4,
+            "OpenChannel_Init.id": 1,
+            "OpenChannel_Init.initialpsbt": 2,
+            "OpenChannel_Init.request_amt": 7
+        },
+        "Openchannel_initResponse": {
+            "OpenChannel_Init.channel_id": 1,
+            "OpenChannel_Init.channel_type": 3,
+            "OpenChannel_Init.commitments_secured": 4,
+            "OpenChannel_Init.funding_serial": 5,
+            "OpenChannel_Init.psbt": 2,
+            "OpenChannel_Init.requires_confirmed_inputs": 6
+        },
+        "Openchannel_signedRequest": {
+            "OpenChannel_Signed.channel_id": 1,
+            "OpenChannel_Signed.signed_psbt": 2
+        },
+        "Openchannel_signedResponse": {
+            "OpenChannel_Signed.channel_id": 1,
+            "OpenChannel_Signed.tx": 2,
+            "OpenChannel_Signed.txid": 3
+        },
+        "Openchannel_updateChannel_type": {
+            "OpenChannel_Update.channel_type.bits[]": 1,
+            "OpenChannel_Update.channel_type.names[]": 2
+        },
+        "Openchannel_updateRequest": {
+            "OpenChannel_Update.channel_id": 1,
+            "OpenChannel_Update.psbt": 2
+        },
+        "Openchannel_updateResponse": {
+            "OpenChannel_Update.channel_id": 1,
+            "OpenChannel_Update.channel_type": 2,
+            "OpenChannel_Update.close_to": 6,
+            "OpenChannel_Update.commitments_secured": 4,
+            "OpenChannel_Update.funding_outnum": 5,
+            "OpenChannel_Update.psbt": 3,
+            "OpenChannel_Update.requires_confirmed_inputs": 7
         },
         "PayRequest": {
             "Pay.amount_msat": 13,
@@ -1762,6 +2298,20 @@
             "UtxoPsbt.psbt": 1,
             "UtxoPsbt.reservations[]": 6
         },
+        "WaitDetails": {
+            "Wait.details.bolt11": 4,
+            "Wait.details.bolt12": 5,
+            "Wait.details.description": 3,
+            "Wait.details.groupid": 7,
+            "Wait.details.in_channel": 9,
+            "Wait.details.in_htlc_id": 10,
+            "Wait.details.in_msat": 11,
+            "Wait.details.label": 2,
+            "Wait.details.out_channel": 12,
+            "Wait.details.partid": 6,
+            "Wait.details.payment_hash": 8,
+            "Wait.details.status": 1
+        },
         "WaitRequest": {
             "Wait.indexname": 2,
             "Wait.nextvalue": 3,
@@ -1770,6 +2320,7 @@
         "WaitResponse": {
             "Wait.created": 2,
             "Wait.deleted": 4,
+            "Wait.details": 5,
             "Wait.subsystem": 1,
             "Wait.updated": 3
         },
@@ -1875,6 +2426,202 @@
             "added": "pre-v0.10.1",
             "deprecated": false
         },
+        "AutoClean-Once": {
+            "added": "pre-v0.10.1",
+            "deprecated": null
+        },
+        "AutoClean-Once.age": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "AutoClean-Once.autoclean": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "AutoClean-Once.autoclean.expiredinvoices": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "AutoClean-Once.autoclean.expiredinvoices.cleaned": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "AutoClean-Once.autoclean.expiredinvoices.uncleaned": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "AutoClean-Once.autoclean.failedforwards": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "AutoClean-Once.autoclean.failedforwards.cleaned": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "AutoClean-Once.autoclean.failedforwards.uncleaned": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "AutoClean-Once.autoclean.failedpays": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "AutoClean-Once.autoclean.failedpays.cleaned": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "AutoClean-Once.autoclean.failedpays.uncleaned": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "AutoClean-Once.autoclean.paidinvoices": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "AutoClean-Once.autoclean.paidinvoices.cleaned": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "AutoClean-Once.autoclean.paidinvoices.uncleaned": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "AutoClean-Once.autoclean.succeededforwards": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "AutoClean-Once.autoclean.succeededforwards.cleaned": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "AutoClean-Once.autoclean.succeededforwards.uncleaned": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "AutoClean-Once.autoclean.succeededpays": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "AutoClean-Once.autoclean.succeededpays.cleaned": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "AutoClean-Once.autoclean.succeededpays.uncleaned": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "AutoClean-Once.subsystem": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "AutoClean-Status": {
+            "added": "pre-v0.10.1",
+            "deprecated": null
+        },
+        "AutoClean-Status.autoclean": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "AutoClean-Status.autoclean.expiredinvoices": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "AutoClean-Status.autoclean.expiredinvoices.age": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "AutoClean-Status.autoclean.expiredinvoices.cleaned": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "AutoClean-Status.autoclean.expiredinvoices.enabled": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "AutoClean-Status.autoclean.failedforwards": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "AutoClean-Status.autoclean.failedforwards.age": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "AutoClean-Status.autoclean.failedforwards.cleaned": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "AutoClean-Status.autoclean.failedforwards.enabled": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "AutoClean-Status.autoclean.failedpays": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "AutoClean-Status.autoclean.failedpays.age": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "AutoClean-Status.autoclean.failedpays.cleaned": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "AutoClean-Status.autoclean.failedpays.enabled": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "AutoClean-Status.autoclean.paidinvoices": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "AutoClean-Status.autoclean.paidinvoices.age": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "AutoClean-Status.autoclean.paidinvoices.cleaned": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "AutoClean-Status.autoclean.paidinvoices.enabled": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "AutoClean-Status.autoclean.succeededforwards": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "AutoClean-Status.autoclean.succeededforwards.age": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "AutoClean-Status.autoclean.succeededforwards.cleaned": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "AutoClean-Status.autoclean.succeededforwards.enabled": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "AutoClean-Status.autoclean.succeededpays": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "AutoClean-Status.autoclean.succeededpays.age": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "AutoClean-Status.autoclean.succeededpays.cleaned": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "AutoClean-Status.autoclean.succeededpays.enabled": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "AutoClean-Status.subsystem": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
         "AutoCleanInvoice": {
             "added": "pre-v0.10.1",
             "deprecated": null
@@ -1888,6 +2635,326 @@
             "deprecated": false
         },
         "AutoCleanInvoice.expired_by": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ChannelsApy": {
+            "added": "pre-v0.10.1",
+            "deprecated": null
+        },
+        "Bkpr-ChannelsApy.channels_apy[]": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ChannelsApy.channels_apy[].account": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ChannelsApy.channels_apy[].apy_in": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ChannelsApy.channels_apy[].apy_in_initial": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ChannelsApy.channels_apy[].apy_lease": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ChannelsApy.channels_apy[].apy_out": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ChannelsApy.channels_apy[].apy_out_initial": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ChannelsApy.channels_apy[].apy_total": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ChannelsApy.channels_apy[].apy_total_initial": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ChannelsApy.channels_apy[].channel_start_balance_msat": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ChannelsApy.channels_apy[].fees_in_msat": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ChannelsApy.channels_apy[].fees_out_msat": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ChannelsApy.channels_apy[].lease_fee_earned_msat": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ChannelsApy.channels_apy[].lease_fee_paid_msat": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ChannelsApy.channels_apy[].our_start_balance_msat": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ChannelsApy.channels_apy[].pushed_in_msat": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ChannelsApy.channels_apy[].pushed_out_msat": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ChannelsApy.channels_apy[].routed_in_msat": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ChannelsApy.channels_apy[].routed_out_msat": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ChannelsApy.channels_apy[].utilization_in": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ChannelsApy.channels_apy[].utilization_in_initial": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ChannelsApy.channels_apy[].utilization_out": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ChannelsApy.channels_apy[].utilization_out_initial": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ChannelsApy.end_time": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ChannelsApy.start_time": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-DumpIncomeCsv": {
+            "added": "pre-v0.10.1",
+            "deprecated": null
+        },
+        "Bkpr-DumpIncomeCsv.consolidate_fees": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-DumpIncomeCsv.csv_file": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-DumpIncomeCsv.csv_format": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-DumpIncomeCsv.end_time": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-DumpIncomeCsv.start_time": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-Inspect": {
+            "added": "pre-v0.10.1",
+            "deprecated": null
+        },
+        "Bkpr-Inspect.account": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-Inspect.txs[]": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-Inspect.txs[].blockheight": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-Inspect.txs[].fees_paid_msat": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-Inspect.txs[].outputs[]": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-Inspect.txs[].outputs[].account": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-Inspect.txs[].outputs[].credit_msat": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-Inspect.txs[].outputs[].currency": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-Inspect.txs[].outputs[].debit_msat": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-Inspect.txs[].outputs[].originating_account": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-Inspect.txs[].outputs[].outnum": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-Inspect.txs[].outputs[].output_tag": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-Inspect.txs[].outputs[].output_value_msat": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-Inspect.txs[].outputs[].payment_id": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-Inspect.txs[].outputs[].spend_tag": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-Inspect.txs[].outputs[].spending_txid": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-Inspect.txs[].txid": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ListAccountEvents": {
+            "added": "pre-v0.10.1",
+            "deprecated": null
+        },
+        "Bkpr-ListAccountEvents.account": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ListAccountEvents.events[]": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ListAccountEvents.events[].account": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ListAccountEvents.events[].blockheight": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ListAccountEvents.events[].credit_msat": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ListAccountEvents.events[].currency": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ListAccountEvents.events[].debit_msat": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ListAccountEvents.events[].description": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ListAccountEvents.events[].fees_msat": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ListAccountEvents.events[].is_rebalance": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ListAccountEvents.events[].origin": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ListAccountEvents.events[].outpoint": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ListAccountEvents.events[].part_id": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ListAccountEvents.events[].payment_id": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ListAccountEvents.events[].tag": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ListAccountEvents.events[].timestamp": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ListAccountEvents.events[].txid": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ListAccountEvents.events[].type": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ListBalances": {
+            "added": "pre-v0.10.1",
+            "deprecated": null
+        },
+        "Bkpr-ListBalances.accounts[]": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ListBalances.accounts[].account": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ListBalances.accounts[].account_closed": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ListBalances.accounts[].account_resolved": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ListBalances.accounts[].balances[]": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ListBalances.accounts[].balances[].balance_msat": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ListBalances.accounts[].balances[].coin_type": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ListBalances.accounts[].peer_id": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ListBalances.accounts[].resolved_at_block": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Bkpr-ListBalances.accounts[].we_opened": {
             "added": "pre-v0.10.1",
             "deprecated": false
         },
@@ -2227,7 +3294,15 @@
             "added": "v23.05",
             "deprecated": null
         },
+        "Decode.amount_msat": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
         "Decode.created_at": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Decode.currency": {
             "added": "pre-v0.10.1",
             "deprecated": false
         },
@@ -2237,6 +3312,10 @@
         },
         "Decode.decrypted": {
             "added": "v23.11",
+            "deprecated": false
+        },
+        "Decode.description": {
+            "added": "pre-v0.10.1",
             "deprecated": false
         },
         "Decode.description_hash": {
@@ -2263,7 +3342,23 @@
             "added": "pre-v0.10.1",
             "deprecated": false
         },
+        "Decode.fallbacks[].addr": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Decode.fallbacks[].hex": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Decode.fallbacks[].type": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
         "Decode.fallbacks[].warning_invoice_fallbacks_version_invalid": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Decode.features": {
             "added": "pre-v0.10.1",
             "deprecated": false
         },
@@ -2567,6 +3662,10 @@
             "added": "pre-v0.10.1",
             "deprecated": false
         },
+        "Decode.signature": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
         "Decode.string": {
             "added": "pre-v0.10.1",
             "deprecated": false
@@ -2859,11 +3958,31 @@
             "added": "pre-v0.10.1",
             "deprecated": false
         },
+        "DelForward": {
+            "added": "pre-v0.10.1",
+            "deprecated": null
+        },
+        "DelForward.in_channel": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "DelForward.in_htlc_id": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "DelForward.status": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
         "DelInvoice": {
             "added": "pre-v0.10.1",
             "deprecated": null
         },
         "DelInvoice.amount_msat": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "DelInvoice.amount_received_msat": {
             "added": "pre-v0.10.1",
             "deprecated": false
         },
@@ -2903,7 +4022,19 @@
             "added": "pre-v0.10.1",
             "deprecated": false
         },
+        "DelInvoice.paid_at": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "DelInvoice.pay_index": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
         "DelInvoice.payment_hash": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "DelInvoice.payment_preimage": {
             "added": "pre-v0.10.1",
             "deprecated": false
         },
@@ -2913,6 +4044,126 @@
         },
         "DelInvoice.updated_index": {
             "added": "v23.08",
+            "deprecated": false
+        },
+        "DelPay": {
+            "added": "pre-v0.10.1",
+            "deprecated": null
+        },
+        "DelPay.groupid": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "DelPay.partid": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "DelPay.payment_hash": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "DelPay.payments[]": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "DelPay.payments[].amount_msat": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "DelPay.payments[].amount_sent_msat": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "DelPay.payments[].bolt11": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "DelPay.payments[].bolt12": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "DelPay.payments[].completed_at": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "DelPay.payments[].created_at": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "DelPay.payments[].created_index": {
+            "added": "v23.11",
+            "deprecated": false
+        },
+        "DelPay.payments[].destination": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "DelPay.payments[].erroronion": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "DelPay.payments[].groupid": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "DelPay.payments[].id": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "DelPay.payments[].label": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "DelPay.payments[].partid": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "DelPay.payments[].payment_hash": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "DelPay.payments[].payment_preimage": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "DelPay.payments[].status": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "DelPay.payments[].updated_index": {
+            "added": "v23.11",
+            "deprecated": false
+        },
+        "DelPay.status": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "DisableOffer": {
+            "added": "pre-v0.10.1",
+            "deprecated": null
+        },
+        "DisableOffer.active": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "DisableOffer.bolt12": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "DisableOffer.label": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "DisableOffer.offer_id": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "DisableOffer.single_use": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "DisableOffer.used": {
+            "added": "pre-v0.10.1",
             "deprecated": false
         },
         "Disconnect": {
@@ -3259,6 +4510,102 @@
             "added": "pre-v0.10.1",
             "deprecated": false
         },
+        "FundChannel_Cancel": {
+            "added": "pre-v0.10.1",
+            "deprecated": null
+        },
+        "FundChannel_Cancel.cancelled": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "FundChannel_Cancel.id": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "FundChannel_Complete": {
+            "added": "pre-v0.10.1",
+            "deprecated": null
+        },
+        "FundChannel_Complete.channel_id": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "FundChannel_Complete.commitments_secured": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "FundChannel_Complete.id": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "FundChannel_Complete.psbt": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "FundChannel_Start": {
+            "added": "pre-v0.10.1",
+            "deprecated": null
+        },
+        "FundChannel_Start.amount": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "FundChannel_Start.announce": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "FundChannel_Start.channel_type": {
+            "added": "v24.02",
+            "deprecated": false
+        },
+        "FundChannel_Start.channel_type.bits[]": {
+            "added": "v24.02",
+            "deprecated": false
+        },
+        "FundChannel_Start.channel_type.names[]": {
+            "added": "v24.02",
+            "deprecated": false
+        },
+        "FundChannel_Start.channel_type[]": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "FundChannel_Start.close_to": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "FundChannel_Start.feerate": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "FundChannel_Start.funding_address": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "FundChannel_Start.id": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "FundChannel_Start.mindepth": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "FundChannel_Start.push_msat": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "FundChannel_Start.reserve": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "FundChannel_Start.scriptpubkey": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "FundChannel_Start.warning_usage": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
         "FundPsbt": {
             "added": "pre-v0.10.1",
             "deprecated": null
@@ -3344,6 +4691,58 @@
             "deprecated": false
         },
         "FundPsbt.startweight": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "GetLog": {
+            "added": "pre-v0.10.1",
+            "deprecated": null
+        },
+        "GetLog.bytes_max": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "GetLog.bytes_used": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "GetLog.created_at": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "GetLog.level": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "GetLog.log[]": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "GetLog.log[].data": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "GetLog.log[].log": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "GetLog.log[].node_id": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "GetLog.log[].num_skipped": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "GetLog.log[].source": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "GetLog.log[].time": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "GetLog.log[].type": {
             "added": "pre-v0.10.1",
             "deprecated": false
         },
@@ -3448,6 +4847,10 @@
             "deprecated": false
         },
         "Getinfo.binding[].socket": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Getinfo.binding[].subtype": {
             "added": "pre-v0.10.1",
             "deprecated": false
         },
@@ -3927,6 +5330,14 @@
             "added": "v23.11",
             "deprecated": false
         },
+        "ListForwards.forwards[].failcode": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "ListForwards.forwards[].failreason": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
         "ListForwards.forwards[].fee_msat": {
             "added": "pre-v0.10.1",
             "deprecated": false
@@ -3956,6 +5367,10 @@
             "deprecated": false
         },
         "ListForwards.forwards[].received_time": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "ListForwards.forwards[].resolved_time": {
             "added": "pre-v0.10.1",
             "deprecated": false
         },
@@ -4064,6 +5479,10 @@
             "deprecated": false
         },
         "ListFunds.outputs[].reserved": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "ListFunds.outputs[].reserved_to_block": {
             "added": "pre-v0.10.1",
             "deprecated": false
         },
@@ -4283,6 +5702,34 @@
             "added": "pre-v0.10.1",
             "deprecated": false
         },
+        "ListNodes.nodes[].option_will_fund": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "ListNodes.nodes[].option_will_fund.channel_fee_max_base_msat": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "ListNodes.nodes[].option_will_fund.channel_fee_max_proportional_thousandths": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "ListNodes.nodes[].option_will_fund.compact_lease": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "ListNodes.nodes[].option_will_fund.funding_weight": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "ListNodes.nodes[].option_will_fund.lease_fee_base_msat": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "ListNodes.nodes[].option_will_fund.lease_fee_basis": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
         "ListOffers": {
             "added": "pre-v0.10.1",
             "deprecated": null
@@ -4455,6 +5902,10 @@
             "added": "v23.02",
             "deprecated": false
         },
+        "ListPeerChannels.channels[].direction": {
+            "added": "v23.02",
+            "deprecated": false
+        },
         "ListPeerChannels.channels[].dust_limit_msat": {
             "added": "v23.02",
             "deprecated": false
@@ -4613,6 +6064,10 @@
         },
         "ListPeerChannels.channels[].last_stable_connection": {
             "added": "v24.02",
+            "deprecated": false
+        },
+        "ListPeerChannels.channels[].last_tx_fee_msat": {
+            "added": "pre-v0.10.1",
             "deprecated": false
         },
         "ListPeerChannels.channels[].lost_state": {
@@ -5399,6 +6854,134 @@
             "added": "pre-v0.10.1",
             "deprecated": false
         },
+        "MultiFundChannel": {
+            "added": "pre-v0.10.1",
+            "deprecated": null
+        },
+        "MultiFundChannel.channel_ids[]": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "MultiFundChannel.channel_ids[].channel_id": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "MultiFundChannel.channel_ids[].channel_type": {
+            "added": "v24.02",
+            "deprecated": false
+        },
+        "MultiFundChannel.channel_ids[].channel_type.bits[]": {
+            "added": "v24.02",
+            "deprecated": false
+        },
+        "MultiFundChannel.channel_ids[].channel_type.names[]": {
+            "added": "v24.02",
+            "deprecated": false
+        },
+        "MultiFundChannel.channel_ids[].close_to": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "MultiFundChannel.channel_ids[].id": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "MultiFundChannel.channel_ids[].outnum": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "MultiFundChannel.commitment_feerate": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "MultiFundChannel.destinations[]": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "MultiFundChannel.destinations[].amount": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "MultiFundChannel.destinations[].announce": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "MultiFundChannel.destinations[].close_to": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "MultiFundChannel.destinations[].compact_lease": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "MultiFundChannel.destinations[].id": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "MultiFundChannel.destinations[].mindepth": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "MultiFundChannel.destinations[].push_msat": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "MultiFundChannel.destinations[].request_amt": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "MultiFundChannel.destinations[].reserve": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "MultiFundChannel.failed[]": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "MultiFundChannel.failed[].error": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "MultiFundChannel.failed[].error.code": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "MultiFundChannel.failed[].error.message": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "MultiFundChannel.failed[].id": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "MultiFundChannel.failed[].method": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "MultiFundChannel.feerate": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "MultiFundChannel.minchannels": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "MultiFundChannel.minconf": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "MultiFundChannel.tx": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "MultiFundChannel.txid": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "MultiFundChannel.utxos[]": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
         "NewAddr": {
             "added": "pre-v0.10.1",
             "deprecated": null
@@ -5410,10 +6993,6 @@
         "NewAddr.bech32": {
             "added": "pre-v0.10.1",
             "deprecated": false
-        },
-        "NewAddr.p2sh-segwit": {
-            "added": "pre-v0.10.1",
-            "deprecated": "v23.02"
         },
         "NewAddr.p2tr": {
             "added": "v23.08",
@@ -5516,6 +7095,206 @@
             "deprecated": false
         },
         "Offer.used": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "OpenChannel_Abort": {
+            "added": "pre-v0.10.1",
+            "deprecated": null
+        },
+        "OpenChannel_Abort.channel_canceled": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "OpenChannel_Abort.channel_id": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "OpenChannel_Abort.reason": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "OpenChannel_Bump": {
+            "added": "pre-v0.10.1",
+            "deprecated": null
+        },
+        "OpenChannel_Bump.amount": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "OpenChannel_Bump.channel_id": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "OpenChannel_Bump.channel_type": {
+            "added": "v24.02",
+            "deprecated": false
+        },
+        "OpenChannel_Bump.channel_type.bits[]": {
+            "added": "v24.02",
+            "deprecated": false
+        },
+        "OpenChannel_Bump.channel_type.names[]": {
+            "added": "v24.02",
+            "deprecated": false
+        },
+        "OpenChannel_Bump.commitments_secured": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "OpenChannel_Bump.funding_feerate": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "OpenChannel_Bump.funding_serial": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "OpenChannel_Bump.initialpsbt": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "OpenChannel_Bump.psbt": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "OpenChannel_Bump.requires_confirmed_inputs": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "OpenChannel_Init": {
+            "added": "pre-v0.10.1",
+            "deprecated": null
+        },
+        "OpenChannel_Init.amount": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "OpenChannel_Init.announce": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "OpenChannel_Init.channel_id": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "OpenChannel_Init.channel_type": {
+            "added": "v24.02",
+            "deprecated": false
+        },
+        "OpenChannel_Init.channel_type.bits[]": {
+            "added": "v24.02",
+            "deprecated": false
+        },
+        "OpenChannel_Init.channel_type.names[]": {
+            "added": "v24.02",
+            "deprecated": false
+        },
+        "OpenChannel_Init.channel_type[]": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "OpenChannel_Init.close_to": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "OpenChannel_Init.commitment_feerate": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "OpenChannel_Init.commitments_secured": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "OpenChannel_Init.compact_lease": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "OpenChannel_Init.funding_feerate": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "OpenChannel_Init.funding_serial": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "OpenChannel_Init.id": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "OpenChannel_Init.initialpsbt": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "OpenChannel_Init.psbt": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "OpenChannel_Init.request_amt": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "OpenChannel_Init.requires_confirmed_inputs": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "OpenChannel_Signed": {
+            "added": "pre-v0.10.1",
+            "deprecated": null
+        },
+        "OpenChannel_Signed.channel_id": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "OpenChannel_Signed.signed_psbt": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "OpenChannel_Signed.tx": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "OpenChannel_Signed.txid": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "OpenChannel_Update": {
+            "added": "pre-v0.10.1",
+            "deprecated": null
+        },
+        "OpenChannel_Update.channel_id": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "OpenChannel_Update.channel_type": {
+            "added": "v24.02",
+            "deprecated": false
+        },
+        "OpenChannel_Update.channel_type.bits[]": {
+            "added": "v24.02",
+            "deprecated": false
+        },
+        "OpenChannel_Update.channel_type.names[]": {
+            "added": "v24.02",
+            "deprecated": false
+        },
+        "OpenChannel_Update.close_to": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "OpenChannel_Update.commitments_secured": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "OpenChannel_Update.funding_outnum": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "OpenChannel_Update.psbt": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "OpenChannel_Update.requires_confirmed_inputs": {
             "added": "pre-v0.10.1",
             "deprecated": false
         },
@@ -6195,6 +7974,58 @@
             "added": "pre-v0.10.1",
             "deprecated": false
         },
+        "Wait.details": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Wait.details.bolt11": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Wait.details.bolt12": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Wait.details.description": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Wait.details.groupid": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Wait.details.in_channel": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Wait.details.in_htlc_id": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Wait.details.in_msat": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Wait.details.label": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Wait.details.out_channel": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Wait.details.partid": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Wait.details.payment_hash": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "Wait.details.status": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
         "Wait.indexname": {
             "added": "pre-v0.10.1",
             "deprecated": false
@@ -6480,6 +8311,134 @@
             "deprecated": false
         },
         "Withdraw.utxos[]": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "multifundchannel": {
+            "added": "pre-v0.10.1",
+            "deprecated": null
+        },
+        "multifundchannel.channel_ids[]": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "multifundchannel.channel_ids[].channel_id": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "multifundchannel.channel_ids[].channel_type": {
+            "added": "v24.02",
+            "deprecated": false
+        },
+        "multifundchannel.channel_ids[].channel_type.bits[]": {
+            "added": "v24.02",
+            "deprecated": false
+        },
+        "multifundchannel.channel_ids[].channel_type.names[]": {
+            "added": "v24.02",
+            "deprecated": false
+        },
+        "multifundchannel.channel_ids[].close_to": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "multifundchannel.channel_ids[].id": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "multifundchannel.channel_ids[].outnum": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "multifundchannel.commitment_feerate": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "multifundchannel.destinations[]": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "multifundchannel.destinations[].amount": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "multifundchannel.destinations[].announce": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "multifundchannel.destinations[].close_to": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "multifundchannel.destinations[].compact_lease": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "multifundchannel.destinations[].id": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "multifundchannel.destinations[].mindepth": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "multifundchannel.destinations[].push_msat": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "multifundchannel.destinations[].request_amt": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "multifundchannel.destinations[].reserve": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "multifundchannel.failed[]": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "multifundchannel.failed[].error": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "multifundchannel.failed[].error.code": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "multifundchannel.failed[].error.message": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "multifundchannel.failed[].id": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "multifundchannel.failed[].method": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "multifundchannel.feerate": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "multifundchannel.minchannels": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "multifundchannel.minconf": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "multifundchannel.tx": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "multifundchannel.txid": {
+            "added": "pre-v0.10.1",
+            "deprecated": false
+        },
+        "multifundchannel.utxos[]": {
             "added": "pre-v0.10.1",
             "deprecated": false
         }

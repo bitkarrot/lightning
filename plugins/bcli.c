@@ -560,9 +560,13 @@ struct getrawblock_stash {
 	const char *block_hash;
 	u32 block_height;
 	const char *block_hex;
+	int *peers;
 };
 
-static struct command_result *process_getrawblock(struct bitcoin_cli *bcli)
+/* Mutual recursion. */
+static struct command_result *getrawblock(struct bitcoin_cli *bcli);
+
+static struct command_result *process_rawblock(struct bitcoin_cli *bcli)
 {
 	struct json_stream *response;
 	struct getrawblock_stash *stash = bcli->stash;
@@ -577,6 +581,126 @@ static struct command_result *process_getrawblock(struct bitcoin_cli *bcli)
 	return command_finished(bcli->cmd, response);
 }
 
+static struct command_result *process_getblockfrompeer(struct bitcoin_cli *bcli)
+{
+	/* Remove the peer that we tried to get the block from and move along,
+	 * we may also check on errors here */
+	struct getrawblock_stash *stash = bcli->stash;
+
+	if (bcli->exitstatus && *bcli->exitstatus != 0) {
+		/* We still continue with the execution if we can not fetch the
+		 * block from peer */
+		plugin_log(bcli->cmd->plugin, LOG_DBG,
+			   "failed to fetch block %s from peer %i, skip.",
+			   stash->block_hash, stash->peers[tal_count(stash->peers) - 1]);
+	} else {
+		plugin_log(bcli->cmd->plugin, LOG_DBG,
+			   "try to fetch block %s from peer %i.",
+			   stash->block_hash, stash->peers[tal_count(stash->peers) - 1]);
+	}
+	tal_resize(&stash->peers, tal_count(stash->peers) - 1);
+
+	/* `getblockfrompeer` is an async call. sleep for a second to allow the
+	 * block to be delivered by the peer. fixme: We could also sleep for
+	 * double the last ping here (with sanity limit)*/
+	sleep(1);
+
+	return getrawblock(bcli);
+}
+
+static struct command_result *process_getpeerinfo(struct bitcoin_cli *bcli)
+{
+	const jsmntok_t *t, *toks;
+	struct getrawblock_stash *stash = bcli->stash;
+	size_t i;
+
+	toks =
+	    json_parse_simple(bcli->output, bcli->output, bcli->output_bytes);
+
+	if (!toks) {
+		return command_err_bcli_badjson(bcli, "cannot parse");
+	}
+
+	stash->peers = tal_arr(bcli->stash, int, 0);
+
+	json_for_each_arr(i, t, toks)
+	{
+		int id;
+		if (json_scan(tmpctx, bcli->output, t, "{id:%}",
+			      JSON_SCAN(json_to_int, &id)) == NULL) {
+			// fixme: future optimization: a) filter for full nodes,
+			// b) sort by last ping
+			tal_arr_expand(&stash->peers, id);
+		}
+	}
+
+	if (tal_count(stash->peers) <= 0) {
+		/* We don't have peers yet, retry from `getrawblock` */
+		plugin_log(bcli->cmd->plugin, LOG_DBG,
+			   "got an empty peer list.");
+		return getrawblock(bcli);
+	}
+
+	start_bitcoin_cli(NULL, bcli->cmd, process_getblockfrompeer, true,
+			  BITCOIND_HIGH_PRIO, stash, "getblockfrompeer",
+			  stash->block_hash,
+			  take(tal_fmt(NULL, "%i", stash->peers[0])), NULL);
+
+	return command_still_pending(bcli->cmd);
+}
+
+static struct command_result *process_getrawblock(struct bitcoin_cli *bcli)
+{
+	/* We failed to get the raw block. */
+	if (bcli->exitstatus && *bcli->exitstatus != 0) {
+		struct getrawblock_stash *stash = bcli->stash;
+
+		plugin_log(bcli->cmd->plugin, LOG_DBG,
+			   "failed to fetch block %s from the bitcoin backend (maybe pruned).",
+			   stash->block_hash);
+
+		if (bitcoind->version >= 230000) {
+			/* `getblockformpeer` was introduced in v23.0.0 */
+
+			if (!stash->peers) {
+				/* We don't have peers to fetch blocks from, get
+				 * some! */
+				start_bitcoin_cli(NULL, bcli->cmd,
+						  process_getpeerinfo, true,
+						  BITCOIND_HIGH_PRIO, stash,
+						  "getpeerinfo", NULL);
+
+				return command_still_pending(bcli->cmd);
+			}
+
+			if (tal_count(stash->peers) > 0) {
+				/* We have peers left that we can ask for the
+				 * block */
+				start_bitcoin_cli(
+				    NULL, bcli->cmd, process_getblockfrompeer,
+				    true, BITCOIND_HIGH_PRIO, stash,
+				    "getblockfrompeer", stash->block_hash,
+				    take(tal_fmt(NULL, "%i", stash->peers[0])),
+				    NULL);
+
+				return command_still_pending(bcli->cmd);
+			}
+
+			/* We failed to fetch the block from from any peer we
+			 * got. */
+			plugin_log(
+			    bcli->cmd->plugin, LOG_DBG,
+			    "asked all known peers about block %s, retry",
+			    stash->block_hash);
+			stash->peers = tal_free(stash->peers);
+		}
+
+		return NULL;
+	}
+
+	return process_rawblock(bcli);
+}
+
 static struct command_result *
 getrawblockbyheight_notfound(struct bitcoin_cli *bcli)
 {
@@ -587,6 +711,19 @@ getrawblockbyheight_notfound(struct bitcoin_cli *bcli)
 	json_add_null(response, "block");
 
 	return command_finished(bcli->cmd, response);
+}
+
+static struct command_result *getrawblock(struct bitcoin_cli *bcli)
+{
+	struct getrawblock_stash *stash = bcli->stash;
+
+	start_bitcoin_cli(NULL, bcli->cmd, process_getrawblock, true,
+			  BITCOIND_HIGH_PRIO, stash, "getblock",
+			  stash->block_hash,
+			  /* Non-verbose: raw block. */
+			  "0", NULL);
+
+	return command_still_pending(bcli->cmd);
 }
 
 static struct command_result *process_getblockhash(struct bitcoin_cli *bcli)
@@ -607,15 +744,7 @@ static struct command_result *process_getblockhash(struct bitcoin_cli *bcli)
 		return command_err_bcli_badjson(bcli, "bad blockhash");
 	}
 
-	start_bitcoin_cli(NULL, bcli->cmd, process_getrawblock, false,
-			  BITCOIND_HIGH_PRIO, stash,
-			  "getblock",
-			  stash->block_hash,
-			  /* Non-verbose: raw block. */
-			  "0",
-			  NULL);
-
-	return command_still_pending(bcli->cmd);
+	return getrawblock(bcli);
 }
 
 /* Get a raw block given its height.
@@ -637,6 +766,7 @@ static struct command_result *getrawblockbyheight(struct command *cmd,
 
 	stash = tal(cmd, struct getrawblock_stash);
 	stash->block_height = *height;
+	stash->peers = NULL;
 	tal_free(height);
 
 	start_bitcoin_cli(NULL, cmd, process_getblockhash, true,
@@ -872,17 +1002,7 @@ static struct command_result *sendrawtransaction(struct command *cmd,
 		return command_param_failed();
 
 	if (*allowhighfees) {
-		if (bitcoind->version >= 190001)
-			/* Starting in 19.0.1, second argument is
-			 * maxfeerate, which when set to 0 means
-			 * no max feerate.
-			 */
 			highfeesarg = "0";
-		else
-			/* in older versions, second arg is allowhighfees,
-			 * set to true to allow high fees.
-			 */
-			highfeesarg = "true";
 	} else
 		highfeesarg = NULL;
 

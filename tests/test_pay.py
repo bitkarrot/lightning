@@ -3405,61 +3405,6 @@ def test_createonion_limits(node_factory):
     )
 
 
-def test_blockheight_disagreement(node_factory, bitcoind, executor):
-    """
-    While a payment is in-transit from payer to payee, a block
-    might be mined, so that the blockheight the payer used to
-    initiate the payment is no longer the blockheight when the
-    payee receives it.
-    This leads to a failure which *used* to be
-    `final_expiry_too_soon`, a non-permanent failure, but
-    which is *now* `incorrect_or_unknown_payment_details`,
-    a permanent failure.
-    `pay` treats permanent failures as, well, permanent, and
-    gives up on receiving such failure from the payee, but
-    this particular subcase of blockheight disagreement is
-    actually a non-permanent failure (the payer only needs
-    to synchronize to the same blockheight as the payee).
-    """
-    l1, l2 = node_factory.line_graph(2)
-
-    sync_blockheight(bitcoind, [l1, l2])
-
-    # Arrange l1 to stop getting new blocks.
-    def no_more_blocks(req):
-        return {"result": None,
-                "error": {"code": -8, "message": "Block height out of range"}, "id": req['id']}
-    l1.daemon.rpcproxy.mock_rpc('getblockhash', no_more_blocks)
-
-    # Increase blockheight and make sure l2 knows it.
-    # Why 2? Because `pay` uses min_final_cltv_expiry + 1.
-    # But 2 blocks coming in close succession, plus slow
-    # forwarding nodes and block propagation, are still
-    # possible on the mainnet, thus this test.
-    bitcoind.generate_block(2)
-    sync_blockheight(bitcoind, [l2])
-
-    # Have l2 make an invoice.
-    inv = l2.rpc.invoice(1000, 'l', 'd')['bolt11']
-
-    # Have l1 pay l2
-    def pay(l1, inv):
-        l1.dev_pay(inv, dev_use_shadow=False)
-    fut = executor.submit(pay, l1, inv)
-
-    # Make sure l1 sends out the HTLC.
-    l1.daemon.wait_for_logs([r'NEW:: HTLC LOCAL'])
-
-    height = bitcoind.rpc.getblockchaininfo()['blocks']
-    l1.daemon.wait_for_log('Remote node appears to be on a longer chain.*catch up to block {}'.format(height))
-
-    # Unblock l1 from new blocks.
-    l1.daemon.rpcproxy.mock_rpc('getblockhash', None)
-
-    # pay command should complete without error
-    fut.result()
-
-
 def test_sendpay_msatoshi_arg(node_factory):
     """sendpay msatoshi arg was used for non-MPP to indicate the amount
 they asked for.  But using it with anything other than the final amount
@@ -4523,7 +4468,7 @@ def test_fetchinvoice(node_factory, bitcoind):
                                          opts=[{'experimental-offers': None},
                                                {'experimental-offers': None},
                                                {'experimental-offers': None,
-                                                'allow_broken_log': True}])
+                                                'broken_log': "plugin-offers: Failed invreq.*Unknown command 'currencyconvert'"}])
 
     # Simple offer first.
     offer1 = l3.rpc.call('offer', {'amount': '2msat',
@@ -4776,6 +4721,48 @@ def test_fetchinvoice_autoconnect(node_factory, bitcoind):
     l3.rpc.call('sendinvoice', {'invreq': invreq['bolt12'], 'label': 'payme for real!'})
     # It will have autoconnected, to send invoice (since l1 says it doesn't do onion messages!)
     assert l3.rpc.listpeers(l2.info['id'])['peers'] != []
+
+
+def test_pay_blockheight_mismatch(node_factory, bitcoind):
+    """Test that we can send a payment even if not caught up with the chain.
+
+    We removed the requirement for the node to be fully synced up with
+    the blockchain in v24.05, allowing us to send a payment while still
+    processing blocks. This test pins the sender at a lower height,
+    but `getnetworkinfo` still reports the correct height. Since CLTV
+    computations are based on headers and not our own sync height, the
+    recipient should still be happy with the parameters we chose.
+
+    """
+
+    send, direct, recv = node_factory.line_graph(3, wait_for_announce=True)
+    sync_blockheight(bitcoind, [send, recv])
+
+    # Pin `send` at the current height. by not returning the next
+    # blockhash. This error is special-cased not to count as the
+    # backend failing since it is used to poll for the next block.
+    def mock_getblockhash(req):
+        return {
+            "id": req['id'],
+            "error": {
+                "code": -8,
+                "message": "Block height out of range"
+            }
+        }
+
+    send.daemon.rpcproxy.mock_rpc('getblockhash', mock_getblockhash)
+    bitcoind.generate_block(100)
+
+    sync_blockheight(bitcoind, [recv])
+
+    inv = recv.rpc.invoice(42, 'lbl', 'desc')['bolt11']
+    send.rpc.pay(inv)
+
+    # The direct_override payment modifier does some trickery on the
+    # route calculation, so we better ensure direct payments still
+    # work correctly.
+    inv = direct.rpc.invoice(13, 'lbl', 'desc')['bolt11']
+    send.rpc.pay(inv)
 
 
 def test_pay_waitblockheight_timeout(node_factory, bitcoind):
@@ -5588,3 +5575,19 @@ def test_pay_partial_msat(node_factory, executor):
 
     l1pay.result(TIMEOUT)
     l3pay.result(TIMEOUT)
+
+
+def test_pay_while_opening_channel(node_factory, bitcoind, executor):
+    delay_plugin = {'plugin': os.path.join(os.getcwd(),
+                                           'tests/plugins/openchannel_hook_delay.py'),
+                    'delaytime': '10'}
+    l1, l2 = node_factory.line_graph(2, fundamount=10**6, wait_for_announce=True)
+    l3 = node_factory.get_node(options=delay_plugin)
+    l1.connect(l3)
+    executor.submit(l1.rpc.fundchannel, l3.info['id'], 100000)
+    wait_for(lambda: l1.rpc.listpeerchannels(l3.info['id'])['channels'] != [])
+
+    # the uncommitted channel should now show up in listpeerchannels
+    assert only_one(l1.rpc.listpeerchannels(l3.info['id'])['channels'])['state'] == 'OPENINGD'
+    inv = l2.rpc.invoice(10000, "inv", "inv")
+    l1.rpc.pay(inv['bolt11'])

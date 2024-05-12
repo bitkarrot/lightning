@@ -326,6 +326,11 @@ struct payment {
 	 * explanation if a payment is aborted. */
 	char *aborterror;
 
+	/* How many blocks are we lagging behind the rest of the
+	network? This needs to be taken into consideration when
+	sending payments before being fully caught up.*/
+	u32 chainlag;
+
 	/* Callback to be called when the entire payment process
 	 * completes successfully. */
 	void (*on_payment_success)(struct payment *p);
@@ -435,17 +440,12 @@ struct route_exclusions_data {
 	struct route_exclusion **exclusions;
 };
 
-struct preapproveinvoice_data {
-	bool approved;
-};
-
 /* List of globally available payment modifiers. */
 REGISTER_PAYMENT_MODIFIER_HEADER(retry, struct retry_mod_data);
 REGISTER_PAYMENT_MODIFIER_HEADER(routehints, struct routehints_data);
 REGISTER_PAYMENT_MODIFIER_HEADER(exemptfee, struct exemptfee_data);
 REGISTER_PAYMENT_MODIFIER_HEADER(shadowroute, struct shadow_route_data);
 REGISTER_PAYMENT_MODIFIER_HEADER(directpay, struct direct_pay_data);
-extern struct payment_modifier waitblockheight_pay_mod;
 REGISTER_PAYMENT_MODIFIER_HEADER(presplit, struct presplit_mod_data);
 REGISTER_PAYMENT_MODIFIER_HEADER(adaptive_splitter, struct adaptive_split_mod_data);
 
@@ -460,7 +460,6 @@ REGISTER_PAYMENT_MODIFIER_HEADER(local_channel_hints, void);
  * each of those channels can bear.  */
 REGISTER_PAYMENT_MODIFIER_HEADER(payee_incoming_limit, void);
 REGISTER_PAYMENT_MODIFIER_HEADER(route_exclusions, struct route_exclusions_data);
-REGISTER_PAYMENT_MODIFIER_HEADER(check_preapproveinvoice, struct preapproveinvoice_data);
 
 
 struct payment *payment_new(tal_t *ctx, struct command *cmd,

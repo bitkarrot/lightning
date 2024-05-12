@@ -805,11 +805,11 @@ static struct pubkey *extract_revocation_basepoint(const tal_t *ctx,
 
 	switch (t) {
  	case WIRE_OPEN_CHANNEL2:
-		/* BOLT-dualfund #2:
+		/* BOLT #2:
 		 * 1. type: 64 (`open_channel2`)
 		 * 2. data:
 		 *    * [`chain_hash`:`chain_hash`]
-		 *    * [`channel_id`:`zerod_channel_id`]
+		 *    * [`channel_id`:`temporary_channel_id`]
 		 *    * [`u32`:`funding_feerate_perkw`]
 		 *    * [`u32`:`commitment_feerate_perkw`]
 		 *    * [`u64`:`funding_satoshis`]
@@ -837,10 +837,10 @@ static struct pubkey *extract_revocation_basepoint(const tal_t *ctx,
 			     + PUBKEY_CMPR_LEN);
 		break;
  	case WIRE_ACCEPT_CHANNEL2:
-		/* BOLT-dualfund #2:
+		/* BOLT #2:
 		 * 1. type: 65 (`accept_channel2`)
 		 * 2. data:
-		 *     * [`channel_id`:`zerod_channel_id`]
+		 *     * [`channel_id`:`temporary_channel_id`]
 		 *     * [`u64`:`funding_satoshis`]
 		 *     * [`u64`:`dust_limit_satoshis`]
 		 *     * [`u64`:`max_htlc_value_in_flight_msat`]
@@ -1277,6 +1277,21 @@ void peer_connect_subd(struct daemon *daemon, const u8 *msg, int fd)
 
 	if (!fromwire_connectd_peer_connect_subd(msg, &id, &counter, &channel_id))
 		master_badmsg(WIRE_CONNECTD_PEER_CONNECT_SUBD, msg);
+
+	/* If receiving fd failed, fd will be -1.  Log and ignore
+	 * (subd will see immediate hangup). */
+	if (fd == -1) {
+		static bool recvfd_logged = false;
+		if (!recvfd_logged) {
+			status_broken("receiving lightningd fd failed for %s: %s",
+				      fmt_node_id(tmpctx, &id),
+				      strerror(errno));
+			recvfd_logged = true;
+		}
+		/* Maybe free up some fds by closing something. */
+		close_random_connection(daemon);
+		return;
+	}
 
 	/* Races can happen: this might be gone by now (or reconnected!). */
 	peer = peer_htable_get(daemon->peers, &id);

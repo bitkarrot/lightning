@@ -26,7 +26,7 @@ CCANDIR := ccan
 
 # Where we keep the BOLT RFCs
 BOLTDIR := ../bolts/
-DEFAULT_BOLTVERSION := 6e85df448bfee7d10f26aabb06b8eba3d7505888
+DEFAULT_BOLTVERSION := 0bdaa8b9f65fc82a178d0d8722d352f2320b02f4
 # Can be overridden on cmdline.
 BOLTVERSION := $(DEFAULT_BOLTVERSION)
 
@@ -252,7 +252,7 @@ CPATH := /usr/local/include
 LIBRARY_PATH := /usr/local/lib
 endif
 
-CPPFLAGS += -DCLN_NEXT_VERSION="\"$(CLN_NEXT_VERSION)\"" -DBINTOPKGLIBEXECDIR="\"$(shell sh tools/rel.sh $(bindir) $(pkglibexecdir))\""
+CPPFLAGS += -DCLN_NEXT_VERSION="\"$(CLN_NEXT_VERSION)\"" -DBINTOPKGLIBEXECDIR="\"$(shell sh tools/rel.sh $(bindir) $(pkglibexecdir))\"" -DCCAN_TAL_NEVER_RETURN_NULL=1
 CFLAGS = $(CPPFLAGS) $(CWARNFLAGS) $(CDEBUGFLAGS) $(COPTFLAGS) -I $(CCANDIR) $(EXTERNAL_INCLUDE_FLAGS) -I . -I$(CPATH) $(SQLITE3_CFLAGS) $(POSTGRES_INCLUDE) $(FEATURES) $(COVFLAGS) $(DEV_CFLAGS) -DSHACHAIN_BITS=48 -DJSMN_PARENT_LINKS $(PIE_CFLAGS) $(COMPAT_CFLAGS) $(CSANFLAGS)
 
 # If CFLAGS is already set in the environment of make (to whatever value, it
@@ -717,7 +717,7 @@ clean: obsclean
 
 PYLNS=client proto testing
 # See doc/contribute-to-core-lightning/contributor-workflow.md
-update-py-versions: update-pyln-versions update-clnrest-version update-poetry-lock
+update-py-versions: update-pyln-versions update-clnrest-version update-wss-proxy-version update-poetry-lock
 
 update-pyln-versions: $(PYLNS:%=update-pyln-version-%)
 
@@ -734,8 +734,12 @@ update-clnrest-version:
 	@if [ -z "$(NEW_VERSION)" ]; then echo "Set NEW_VERSION!" >&2; exit 1; fi
 	cd plugins/clnrest && $(MAKE) upgrade-version
 
+update-wss-proxy-version:
+	@if [ -z "$(NEW_VERSION)" ]; then echo "Set NEW_VERSION!" >&2; exit 1; fi
+	cd plugins/wss-proxy && $(MAKE) upgrade-version
+
 update-poetry-lock:
-	poetry update clnrest pyln-client pyln-proto pyln-testing
+	poetry update clnrest wss-proxy pyln-client pyln-proto pyln-testing
 
 update-mocks: $(ALL_TEST_PROGRAMS:%=update-mocks/%.c)
 

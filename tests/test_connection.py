@@ -22,6 +22,7 @@ import re
 import time
 import unittest
 import websocket
+import ssl
 
 
 def test_connect_basic(node_factory):
@@ -330,8 +331,8 @@ def test_balance(node_factory):
 @pytest.mark.openchannel('v2')
 def test_bad_opening(node_factory):
     # l1 asks for a too-long locktime
-    l1 = node_factory.get_node(options={'watchtime-blocks': 100})
-    l2 = node_factory.get_node(options={'max-locktime-blocks': 99})
+    l1 = node_factory.get_node(options={'watchtime-blocks': 2017})
+    l2 = node_factory.get_node()
     ret = l1.rpc.connect(l2.info['id'], 'localhost', l2.port)
 
     assert ret['id'] == l2.info['id']
@@ -343,7 +344,7 @@ def test_bad_opening(node_factory):
     with pytest.raises(RpcError):
         l1.rpc.fundchannel(l2.info['id'], 10**6)
 
-    l2.daemon.wait_for_log('to_self_delay 100 larger than 99')
+    l2.daemon.wait_for_log('to_self_delay 2017 larger than 2016')
 
 
 @unittest.skipIf(TEST_NETWORK != 'regtest', "Fee computation and limits are network specific")
@@ -1116,9 +1117,8 @@ def test_funding_all_too_much(node_factory):
 @pytest.mark.openchannel('v2')
 def test_funding_fail(node_factory, bitcoind):
     """Add some funds, fund a channel without enough funds"""
-    # Previous runs with same bitcoind can leave funds!
-    max_locktime = 5 * 6 * 24
-    l1 = node_factory.get_node(random_hsm=True, options={'max-locktime-blocks': max_locktime})
+    max_locktime = 2016
+    l1 = node_factory.get_node()
     l2 = node_factory.get_node(options={'watchtime-blocks': max_locktime + 1})
     l1.rpc.connect(l2.info['id'], 'localhost', l2.port)
 
@@ -1496,7 +1496,7 @@ def test_funding_cancel_race(node_factory, bitcoind, executor):
         num = 100
 
     # Allow the other nodes to log unexpected WIRE_FUNDING_CREATED messages
-    nodes = node_factory.get_nodes(num, opts={'allow_broken_log': True})
+    nodes = node_factory.get_nodes(num, opts={})
 
     num_complete = 0
     num_cancel = 0
@@ -3005,7 +3005,8 @@ def test_dataloss_protection(node_factory, bitcoind):
                                allow_warning=True,
                                feerates=(7500, 7500, 7500, 7500))
     l2 = node_factory.get_node(may_reconnect=True, options={'log-level': 'io'},
-                               feerates=(7500, 7500, 7500, 7500), allow_broken_log=True)
+                               broken_log='Cannot broadcast our commitment tx: they have a future one|Unknown commitment .*, recovering our funds',
+                               feerates=(7500, 7500, 7500, 7500))
 
     lf = expected_peer_features()
     l1.rpc.connect(l2.info['id'], 'localhost', l2.port)
@@ -3108,7 +3109,8 @@ def test_dataloss_protection_no_broadcast(node_factory, bitcoind):
                                allow_warning=True,
                                options={'dev-no-reconnect': None})
     l2 = node_factory.get_node(may_reconnect=True,
-                               feerates=(7500, 7500, 7500, 7500), allow_broken_log=True,
+                               feerates=(7500, 7500, 7500, 7500),
+                               broken_log='Cannot broadcast our commitment tx: they have a future one',
                                disconnect=['-WIRE_ERROR'],
                                options={'dev-no-reconnect': None})
 
@@ -3763,7 +3765,7 @@ def test_upgrade_statickey_onchaind(node_factory, executor, bitcoind):
                                               # This forces us to allow sending non-static-remotekey!
                                               'dev-any-channel-type': None,
                                               # We try to cheat!
-                                              'allow_broken_log': True},
+                                              'broken_log': r"onchaind-chan#[0-9]*: Could not find resolution for output .*: did \*we\* cheat\?"},
                                              {'may_reconnect': True,
                                               # This forces us to allow non-static-remotekey!
                                               'dev-any-channel-type': None,
@@ -4519,3 +4521,78 @@ def test_last_stable_connection(node_factory):
 
     assert only_one(l1.rpc.listpeerchannels()['channels'])['last_stable_connection'] > recon_time + STABLE_TIME
     assert only_one(l2.rpc.listpeerchannels()['channels'])['last_stable_connection'] > recon_time + STABLE_TIME
+
+
+def test_wss_proxy(node_factory):
+    wss_port = reserve()
+    ws_port = reserve()
+    port = reserve()
+    wss_proxy_certs = node_factory.directory + '/wss-proxy-certs'
+    l1 = node_factory.get_node(options={'addr': ':' + str(port),
+                                        'bind-addr': 'ws:127.0.0.1:' + str(ws_port),
+                                        'wss-bind-addr': '127.0.0.1:' + str(wss_port),
+                                        'wss-certs': wss_proxy_certs,
+                                        'dev-allow-localhost': None})
+
+    # Some depend on ipv4 vs ipv6 behaviour...
+    for b in l1.rpc.getinfo()['binding']:
+        if b['type'] == 'ipv4':
+            assert b == {'type': 'ipv4', 'address': '0.0.0.0', 'port': port}
+        elif b['type'] == 'ipv6':
+            assert b == {'type': 'ipv6', 'address': '::', 'port': port}
+        else:
+            assert b == {'type': 'websocket',
+                         'address': '127.0.0.1',
+                         'subtype': 'ipv4',
+                         'port': ws_port}
+
+    # Adapter to turn web secure socket into a stream "connection"
+    class BindWebSecureSocket(object):
+        def __init__(self, hostname, port):
+            certfile = f'{wss_proxy_certs}/client.pem'
+            keyfile = f'{wss_proxy_certs}/client-key.pem'
+            self.ws = websocket.WebSocket(sslopt={"cert_reqs": ssl.CERT_NONE, "ssl_version": ssl.PROTOCOL_TLS_CLIENT, "certfile": certfile, "keyfile": keyfile})
+            self.ws.connect("wss://" + hostname + ":" + str(port))
+            self.recvbuf = bytes()
+
+        def send(self, data):
+            self.ws.send(data, websocket.ABNF.OPCODE_BINARY)
+
+        def recv(self, maxlen):
+            while len(self.recvbuf) < maxlen:
+                self.recvbuf += self.ws.recv()
+
+            ret = self.recvbuf[:maxlen]
+            self.recvbuf = self.recvbuf[maxlen:]
+            return ret
+
+    wss = BindWebSecureSocket('localhost', wss_port)
+
+    lconn = wire.LightningConnection(wss,
+                                     wire.PublicKey(bytes.fromhex(l1.info['id'])),
+                                     wire.PrivateKey(bytes([1] * 32)),
+                                     is_initiator=True)
+
+    # This might happen really early!
+    l1.daemon.logsearch_start = 0
+    l1.daemon.wait_for_log(r'Websocket Secure Server Started')
+
+    # Perform handshake.
+    lconn.shake()
+
+    # Expect to receive init msg.
+    msg = lconn.read_message()
+    assert int.from_bytes(msg[0:2], 'big') == 16
+
+    # Echo same message back.
+    lconn.send_message(msg)
+
+    # Now try sending a ping, ask for 50 bytes
+    msg = bytes((0, 18, 0, 50, 0, 0))
+    lconn.send_message(msg)
+
+    # Could actually reply with some gossip msg!
+    while True:
+        msg = lconn.read_message()
+        if int.from_bytes(msg[0:2], 'big') == 19:
+            break
