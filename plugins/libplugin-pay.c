@@ -1809,12 +1809,14 @@ static void payment_add_blindedpath(const tal_t *ctx,
 		const u8 *cursor = tlvs[i];
 		size_t max = tal_bytelen(tlvs[i]);
 		/* First one has to use real node_id */
-		if (i == 0)
+		if (i == 0) {
+			assert(bpath->first_node_id.is_pubkey);
 			node_id_from_pubkey(&hops[i].pubkey,
-					    &bpath->first_node_id);
-		else
+					    &bpath->first_node_id.pubkey);
+		} else {
 			node_id_from_pubkey(&hops[i].pubkey,
 					    &bpath->path[i]->blinded_node_id);
+		}
 
 		/* Length is prepended, discard that first! */
 		fromwire_bigsize(&cursor, &max);
@@ -1867,11 +1869,24 @@ static void payment_compute_onion_payloads(struct payment *p)
 
 	/* If we're headed to a blinded path, connect that now. */
 	if (root->blindedpath) {
+		/* This final_cltv matches our payment heuristic of adding 1 block. */
+
+		/* BOLT #4:
+		 * - For every node inside a blinded route:
+		 *...
+		 *   - If it is the final node:
+		 *...
+		 *       - The value set for `outgoing_cltv_value`:
+		 *         - MUST use the current block height as a baseline value.
+		 *         - if a [random offset](07-routing-gossip.md#recommendations-for-routing) was added to improve privacy:
+		 *           - SHOULD add the offset to the baseline value.
+		 */
+		u32 final_cltv = p->start_block + 1;
 		payment_add_blindedpath(cr->hops, cr->hops + hopcount - 1,
 					root->blindedpath,
 					root->blindedouramount,
 					root->blindedfinalamount,
-					root->blindedfinalcltv);
+					final_cltv);
 		tal_append_fmt(&routetxt, "%s -> blinded path (%zu hops)",
 			       fmt_short_channel_id(tmpctx,
 						    p->route[hopcount-1].scid),

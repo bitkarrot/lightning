@@ -3,6 +3,155 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [24.05rc2] - 2024-05-29: "CODENAME"
+
+This release named by @USERNAME.
+
+### Added
+
+ - JSON-RPC: `createrune` new restriction `pinv` to examine bolt11/bolt12 invoice fields (e.g. amount of invoice). ([#7165])
+ - cln-plugin: Add dynamic configs and a callback for changes ([#7293])
+ - JSON-RPC: `pay` has a new parameter `partial_msat` to only pay part of an invoice (someone else presumably will pay the rest at the same time!) ([#7145])
+ - JSON-RPC: `check` `keysend` now checks with HSM that it will approve it. ([#7111])
+ - Plugins: Can now opt in to handle `check` command on their commands, for more thorough checking. ([#7111])
+ - JSON-RPC: `check` `setconfig` now checks that the new config setting would be valid. ([#7111])
+ - JSON-RPC: `check` `setconfig` on plugin options can now check the config value would be accepted. ([#7111])
+ - cln-grpc: Adds notifications over the grpc interface. Configurable with config parameter `grpc-msg-buffer-size`. ([#7084])
+ - Add WSS Proxy server with `wss-bind-addr` and `wss-certs` configurations. ([#7225])
+ - cln-grpc: Add methods for dev-forget-channel, emergencyrecover, recover, recoverchannel, funderupdate, help, invoicerequest, listinvoicerequests, disableinvoicerequest, listconfigs, makesecret, multiwithdraw, showrunes, createrune, blacklistrune, and checkrune. ([#7317])
+ - cln-grpc: Adds addpsbtoutput method. ([#7108])
+ - cln-grpc: Add `openchannel_init`, `openchannel_abort`, `openchannel_bump`, `openchannel_signed`, `openchannel_update` methods. ([#7230])
+ - cln-grpc: Add `delpay` method. ([#7232])
+ - cln-grpc: Add `delforward` method. ([#7260])
+ - cln-grpc: Add `autoclean-once`, `autoclean-status` methods. ([#7238])
+ - cln-grpc: Add `fundchannel_start`, `fundchannel_complete`, `fundchannel_cancel` methods. ([#7231])
+ - cln-grpc: Add `bkpr-channelsapy`, `bkpr-dumpincomecsv`, `bkpr-inspect`, `bkpr-listaccountevents`, `bkpr-listbalances` methods. ([#7256])
+ - cln-grpc: Add `disableoffer` method. ([#7233])
+ - cln-grpc: Add `parsefeerate`, `plugin`, `renepay`, `renepaystatus`, `sendinvoice` methods. ([#7272])
+ - cln-grpc: Add `reserveinputs`, `unreserveinputs`, `splice_init`, `splice_signed`, `splice_update` methods. ([#7273])
+ - cln-grpc: Add `sendonionmessage`, `setconfig`, `setpsbtversion`, `upgradewallet` methods. ([#7274])
+ - cln_plugin: Add rust plugin support for wildcard `*` subscriptions.  ([#7106])
+ - config: Add `bitcoin-rpcclienttimeout` config parameter. ([#7095])
+ - core: notify plugins when a log line is emitted. ([#6990])
+ - Config: new log level `trace` where we moved the very noisiest `debug` logs. ([#7280])
+ - Added a new configuration for clnrest plugin to change the default Swagger UI path from `/` to custom url. ([#7256])
+
+
+### Changed
+
+ - config/JSON: --ignore-fee-limits / setchannel ignorefeelimits no longer applies to mutual close. ([#7252])
+ - Plugins: bcli: Add a path that tries to fetch blocks ([#7240])
+ - plugins: libplugin now shows plugin option default values (where they're non-trivial) ([#7306])
+ - runes: named parameters (e.g. `pnameamountmsat`) no longer need to remove underscores (i.e. `pnameamount_msat` now works as expected). ([#7124])
+ - lightningd: we now try to increase the number of file descriptors, if it's less than twice the number of channels at startup (and log if we cannot!). ([#7237])
+ - connectd: prioritize peers with channels (and log!) if we run low on file descriptors. ([#7237])
+ - core: Processing blocks should now be faster ([#7101])
+ - cln-grpc: Add routes to decode and decodepay ([#7317])
+ - hsmd: the hsmd now supports `HSM_VERSION 6` ([#7178])
+ - hsmd: `HSM_VERSION 6`: `get_per_commitment_point` does not imply index - 2 is revoked, makes it safe to call on any index. ([#7178])
+ - Documentation: Merged `example_json_request` and `example_json_response` in a single `json_examples` array to maintain the request and its corresponding response together. ([#7181])
+ - Documentation: great documentation rewrite, all reference pages now generated from the fully-tested JSON schemas and include examples. ([#6995])
+ - JSON-RPC: `stop` and `recover` now return a JSON object (not a raw string!) like every other command does. ([#6995])
+ - pay: Payments are more robust for nodes that are currently syncing. ([#7190])
+
+
+### Deprecated
+
+Note: You should always set `allow-deprecated-apis=false` to test for changes.
+
+
+
+### Removed
+
+ - Plugins: no longer allow missing `id` field in commando requests (deprecated v23.02, EOL v24.02) ([#7094])
+ - JSON-RPC: `createrune` restrictions as raw strings (use arrays) (deprecated v23.05, EOL 24.02). ([#7094])
+ - JSON-RPC: `listpeers` `channels` (deprecated v23.02, EOL v24.02) ([#7094])
+ - JSON-RPC: `sendpay` ignoring first channel (deprecated v0.12, EOL v24.02) ([#7094])
+ - Config `experimental-websocket-port` (deprecated 23.08, EOL 24.02) ([#7094])
+ - Plugins: `funding_locked` from channel_opened notification (deprecated v22.11, EOL v24.02) ([#7094])
+ - JSON-RPC: `feerates` output fields `delayed_to_us` and `htlc_resolution`. ([#7094])
+ - Config: `autocleaninvoice-cycle` and `autocleaninvoice-expired-by` (deprecated v22.11, EOL v24.02) ([#7094])
+ - JSON-RPC: `delexpiredinvoice` (deprecated v22.11, EOL v24.02) ([#7094])
+ - JSON-RPC feerates by internal names ("opening", "mutual_close", "delayed_to_us", "htlc_resolution", "penalty", "min_acceptable", "max_acceptable") (deprecated v23.05, EOL v24.02). ([#7094])
+ - Plugins: `invoice_payment` and `htlc_accepted` hook `failure_code` response (deprecated v22.08 and v0.8, EOL v23.02) ([#7094])
+
+
+### Fixed
+
+ - Plugins: pay now correctly estimates channel capacity ([#7188])
+ - lightningd: avoid crash on signing failure when trying to spend anchor outputs. ([#7291])
+ - RenePay: Fixed a race condition leading to a crash. ([#7125])
+ - JSON-RPC: `fundchannel_start` now disallows a non-zero `mindepth` parameter if you ask for a zeroconf `channel_type`. ([#7175])
+ - pyln-client: Fix Plugin.notify_message() not to ignore `level` parameter. ([#7287])
+ - JSON-RPC: `multifundchannel` with `all` as an amount works as expected. ([#7037])
+ - Fixed crash in pay plugin caused by parsing uncommitted dual open channels ([#7235])
+ - Plugins: `clnrest` now correctly self-disables if Python not present at all. ([#7211])
+ - lightningd: slow memory leak when using plugin hooks fixed (introduced in v23.11) ([#7192])
+ - Plugins:  the recovery plugin is less noisy. ([#7116])
+ - Plugins: RenePay: Handles htlc_max correctly for local channels. ([#7159])
+ - offers: Fix blinded paths in invoices - use node_id and set final node's CLTV delta. ([#7311])
+ - Plugins: The recover plugin now avoids trying to recover closed channels. ([#7216])
+ - Gossmap: Avoid adding redundant channel announcements to the gossip_store. ([#7330])
+
+
+### EXPERIMENTAL
+
+ - We will now reply to invoice_request messages even if reply path requires us to make an outgoing connection (LDK does this) ([#7304])
+ - offers: we now understand blinded paths which use a short-channel-id(+direction) as entry point. ([#7212])
+
+
+
+[#7159]: https://github.com/ElementsProject/lightning/pull/7159
+[#7116]: https://github.com/ElementsProject/lightning/pull/7116
+[#7230]: https://github.com/ElementsProject/lightning/pull/7230
+[#7232]: https://github.com/ElementsProject/lightning/pull/7232
+[#7260]: https://github.com/ElementsProject/lightning/pull/7260
+[#7238]: https://github.com/ElementsProject/lightning/pull/7238
+[#7231]: https://github.com/ElementsProject/lightning/pull/7231
+[#7256]: https://github.com/ElementsProject/lightning/pull/7256
+[#7233]: https://github.com/ElementsProject/lightning/pull/7233
+[#7190]: https://github.com/ElementsProject/lightning/pull/7190
+[#7095]: https://github.com/ElementsProject/lightning/pull/7095
+[#7272]: https://github.com/ElementsProject/lightning/pull/7272
+[#7273]: https://github.com/ElementsProject/lightning/pull/7273
+[#7311]: https://github.com/ElementsProject/lightning/pull/7311
+[#7274]: https://github.com/ElementsProject/lightning/pull/7274
+[#7330]: https://github.com/ElementsProject/lightning/pull/7330
+[#7181]: https://github.com/ElementsProject/lightning/pull/7181
+[#7124]: https://github.com/ElementsProject/lightning/pull/7124
+[#7287]: https://github.com/ElementsProject/lightning/pull/7287
+[#6995]: https://github.com/ElementsProject/lightning/pull/6995
+[#7225]: https://github.com/ElementsProject/lightning/pull/7225
+[#7317]: https://github.com/ElementsProject/lightning/pull/7317
+[#7108]: https://github.com/ElementsProject/lightning/pull/7108
+[#7111]: https://github.com/ElementsProject/lightning/pull/7111
+[#7240]: https://github.com/ElementsProject/lightning/pull/7240
+[#7165]: https://github.com/ElementsProject/lightning/pull/7165
+[#7175]: https://github.com/ElementsProject/lightning/pull/7175
+[#7212]: https://github.com/ElementsProject/lightning/pull/7212
+[#7252]: https://github.com/ElementsProject/lightning/pull/7252
+[#7094]: https://github.com/ElementsProject/lightning/pull/7094
+[#7145]: https://github.com/ElementsProject/lightning/pull/7145
+[#7101]: https://github.com/ElementsProject/lightning/pull/7101
+[#6990]: https://github.com/ElementsProject/lightning/pull/6990
+[#7178]: https://github.com/ElementsProject/lightning/pull/7178
+[#7188]: https://github.com/ElementsProject/lightning/pull/7188
+[#7306]: https://github.com/ElementsProject/lightning/pull/7306
+[#7037]: https://github.com/ElementsProject/lightning/pull/7037
+[#7304]: https://github.com/ElementsProject/lightning/pull/7304
+[#7280]: https://github.com/ElementsProject/lightning/pull/7280
+[#7226]: https://github.com/ElementsProject/lightning/pull/7226
+[#7291]: https://github.com/ElementsProject/lightning/pull/7291
+[#7235]: https://github.com/ElementsProject/lightning/pull/7235
+[#7192]: https://github.com/ElementsProject/lightning/pull/7192
+[#7293]: https://github.com/ElementsProject/lightning/pull/7293
+[#7211]: https://github.com/ElementsProject/lightning/pull/7211
+[#7237]: https://github.com/ElementsProject/lightning/pull/7237
+[#7256]: https://github.com/ElementsProject/lightning/pull/7256
+[24.05rc1]: https://github.com/ElementsProject/lightning/releases/tag/v24.05rc1
+
+
+
 ## [24.02.1] - 2024-03-08: "uint needs signature"
 
 This release named by Erik de Smedt (@ErikDeSmedt).

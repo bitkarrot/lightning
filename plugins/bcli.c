@@ -59,6 +59,7 @@ struct bitcoind {
 
 	/* Passthrough parameters for bitcoin-cli */
 	char *rpcuser, *rpcpass, *rpcconnect, *rpcport;
+	u64 rpcclienttimeout;
 
 	/* Whether we fake fees (regtest) */
 	bool fake_fees;
@@ -104,6 +105,16 @@ static const char **gather_argsv(const tal_t *ctx, const char *cmd, va_list ap)
 		add_arg(&args, chainparams->cli_args);
 	if (bitcoind->datadir)
 		add_arg(&args, tal_fmt(args, "-datadir=%s", bitcoind->datadir));
+	if (bitcoind->rpcclienttimeout) {
+		/* Use the maximum value of rpcclienttimeout and retry_timeout to avoid
+		   the bitcoind backend hanging for too long. */
+		if (bitcoind->retry_timeout &&
+		    bitcoind->retry_timeout > bitcoind->rpcclienttimeout)
+			bitcoind->rpcclienttimeout = bitcoind->retry_timeout;
+
+		add_arg(&args,
+			tal_fmt(args, "-rpcclienttimeout=%"PRIu64, bitcoind->rpcclienttimeout));
+	}
 	if (bitcoind->rpcconnect)
 		add_arg(&args,
 			tal_fmt(args, "-rpcconnect=%s", bitcoind->rpcconnect));
@@ -793,7 +804,7 @@ static struct command_result *getchaininfo(struct command *cmd,
          * However, I currently don't have a better idea on how to handle this situation. */
 	u32 *height UNUSED;
 	if (!param(cmd, buf, toks,
-		   p_req("last_height", param_number, &height),
+		   p_opt("last_height", param_number, &height),
 		   NULL))
 		return command_param_failed();
 
@@ -1225,6 +1236,9 @@ static struct bitcoind *new_bitcoind(const tal_t *ctx)
 	bitcoind->rpcpass = NULL;
 	bitcoind->rpcconnect = NULL;
 	bitcoind->rpcport = NULL;
+	/* Do not exceed retry_timeout value to avoid a bitcoind hang,
+	   although normal rpcclienttimeout default value is 900. */
+	bitcoind->rpcclienttimeout = 60;
 	bitcoind->dev_no_fake_fees = false;
 
 	return bitcoind;
@@ -1243,35 +1257,39 @@ int main(int argc, char *argv[])
 		    plugin_option("bitcoin-datadir",
 				  "string",
 				  "-datadir arg for bitcoin-cli",
-				  charp_option, &bitcoind->datadir),
+				  charp_option, NULL, &bitcoind->datadir),
 		    plugin_option("bitcoin-cli",
 				  "string",
 				  "bitcoin-cli pathname",
-				  charp_option, &bitcoind->cli),
+				  charp_option, NULL, &bitcoind->cli),
 		    plugin_option("bitcoin-rpcuser",
 				  "string",
 				  "bitcoind RPC username",
-				  charp_option, &bitcoind->rpcuser),
+				  charp_option, NULL, &bitcoind->rpcuser),
 		    plugin_option("bitcoin-rpcpassword",
 				  "string",
 				  "bitcoind RPC password",
-				  charp_option, &bitcoind->rpcpass),
+				  charp_option, NULL, &bitcoind->rpcpass),
 		    plugin_option("bitcoin-rpcconnect",
 				  "string",
 				  "bitcoind RPC host to connect to",
-				  charp_option, &bitcoind->rpcconnect),
+				  charp_option, NULL, &bitcoind->rpcconnect),
 		    plugin_option("bitcoin-rpcport",
 				  "int",
 				  "bitcoind RPC host's port",
-				  charp_option, &bitcoind->rpcport),
+				  charp_option, NULL, &bitcoind->rpcport),
+		    plugin_option("bitcoin-rpcclienttimeout",
+				  "int",
+				  "bitcoind RPC timeout in seconds during HTTP requests",
+				  u64_option, u64_jsonfmt, &bitcoind->rpcclienttimeout),
 		    plugin_option("bitcoin-retry-timeout",
-				  "string",
+				  "int",
 				  "how long to keep retrying to contact bitcoind"
 				  " before fatally exiting",
-				  u64_option, &bitcoind->retry_timeout),
+				  u64_option, u64_jsonfmt, &bitcoind->retry_timeout),
 		    plugin_option_dev("dev-no-fake-fees",
 				      "bool",
 				      "Suppress fee faking for regtest",
-				      bool_option, &bitcoind->dev_no_fake_fees),
+				      bool_option, NULL, &bitcoind->dev_no_fake_fees),
 		    NULL);
 }

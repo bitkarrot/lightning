@@ -689,6 +689,9 @@ void log_(struct logger *logger UNNEEDED, enum log_level level UNNEEDED,
 	  const char *fmt UNNEEDED, ...)
 
 { fprintf(stderr, "log_ called!\n"); abort(); }
+/* Generated stub for marginal_feerate */
+u32 marginal_feerate(u32 current_feerate UNNEEDED)
+{ fprintf(stderr, "marginal_feerate called!\n"); abort(); }
 /* Generated stub for merkle_tlv */
 void merkle_tlv(const struct tlv_field *fields UNNEEDED, struct sha256 *merkle UNNEEDED)
 { fprintf(stderr, "merkle_tlv called!\n"); abort(); }
@@ -898,6 +901,11 @@ void report_subd_memleak(struct leak_detect *leak_detect UNNEEDED, struct subd *
 void resolve_close_command(struct lightningd *ld UNNEEDED, struct channel *channel UNNEEDED,
 			   bool cooperative UNNEEDED, const struct bitcoin_tx *close_tx UNNEEDED)
 { fprintf(stderr, "resolve_close_command called!\n"); abort(); }
+/* Generated stub for shachain_get_secret */
+bool shachain_get_secret(const struct shachain *shachain UNNEEDED,
+			 u64 commit_num UNNEEDED,
+			 struct secret *preimage UNNEEDED)
+{ fprintf(stderr, "shachain_get_secret called!\n"); abort(); }
 /* Generated stub for start_leak_request */
 void start_leak_request(const struct subd_req *req UNNEEDED,
 			struct leak_detect *leak_detect UNNEEDED)

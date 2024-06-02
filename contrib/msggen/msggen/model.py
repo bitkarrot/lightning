@@ -135,9 +135,10 @@ class Field:
 class Service:
     """Top level class that wraps all the RPC methods.
     """
-    def __init__(self, name: str, methods=None):
-        self.name = name
-        self.methods = [] if methods is None else methods
+    def __init__(self, name: str, methods=None, notifications=None):
+        self.name: str = name
+        self.methods: List[Method] = [] if methods is None else methods
+        self.notifications: List[Notification] = [] if notifications is None else notifications
 
         # If we require linking with some external files we'll add
         # them here so the generator can use them.
@@ -166,7 +167,23 @@ class Service:
                 types.extend(gather_subfields(field))
             for field in method.response.fields:
                 types.extend(gather_subfields(field))
+
+        for notification in self.notifications:
+            types.extend([notification.request])
+            for field in notification.request.fields:
+                types.extend(gather_subfields(field))
+            for field in notification.response.fields:
+                types.extend(gather_subfields(field))
+
         return types
+
+
+class Notification:
+    def __init__(self, name: str, typename: str, request: Field, response: Field):
+        self.name = name
+        self.typename = typename
+        self.request = request
+        self.response = response
 
 
 class Method:
@@ -398,6 +415,8 @@ class PrimitiveField(Field):
         "msat",
         "msat_or_any",
         "msat_or_all",
+        "sat",
+        "sat_or_all",
         "currency",
         "hex",
         "short_channel_id",
@@ -479,7 +498,7 @@ OfferStringField = PrimitiveField("string", None, None, added=None, deprecated=N
 InvoiceLabelField = PrimitiveField("string", None, None, added=None, deprecated=None)
 DatastoreKeyField = ArrayField(itemtype=PrimitiveField("string", None, None, added=None, deprecated=None), dims=1, path=None, description=None, added=None, deprecated=None)
 DatastoreUsageKeyField = ArrayField(itemtype=PrimitiveField("string", None, None, added="v23.11", deprecated=None), dims=1, path=None, description=None, added="v23.11", deprecated=None)
-InvoiceExposeprivatechannelsField = PrimitiveField("boolean", None, None, added=None, deprecated=None)
+InvoiceExposeprivatechannelsField = ArrayField(itemtype=PrimitiveField("short_channel_id", None, None, added=None, deprecated=None), dims=1, path=None, description=None, added=None, deprecated=None)
 PayExclude = ArrayField(itemtype=PrimitiveField("string", None, None, added=None, deprecated=None), dims=1, path=None, description=None, added=None, deprecated=None)
 RoutehintListField = PrimitiveField(
     "RoutehintList",
@@ -488,6 +507,16 @@ RoutehintListField = PrimitiveField(
     added=None,
     deprecated=None
 )
+SetConfigValField = PrimitiveField("string", None, None, added=None, deprecated=None)
+DecodeRoutehintListField = PrimitiveField(
+    "DecodeRoutehintList",
+    None,
+    None,
+    added=None,
+    deprecated=None
+)
+CreateRuneRestrictionsField = ArrayField(itemtype=PrimitiveField("string", None, None, added=None, deprecated=None), dims=1, path=None, description=None, added=None, deprecated=None)
+CheckRuneParamsField = ArrayField(itemtype=PrimitiveField("string", None, None, added=None, deprecated=None), dims=1, path=None, description=None, added=None, deprecated=None)
 
 # TlvStreams are special, they don't have preset dict-keys, rather
 # they can specify `u64` keys pointing to hex payloads. So the schema
@@ -512,11 +541,16 @@ overrides = {
     'Pay.exclude': PayExclude,
     'KeySend.routehints': RoutehintListField,
     'KeySend.extratlvs': TlvStreamField,
+    'Decode.routes': DecodeRoutehintListField,
+    'DecodePay.routes': DecodeRoutehintListField,
     'CreateInvoice.label': InvoiceLabelField,
     'DatastoreUsage.key': DatastoreUsageKeyField,
     'WaitInvoice.label': InvoiceLabelField,
     'Offer.recurrence_base': OfferStringField,
-    'Offer.amount': OfferStringField
+    'Offer.amount': OfferStringField,
+    'SetConfig.val': SetConfigValField,
+    'CreateRune.restrictions': CreateRuneRestrictionsField,
+    'CheckRune.params': CheckRuneParamsField,
 }
 
 

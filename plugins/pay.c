@@ -1191,10 +1191,15 @@ static struct command_result *json_pay(struct command *cmd,
 		/* FIXME: do MPP across these!  We choose first one. */
 		p->blindedpath = tal_steal(p, b12->invoice_paths[0]);
 		p->blindedpay = tal_steal(p, b12->invoice_blindedpay[0]);
+		/* FIXME: support this! */
+		if (!p->blindedpath->first_node_id.is_pubkey) {
+			return command_fail(cmd, JSONRPC2_INVALID_PARAMS,
+					    "First hop of blinding is an scid: not supported!");
+		}
 		p->min_final_cltv_expiry = p->blindedpay->cltv_expiry_delta;
 
 		/* Set destination to introduction point */
-		node_id_from_pubkey(p->destination, &p->blindedpath->first_node_id);
+		node_id_from_pubkey(p->destination, &p->blindedpath->first_node_id.pubkey);
 		p->payment_metadata = NULL;
 		p->routes = NULL;
 		/* BOLT-offers #12:
@@ -1250,11 +1255,9 @@ static struct command_result *json_pay(struct command *cmd,
 
 	/* We replace real final values if we're using a blinded path */
 	if (p->blindedpath) {
-		p->blindedfinalcltv = p->min_final_cltv_expiry;
 		p->blindedouramount = p->our_amount;
 		p->blindedfinalamount = p->final_amount;
 
-		p->min_final_cltv_expiry += p->blindedpay->cltv_expiry_delta;
 		if (!amount_msat_add_fee(&p->final_amount,
 					 p->blindedpay->fee_base_msat,
 					 p->blindedpay->fee_proportional_millionths)
@@ -1364,7 +1367,7 @@ int main(int argc, char *argv[])
 		    notification_topics, ARRAY_SIZE(notification_topics),
 		    plugin_option("disable-mpp", "flag",
 				  "Disable multi-part payments.",
-				  flag_option, &disablempp),
+				  flag_option, flag_jsonfmt, &disablempp),
 		    NULL);
 	io_poll_override(libplugin_pay_poll);
 }

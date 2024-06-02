@@ -754,7 +754,8 @@ def test_wait_sendpay(node_factory, executor):
 @pytest.mark.parametrize("anchors", [False, True])
 def test_sendpay_cant_afford(node_factory, anchors):
     # Set feerates the same so we don't have to wait for update.
-    opts = {'feerates': (15000, 15000, 15000, 15000)}
+    opts = {'feerates': (15000, 15000, 15000, 15000),
+            'commit-feerate-offset': 0}
     if anchors is False:
         opts['dev-force-features'] = "-23"
 
@@ -767,26 +768,29 @@ def test_sendpay_cant_afford(node_factory, anchors):
     # Reserve is 1%.
     reserve = 10**7
 
-    # # This is how we recalc constants (v. v. slow!)
+    # This is how we recalc constants (v. v. slow!)
     # minimum = 1
     # maximum = 10**9
     # while maximum - minimum > 1:
-    #     l1, l2 = node_factory.line_graph(2, fundamount=10**6,
-    #                                      opts={'feerates': (15000, 15000, 15000, 15000)})
+    #     l1, l2 = node_factory.line_graph(2, fundamount=10**6, opts=opts)
     #     try:
     #         l1.pay(l2, (minimum + maximum) // 2)
+    #         print("XXX Pay {} WORKED!".format((minimum + maximum) // 2))
     #         minimum = (minimum + maximum) // 2
     #     except RpcError:
+    #         print("XXX Pay {} FAILED!".format((minimum + maximum) // 2))
     #         maximum = (minimum + maximum) // 2
     #     print("{} - {}".format(minimum, maximum))
-    # assert False
+
+    # assert False, "Max we can pay == {}".format(minimum)
+    # # Currently this gives: 962713000 for non-anchors, 951833000 for anchors
+    # # Add reserve to this result to derive `available`
 
     # This is the fee, which needs to be taken into account for l1.
     if anchors:
-        # option_anchor_outputs
-        available = 10**9 - 44700000
+        available = 951833000 + reserve
     else:
-        available = 10**9 - 32040000
+        available = 962713000 + reserve
 
     # Can't pay past reserve.
     with pytest.raises(RpcError):
@@ -2575,11 +2579,15 @@ def test_setchannel_startup_opts(node_factory, bitcoind):
     assert result[1]['htlc_maximum_msat'] == Millisatoshi(5)
 
 
-def test_channel_spendable(node_factory, bitcoind):
+@pytest.mark.parametrize("anchors", [False, True])
+def test_channel_spendable(node_factory, bitcoind, anchors):
     """Test that spendable_msat is accurate"""
     sats = 10**6
+    opts = {'plugin': os.path.join(os.getcwd(), 'tests/plugins/hold_invoice.py'), 'holdtime': '30'}
+    if anchors is False:
+        opts['dev-force-features'] = "-23"
     l1, l2 = node_factory.line_graph(2, fundamount=sats, wait_for_announce=True,
-                                     opts={'plugin': os.path.join(os.getcwd(), 'tests/plugins/hold_invoice.py'), 'holdtime': '30'})
+                                     opts=opts)
 
     inv = l2.rpc.invoice('any', 'inv', 'for testing')
     payment_hash = inv['payment_hash']
@@ -4723,6 +4731,28 @@ def test_fetchinvoice_autoconnect(node_factory, bitcoind):
     assert l3.rpc.listpeers(l2.info['id'])['peers'] != []
 
 
+def test_fetchinvoice_disconnected_reply(node_factory, bitcoind):
+    """We ask for invoice, but reply path doesn't lead directly from recipient"""
+    l1, l2, l3 = node_factory.get_nodes(3,
+                                        opts={'experimental-offers': None,
+                                              'may_reconnect': True,
+                                              'dev-no-reconnect': None,
+                                              'dev-allow-localhost': None})
+    l3.rpc.connect(l2.info['id'], 'localhost', l2.port)
+
+    # Make l1, l2 public (so l3 can auto connect).
+    node_factory.join_nodes([l1, l2], wait_for_announce=True)
+    wait_for(lambda: l3.rpc.listnodes(l1.info['id'])['nodes'] != [])
+
+    offer = l3.rpc.offer(amount='5msat', description='test_fetchinvoice_disconnected_reply')
+
+    # l2 sets reply_path to be l1->l2, l3 will connect to l1 to send reply.
+    # FIXME: if code were smarter, it would simply send via l2, and this test
+    # would have to get more sophisticated!
+    l2.rpc.fetchinvoice(offer=offer['bolt12'], dev_reply_path=[l1.info['id'], l2.info['id']])
+    assert only_one(l1.rpc.listpeers(l3.info['id'])['peers'])
+
+
 def test_pay_blockheight_mismatch(node_factory, bitcoind):
     """Test that we can send a payment even if not caught up with the chain.
 
@@ -5577,6 +5607,45 @@ def test_pay_partial_msat(node_factory, executor):
     l3pay.result(TIMEOUT)
 
 
+def test_blindedpath_privchan(node_factory, bitcoind):
+    l1, l2 = node_factory.line_graph(2, wait_for_announce=True,
+                                     opts={'experimental-offers': None})
+    l3 = node_factory.get_node(options={'experimental-offers': None,
+                                        'cltv-final': 120})
+
+    # Private channel.
+    node_factory.join_nodes([l2, l3], announce_channels=False)
+    # Make sure l3 knows about l1-l2, so will add route hint.
+    wait_for(lambda: l3.rpc.listnodes(l1.info['id']) != {'nodes': []})
+
+    offer = l3.rpc.offer(1000, 'test_pay_blindedpath_privchan')
+    l1.rpc.decode(offer['bolt12'])
+
+    inv = l2.rpc.fetchinvoice(offer['bolt12'])
+    decode = l1.rpc.decode(inv['invoice'])
+    assert len(decode['invoice_paths']) == 1
+    assert decode['invoice_paths'][0]['first_node_id'] == l2.info['id']
+
+    # Carla points out that the path's cltv_expiry_delta *includes*
+    # the final node's final value.
+    assert decode['invoice_paths'][0]['payinfo']['cltv_expiry_delta'] == l3.config('cltv-final') + l2.config('cltv-delta')
+
+    l1.rpc.pay(inv['invoice'])
+
+
+def test_blinded_reply_path_scid(node_factory):
+    """Check that we handle a blinded path which begins with a scid instead of a nodeid"""
+    l1, l2 = node_factory.line_graph(2, wait_for_announce=True,
+                                     opts={'experimental-offers': None})
+    offer = l2.rpc.offer(amount='2msat', description='test_blinded_reply_path_scid')
+
+    chan = only_one(l1.rpc.listpeerchannels()['channels'])
+    scidd = "{}/{}".format(chan['short_channel_id'], chan['direction'])
+    inv = l1.rpc.fetchinvoice(offer=offer['bolt12'], dev_path_use_scidd=scidd)['invoice']
+
+    l1.rpc.pay(inv)
+
+
 def test_pay_while_opening_channel(node_factory, bitcoind, executor):
     delay_plugin = {'plugin': os.path.join(os.getcwd(),
                                            'tests/plugins/openchannel_hook_delay.py'),
@@ -5591,3 +5660,31 @@ def test_pay_while_opening_channel(node_factory, bitcoind, executor):
     assert only_one(l1.rpc.listpeerchannels(l3.info['id'])['channels'])['state'] == 'OPENINGD'
     inv = l2.rpc.invoice(10000, "inv", "inv")
     l1.rpc.pay(inv['bolt11'])
+
+
+def test_pay_legacy_forward(node_factory, bitcoind, executor):
+    """We removed legacy in 22.11, and LND will still send them for
+    route hints!  See
+    https://github.com/lightningnetwork/lnd/issues/8785
+
+    """
+    l1, l2, l3 = node_factory.line_graph(3, fundamount=10**6, wait_for_announce=True)
+
+    inv = l3.rpc.invoice(1000, "inv", "inv")
+
+    chanid12 = only_one(l1.rpc.listpeerchannels(l2.info['id'])['channels'])['short_channel_id']
+    chanid23 = only_one(l2.rpc.listpeerchannels(l3.info['id'])['channels'])['short_channel_id']
+    route = [{'amount_msat': 1011,
+              'id': l2.info['id'],
+              'delay': 20,
+              'channel': chanid12},
+             {'amount_msat': 1000,
+              'id': l3.info['id'],
+              'delay': 10,
+              'channel': chanid23}]
+
+    l1.rpc.call("sendpay", payload={'route': route,
+                                    'payment_hash': inv['payment_hash'],
+                                    'payment_secret': inv['payment_secret'],
+                                    'dev_legacy_hop': True})
+    l1.rpc.waitsendpay(inv['payment_hash'])

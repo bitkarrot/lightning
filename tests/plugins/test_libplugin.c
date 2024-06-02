@@ -9,6 +9,7 @@
 static char *somearg;
 static bool self_disable = false;
 static bool dont_shutdown = false;
+static u32 dynamic_opt = 7;
 
 static struct command_result *get_ds_done(struct command *cmd,
 					  const char *val,
@@ -177,6 +178,24 @@ static struct command_result *json_checkthis(struct command *cmd,
 	return send_outreq(cmd->plugin, req);
 }
 
+static char *set_dynamic(struct plugin *plugin,
+			 const char *arg,
+			 bool check_only,
+			 u32 *dynamic_opt)
+{
+	int val = atol(arg);
+
+	/* Whee, let's allow odd */
+	if (val % 2 == 0)
+		return "I don't like \"even\" numbers (valid JSON? Try {})!";
+
+	if (check_only)
+		return NULL;
+
+	*dynamic_opt = val;
+	return NULL;
+}
+
 static const char *init(struct plugin *p,
 			const char *buf UNUSED,
 			const jsmntok_t *config UNUSED)
@@ -279,19 +298,23 @@ int main(int argc, char *argv[])
 		    plugin_option("somearg",
 				  "string",
 				  "Argument to print at init.",
-				  charp_option, &somearg),
+				  charp_option, charp_jsonfmt, &somearg),
 		    plugin_option_deprecated("somearg-deprecated",
 					     "string",
 					     "Deprecated arg for init.",
 					     CLN_NEXT_VERSION, NULL,
-					     charp_option, &somearg),
+					     charp_option, charp_jsonfmt, &somearg),
 		    plugin_option("selfdisable",
 				  "flag",
 				  "Whether to disable.",
-				  flag_option, &self_disable),
+				  flag_option, flag_jsonfmt, &self_disable),
 		    plugin_option("dont_shutdown",
 				  "flag",
 				  "Whether to timeout when asked to shutdown.",
-				  flag_option, &dont_shutdown),
+				  flag_option, flag_jsonfmt, &dont_shutdown),
+		    plugin_option_dynamic("dynamicopt",
+					  "int",
+					  "Set me!",
+					  set_dynamic, u32_jsonfmt, &dynamic_opt),
 		    NULL);
 }

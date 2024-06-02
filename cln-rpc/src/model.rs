@@ -23,6 +23,7 @@ pub enum Request {
 	SendPay(requests::SendpayRequest),
 	ListChannels(requests::ListchannelsRequest),
 	AddGossip(requests::AddgossipRequest),
+	AddPsbtOutput(requests::AddpsbtoutputRequest),
 	AutoCleanInvoice(requests::AutocleaninvoiceRequest),
 	#[serde(rename = "autoclean-once")]
 	AutoCleanOnce(requests::AutocleanonceRequest),
@@ -37,12 +38,21 @@ pub enum Request {
 	CreateOnion(requests::CreateonionRequest),
 	DelDatastore(requests::DeldatastoreRequest),
 	DelInvoice(requests::DelinvoiceRequest),
+	#[serde(rename = "dev-forget-channel")]
+	DevForgetChannel(requests::DevforgetchannelRequest),
+	EmergencyRecover(requests::EmergencyrecoverRequest),
+	Recover(requests::RecoverRequest),
+	RecoverChannel(requests::RecoverchannelRequest),
 	Invoice(requests::InvoiceRequest),
+	InvoiceRequest(requests::InvoicerequestRequest),
+	DisableInvoiceRequest(requests::DisableinvoicerequestRequest),
+	ListInvoiceRequests(requests::ListinvoicerequestsRequest),
 	ListDatastore(requests::ListdatastoreRequest),
 	ListInvoices(requests::ListinvoicesRequest),
 	SendOnion(requests::SendonionRequest),
 	ListSendPays(requests::ListsendpaysRequest),
 	ListTransactions(requests::ListtransactionsRequest),
+	MakeSecret(requests::MakesecretRequest),
 	Pay(requests::PayRequest),
 	ListNodes(requests::ListnodesRequest),
 	WaitAnyInvoice(requests::WaitanyinvoiceRequest),
@@ -73,12 +83,14 @@ pub enum Request {
 	FundChannel(requests::FundchannelRequest),
 	FundChannel_Start(requests::Fundchannel_startRequest),
 	GetLog(requests::GetlogRequest),
+	FunderUpdate(requests::FunderupdateRequest),
 	GetRoute(requests::GetrouteRequest),
 	ListForwards(requests::ListforwardsRequest),
 	ListOffers(requests::ListoffersRequest),
 	ListPays(requests::ListpaysRequest),
 	ListHtlcs(requests::ListhtlcsRequest),
 	MultiFundChannel(requests::MultifundchannelRequest),
+	MultiWithdraw(requests::MultiwithdrawRequest),
 	Offer(requests::OfferRequest),
 	OpenChannel_Abort(requests::Openchannel_abortRequest),
 	OpenChannel_Bump(requests::Openchannel_bumpRequest),
@@ -86,13 +98,28 @@ pub enum Request {
 	OpenChannel_Signed(requests::Openchannel_signedRequest),
 	OpenChannel_Update(requests::Openchannel_updateRequest),
 	Ping(requests::PingRequest),
+	Plugin(requests::PluginRequest),
+	RenePayStatus(requests::RenepaystatusRequest),
+	RenePay(requests::RenepayRequest),
+	ReserveInputs(requests::ReserveinputsRequest),
 	SendCustomMsg(requests::SendcustommsgRequest),
+	SendInvoice(requests::SendinvoiceRequest),
+	SendOnionMessage(requests::SendonionmessageRequest),
 	SetChannel(requests::SetchannelRequest),
+	SetConfig(requests::SetconfigRequest),
+	SetPsbtVersion(requests::SetpsbtversionRequest),
 	SignInvoice(requests::SigninvoiceRequest),
 	SignMessage(requests::SignmessageRequest),
+	Splice_Init(requests::Splice_initRequest),
+	Splice_Signed(requests::Splice_signedRequest),
+	Splice_Update(requests::Splice_updateRequest),
+	UnreserveInputs(requests::UnreserveinputsRequest),
+	UpgradeWallet(requests::UpgradewalletRequest),
 	WaitBlockHeight(requests::WaitblockheightRequest),
 	Wait(requests::WaitRequest),
+	ListConfigs(requests::ListconfigsRequest),
 	Stop(requests::StopRequest),
+	Help(requests::HelpRequest),
 	PreApproveKeysend(requests::PreapprovekeysendRequest),
 	PreApproveInvoice(requests::PreapproveinvoiceRequest),
 	StaticBackup(requests::StaticbackupRequest),
@@ -108,6 +135,10 @@ pub enum Request {
 	BkprListBalances(requests::BkprlistbalancesRequest),
 	#[serde(rename = "bkpr-listincome")]
 	BkprListIncome(requests::BkprlistincomeRequest),
+	BlacklistRune(requests::BlacklistruneRequest),
+	CheckRune(requests::CheckruneRequest),
+	CreateRune(requests::CreateruneRequest),
+	ShowRunes(requests::ShowrunesRequest),
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -120,6 +151,7 @@ pub enum Response {
 	SendPay(responses::SendpayResponse),
 	ListChannels(responses::ListchannelsResponse),
 	AddGossip(responses::AddgossipResponse),
+	AddPsbtOutput(responses::AddpsbtoutputResponse),
 	AutoCleanInvoice(responses::AutocleaninvoiceResponse),
 	#[serde(rename = "autoclean-once")]
 	AutoCleanOnce(responses::AutocleanonceResponse),
@@ -134,12 +166,21 @@ pub enum Response {
 	CreateOnion(responses::CreateonionResponse),
 	DelDatastore(responses::DeldatastoreResponse),
 	DelInvoice(responses::DelinvoiceResponse),
+	#[serde(rename = "dev-forget-channel")]
+	DevForgetChannel(responses::DevforgetchannelResponse),
+	EmergencyRecover(responses::EmergencyrecoverResponse),
+	Recover(responses::RecoverResponse),
+	RecoverChannel(responses::RecoverchannelResponse),
 	Invoice(responses::InvoiceResponse),
+	InvoiceRequest(responses::InvoicerequestResponse),
+	DisableInvoiceRequest(responses::DisableinvoicerequestResponse),
+	ListInvoiceRequests(responses::ListinvoicerequestsResponse),
 	ListDatastore(responses::ListdatastoreResponse),
 	ListInvoices(responses::ListinvoicesResponse),
 	SendOnion(responses::SendonionResponse),
 	ListSendPays(responses::ListsendpaysResponse),
 	ListTransactions(responses::ListtransactionsResponse),
+	MakeSecret(responses::MakesecretResponse),
 	Pay(responses::PayResponse),
 	ListNodes(responses::ListnodesResponse),
 	WaitAnyInvoice(responses::WaitanyinvoiceResponse),
@@ -170,12 +211,14 @@ pub enum Response {
 	FundChannel(responses::FundchannelResponse),
 	FundChannel_Start(responses::Fundchannel_startResponse),
 	GetLog(responses::GetlogResponse),
+	FunderUpdate(responses::FunderupdateResponse),
 	GetRoute(responses::GetrouteResponse),
 	ListForwards(responses::ListforwardsResponse),
 	ListOffers(responses::ListoffersResponse),
 	ListPays(responses::ListpaysResponse),
 	ListHtlcs(responses::ListhtlcsResponse),
 	MultiFundChannel(responses::MultifundchannelResponse),
+	MultiWithdraw(responses::MultiwithdrawResponse),
 	Offer(responses::OfferResponse),
 	OpenChannel_Abort(responses::Openchannel_abortResponse),
 	OpenChannel_Bump(responses::Openchannel_bumpResponse),
@@ -183,13 +226,28 @@ pub enum Response {
 	OpenChannel_Signed(responses::Openchannel_signedResponse),
 	OpenChannel_Update(responses::Openchannel_updateResponse),
 	Ping(responses::PingResponse),
+	Plugin(responses::PluginResponse),
+	RenePayStatus(responses::RenepaystatusResponse),
+	RenePay(responses::RenepayResponse),
+	ReserveInputs(responses::ReserveinputsResponse),
 	SendCustomMsg(responses::SendcustommsgResponse),
+	SendInvoice(responses::SendinvoiceResponse),
+	SendOnionMessage(responses::SendonionmessageResponse),
 	SetChannel(responses::SetchannelResponse),
+	SetConfig(responses::SetconfigResponse),
+	SetPsbtVersion(responses::SetpsbtversionResponse),
 	SignInvoice(responses::SigninvoiceResponse),
 	SignMessage(responses::SignmessageResponse),
+	Splice_Init(responses::Splice_initResponse),
+	Splice_Signed(responses::Splice_signedResponse),
+	Splice_Update(responses::Splice_updateResponse),
+	UnreserveInputs(responses::UnreserveinputsResponse),
+	UpgradeWallet(responses::UpgradewalletResponse),
 	WaitBlockHeight(responses::WaitblockheightResponse),
 	Wait(responses::WaitResponse),
+	ListConfigs(responses::ListconfigsResponse),
 	Stop(responses::StopResponse),
+	Help(responses::HelpResponse),
 	PreApproveKeysend(responses::PreapprovekeysendResponse),
 	PreApproveInvoice(responses::PreapproveinvoiceResponse),
 	StaticBackup(responses::StaticbackupResponse),
@@ -205,6 +263,10 @@ pub enum Response {
 	BkprListBalances(responses::BkprlistbalancesResponse),
 	#[serde(rename = "bkpr-listincome")]
 	BkprListIncome(responses::BkprlistincomeResponse),
+	BlacklistRune(responses::BlacklistruneResponse),
+	CheckRune(responses::CheckruneResponse),
+	CreateRune(responses::CreateruneResponse),
+	ShowRunes(responses::ShowrunesResponse),
 }
 
 
@@ -434,6 +496,34 @@ pub mod requests {
 
 	    fn method(&self) -> &str {
 	        "addgossip"
+	    }
+	}
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct AddpsbtoutputRequest {
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub destination: Option<String>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub initialpsbt: Option<String>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub locktime: Option<u32>,
+	    pub satoshi: Amount,
+	}
+
+	impl From<AddpsbtoutputRequest> for Request {
+	    fn from(r: AddpsbtoutputRequest) -> Self {
+	        Request::AddPsbtOutput(r)
+	    }
+	}
+
+	impl IntoRequest for AddpsbtoutputRequest {
+	    type Response = super::responses::AddpsbtoutputResponse;
+	}
+
+	impl TypedRequest for AddpsbtoutputRequest {
+	    type Response = super::responses::AddpsbtoutputResponse;
+
+	    fn method(&self) -> &str {
+	        "addpsbtoutput"
 	    }
 	}
 	#[derive(Clone, Debug, Deserialize, Serialize)]
@@ -828,6 +918,99 @@ pub mod requests {
 	    }
 	}
 	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct DevforgetchannelRequest {
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub channel_id: Option<Sha256>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub force: Option<bool>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub short_channel_id: Option<ShortChannelId>,
+	    pub id: PublicKey,
+	}
+
+	impl From<DevforgetchannelRequest> for Request {
+	    fn from(r: DevforgetchannelRequest) -> Self {
+	        Request::DevForgetChannel(r)
+	    }
+	}
+
+	impl IntoRequest for DevforgetchannelRequest {
+	    type Response = super::responses::DevforgetchannelResponse;
+	}
+
+	impl TypedRequest for DevforgetchannelRequest {
+	    type Response = super::responses::DevforgetchannelResponse;
+
+	    fn method(&self) -> &str {
+	        "dev-forget-channel"
+	    }
+	}
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct EmergencyrecoverRequest {
+	}
+
+	impl From<EmergencyrecoverRequest> for Request {
+	    fn from(r: EmergencyrecoverRequest) -> Self {
+	        Request::EmergencyRecover(r)
+	    }
+	}
+
+	impl IntoRequest for EmergencyrecoverRequest {
+	    type Response = super::responses::EmergencyrecoverResponse;
+	}
+
+	impl TypedRequest for EmergencyrecoverRequest {
+	    type Response = super::responses::EmergencyrecoverResponse;
+
+	    fn method(&self) -> &str {
+	        "emergencyrecover"
+	    }
+	}
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct RecoverRequest {
+	    pub hsmsecret: String,
+	}
+
+	impl From<RecoverRequest> for Request {
+	    fn from(r: RecoverRequest) -> Self {
+	        Request::Recover(r)
+	    }
+	}
+
+	impl IntoRequest for RecoverRequest {
+	    type Response = super::responses::RecoverResponse;
+	}
+
+	impl TypedRequest for RecoverRequest {
+	    type Response = super::responses::RecoverResponse;
+
+	    fn method(&self) -> &str {
+	        "recover"
+	    }
+	}
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct RecoverchannelRequest {
+	    pub scb: Vec<String>,
+	}
+
+	impl From<RecoverchannelRequest> for Request {
+	    fn from(r: RecoverchannelRequest) -> Self {
+	        Request::RecoverChannel(r)
+	    }
+	}
+
+	impl IntoRequest for RecoverchannelRequest {
+	    type Response = super::responses::RecoverchannelResponse;
+	}
+
+	impl TypedRequest for RecoverchannelRequest {
+	    type Response = super::responses::RecoverchannelResponse;
+
+	    fn method(&self) -> &str {
+	        "recoverchannel"
+	    }
+	}
+	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct InvoiceRequest {
 	    #[serde(skip_serializing_if = "Option::is_none")]
 	    pub cltv: Option<u32>,
@@ -837,6 +1020,8 @@ pub mod requests {
 	    pub expiry: Option<u64>,
 	    #[serde(skip_serializing_if = "Option::is_none")]
 	    pub preimage: Option<String>,
+	    #[serde(skip_serializing_if = "crate::is_none_or_empty")]
+	    pub exposeprivatechannels: Option<Vec<ShortChannelId>>,
 	    #[serde(skip_serializing_if = "crate::is_none_or_empty")]
 	    pub fallbacks: Option<Vec<String>>,
 	    pub amount_msat: AmountOrAny,
@@ -859,6 +1044,84 @@ pub mod requests {
 
 	    fn method(&self) -> &str {
 	        "invoice"
+	    }
+	}
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct InvoicerequestRequest {
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub absolute_expiry: Option<u64>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub issuer: Option<String>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub label: Option<String>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub single_use: Option<bool>,
+	    pub amount: Amount,
+	    pub description: String,
+	}
+
+	impl From<InvoicerequestRequest> for Request {
+	    fn from(r: InvoicerequestRequest) -> Self {
+	        Request::InvoiceRequest(r)
+	    }
+	}
+
+	impl IntoRequest for InvoicerequestRequest {
+	    type Response = super::responses::InvoicerequestResponse;
+	}
+
+	impl TypedRequest for InvoicerequestRequest {
+	    type Response = super::responses::InvoicerequestResponse;
+
+	    fn method(&self) -> &str {
+	        "invoicerequest"
+	    }
+	}
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct DisableinvoicerequestRequest {
+	    pub invreq_id: String,
+	}
+
+	impl From<DisableinvoicerequestRequest> for Request {
+	    fn from(r: DisableinvoicerequestRequest) -> Self {
+	        Request::DisableInvoiceRequest(r)
+	    }
+	}
+
+	impl IntoRequest for DisableinvoicerequestRequest {
+	    type Response = super::responses::DisableinvoicerequestResponse;
+	}
+
+	impl TypedRequest for DisableinvoicerequestRequest {
+	    type Response = super::responses::DisableinvoicerequestResponse;
+
+	    fn method(&self) -> &str {
+	        "disableinvoicerequest"
+	    }
+	}
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListinvoicerequestsRequest {
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub active_only: Option<bool>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub invreq_id: Option<String>,
+	}
+
+	impl From<ListinvoicerequestsRequest> for Request {
+	    fn from(r: ListinvoicerequestsRequest) -> Self {
+	        Request::ListInvoiceRequests(r)
+	    }
+	}
+
+	impl IntoRequest for ListinvoicerequestsRequest {
+	    type Response = super::responses::ListinvoicerequestsResponse;
+	}
+
+	impl TypedRequest for ListinvoicerequestsRequest {
+	    type Response = super::responses::ListinvoicerequestsResponse;
+
+	    fn method(&self) -> &str {
+	        "listinvoicerequests"
 	    }
 	}
 	#[derive(Clone, Debug, Deserialize, Serialize)]
@@ -1111,6 +1374,31 @@ pub mod requests {
 
 	    fn method(&self) -> &str {
 	        "listtransactions"
+	    }
+	}
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct MakesecretRequest {
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub hex: Option<String>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub string: Option<String>,
+	}
+
+	impl From<MakesecretRequest> for Request {
+	    fn from(r: MakesecretRequest) -> Self {
+	        Request::MakeSecret(r)
+	    }
+	}
+
+	impl IntoRequest for MakesecretRequest {
+	    type Response = super::responses::MakesecretResponse;
+	}
+
+	impl TypedRequest for MakesecretRequest {
+	    type Response = super::responses::MakesecretResponse;
+
+	    fn method(&self) -> &str {
+	        "makesecret"
 	    }
 	}
 	#[derive(Clone, Debug, Deserialize, Serialize)]
@@ -2110,6 +2398,92 @@ pub mod requests {
 	        "getlog"
 	    }
 	}
+	/// ['Funder plugin will use to decide how much capital to commit to a v2 open channel request.', 'There are three policy options, detailed below:', '    * `match` -- Contribute *policy_mod* percent of their requested funds. Valid *policy_mod* values are 0 to 200. If this is a channel lease request, we match based on their requested funds. If it is not a channel lease request (and *lease_only* is false), then we match their funding amount. Note: any lease match less than 100 will likely fail, as clients will not accept a lease less than their request.', '    * `available` -- Contribute *policy_mod* percent of our available node wallet funds. Valid *policy_mod* values are 0 to 100.', '    * `fixed` -- Contributes a fixed  *policy_mod* sats to v2 channel open requests.']
+	#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+	pub enum FunderupdatePolicy {
+	    #[serde(rename = "match")]
+	    MATCH = 0,
+	    #[serde(rename = "available")]
+	    AVAILABLE = 1,
+	    #[serde(rename = "fixed")]
+	    FIXED = 2,
+	}
+
+	impl TryFrom<i32> for FunderupdatePolicy {
+	    type Error = anyhow::Error;
+	    fn try_from(c: i32) -> Result<FunderupdatePolicy, anyhow::Error> {
+	        match c {
+	    0 => Ok(FunderupdatePolicy::MATCH),
+	    1 => Ok(FunderupdatePolicy::AVAILABLE),
+	    2 => Ok(FunderupdatePolicy::FIXED),
+	            o => Err(anyhow::anyhow!("Unknown variant {} for enum FunderupdatePolicy", o)),
+	        }
+	    }
+	}
+
+	impl ToString for FunderupdatePolicy {
+	    fn to_string(&self) -> String {
+	        match self {
+	            FunderupdatePolicy::MATCH => "MATCH",
+	            FunderupdatePolicy::AVAILABLE => "AVAILABLE",
+	            FunderupdatePolicy::FIXED => "FIXED",
+	        }.to_string()
+	    }
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct FunderupdateRequest {
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub channel_fee_max_base_msat: Option<Amount>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub channel_fee_max_proportional_thousandths: Option<u32>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub compact_lease: Option<String>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub fund_probability: Option<u32>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub funding_weight: Option<u32>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub fuzz_percent: Option<u32>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub lease_fee_base_msat: Option<Amount>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub lease_fee_basis: Option<u32>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub leases_only: Option<bool>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub max_their_funding_msat: Option<Amount>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub min_their_funding_msat: Option<Amount>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub per_channel_max_msat: Option<Amount>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub per_channel_min_msat: Option<Amount>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub policy: Option<FunderupdatePolicy>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub policy_mod: Option<Amount>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub reserve_tank_msat: Option<Amount>,
+	}
+
+	impl From<FunderupdateRequest> for Request {
+	    fn from(r: FunderupdateRequest) -> Self {
+	        Request::FunderUpdate(r)
+	    }
+	}
+
+	impl IntoRequest for FunderupdateRequest {
+	    type Response = super::responses::FunderupdateResponse;
+	}
+
+	impl TypedRequest for FunderupdateRequest {
+	    type Response = super::responses::FunderupdateResponse;
+
+	    fn method(&self) -> &str {
+	        "funderupdate"
+	    }
+	}
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct GetrouteRequest {
 	    #[serde(skip_serializing_if = "Option::is_none")]
@@ -2404,6 +2778,34 @@ pub mod requests {
 	    }
 	}
 	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct MultiwithdrawRequest {
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub feerate: Option<Feerate>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub minconf: Option<u32>,
+	    #[serde(skip_serializing_if = "crate::is_none_or_empty")]
+	    pub utxos: Option<Vec<Outpoint>>,
+	    pub outputs: Vec<OutputDesc>,
+	}
+
+	impl From<MultiwithdrawRequest> for Request {
+	    fn from(r: MultiwithdrawRequest) -> Self {
+	        Request::MultiWithdraw(r)
+	    }
+	}
+
+	impl IntoRequest for MultiwithdrawRequest {
+	    type Response = super::responses::MultiwithdrawResponse;
+	}
+
+	impl TypedRequest for MultiwithdrawRequest {
+	    type Response = super::responses::MultiwithdrawResponse;
+
+	    fn method(&self) -> &str {
+	        "multiwithdraw"
+	    }
+	}
+	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct OfferRequest {
 	    #[serde(skip_serializing_if = "Option::is_none")]
 	    pub absolute_expiry: Option<u64>,
@@ -2603,6 +3005,120 @@ pub mod requests {
 	    }
 	}
 	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct PluginRequest {
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub directory: Option<String>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub plugin: Option<String>,
+	    #[serde(skip_serializing_if = "crate::is_none_or_empty")]
+	    pub options: Option<Vec<String>>,
+	    // Path `Plugin.subcommand`
+	    pub subcommand: PluginSubcommand,
+	}
+
+	impl From<PluginRequest> for Request {
+	    fn from(r: PluginRequest) -> Self {
+	        Request::Plugin(r)
+	    }
+	}
+
+	impl IntoRequest for PluginRequest {
+	    type Response = super::responses::PluginResponse;
+	}
+
+	impl TypedRequest for PluginRequest {
+	    type Response = super::responses::PluginResponse;
+
+	    fn method(&self) -> &str {
+	        "plugin"
+	    }
+	}
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct RenepaystatusRequest {
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub invstring: Option<String>,
+	}
+
+	impl From<RenepaystatusRequest> for Request {
+	    fn from(r: RenepaystatusRequest) -> Self {
+	        Request::RenePayStatus(r)
+	    }
+	}
+
+	impl IntoRequest for RenepaystatusRequest {
+	    type Response = super::responses::RenepaystatusResponse;
+	}
+
+	impl TypedRequest for RenepaystatusRequest {
+	    type Response = super::responses::RenepaystatusResponse;
+
+	    fn method(&self) -> &str {
+	        "renepaystatus"
+	    }
+	}
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct RenepayRequest {
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub amount_msat: Option<Amount>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub description: Option<String>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub dev_use_shadow: Option<bool>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub label: Option<String>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub maxdelay: Option<u32>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub maxfee: Option<Amount>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub retry_for: Option<u32>,
+	    pub invstring: String,
+	}
+
+	impl From<RenepayRequest> for Request {
+	    fn from(r: RenepayRequest) -> Self {
+	        Request::RenePay(r)
+	    }
+	}
+
+	impl IntoRequest for RenepayRequest {
+	    type Response = super::responses::RenepayResponse;
+	}
+
+	impl TypedRequest for RenepayRequest {
+	    type Response = super::responses::RenepayResponse;
+
+	    fn method(&self) -> &str {
+	        "renepay"
+	    }
+	}
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ReserveinputsRequest {
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub exclusive: Option<bool>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub reserve: Option<u32>,
+	    pub psbt: String,
+	}
+
+	impl From<ReserveinputsRequest> for Request {
+	    fn from(r: ReserveinputsRequest) -> Self {
+	        Request::ReserveInputs(r)
+	    }
+	}
+
+	impl IntoRequest for ReserveinputsRequest {
+	    type Response = super::responses::ReserveinputsResponse;
+	}
+
+	impl TypedRequest for ReserveinputsRequest {
+	    type Response = super::responses::ReserveinputsResponse;
+
+	    fn method(&self) -> &str {
+	        "reserveinputs"
+	    }
+	}
+	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct SendcustommsgRequest {
 	    pub msg: String,
 	    pub node_id: PublicKey,
@@ -2623,6 +3139,65 @@ pub mod requests {
 
 	    fn method(&self) -> &str {
 	        "sendcustommsg"
+	    }
+	}
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct SendinvoiceRequest {
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub amount_msat: Option<Amount>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub quantity: Option<u64>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub timeout: Option<u32>,
+	    pub invreq: String,
+	    pub label: String,
+	}
+
+	impl From<SendinvoiceRequest> for Request {
+	    fn from(r: SendinvoiceRequest) -> Self {
+	        Request::SendInvoice(r)
+	    }
+	}
+
+	impl IntoRequest for SendinvoiceRequest {
+	    type Response = super::responses::SendinvoiceResponse;
+	}
+
+	impl TypedRequest for SendinvoiceRequest {
+	    type Response = super::responses::SendinvoiceResponse;
+
+	    fn method(&self) -> &str {
+	        "sendinvoice"
+	    }
+	}
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct SendonionmessageHops {
+	    pub node: PublicKey,
+	    pub tlv: u8,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct SendonionmessageRequest {
+	    pub blinding: PublicKey,
+	    pub first_id: PublicKey,
+	    pub hops: Vec<SendonionmessageHops>,
+	}
+
+	impl From<SendonionmessageRequest> for Request {
+	    fn from(r: SendonionmessageRequest) -> Self {
+	        Request::SendOnionMessage(r)
+	    }
+	}
+
+	impl IntoRequest for SendonionmessageRequest {
+	    type Response = super::responses::SendonionmessageResponse;
+	}
+
+	impl TypedRequest for SendonionmessageRequest {
+	    type Response = super::responses::SendonionmessageResponse;
+
+	    fn method(&self) -> &str {
+	        "sendonionmessage"
 	    }
 	}
 	#[derive(Clone, Debug, Deserialize, Serialize)]
@@ -2657,6 +3232,53 @@ pub mod requests {
 
 	    fn method(&self) -> &str {
 	        "setchannel"
+	    }
+	}
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct SetconfigRequest {
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub val: Option<String>,
+	    pub config: String,
+	}
+
+	impl From<SetconfigRequest> for Request {
+	    fn from(r: SetconfigRequest) -> Self {
+	        Request::SetConfig(r)
+	    }
+	}
+
+	impl IntoRequest for SetconfigRequest {
+	    type Response = super::responses::SetconfigResponse;
+	}
+
+	impl TypedRequest for SetconfigRequest {
+	    type Response = super::responses::SetconfigResponse;
+
+	    fn method(&self) -> &str {
+	        "setconfig"
+	    }
+	}
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct SetpsbtversionRequest {
+	    pub psbt: String,
+	    pub version: u32,
+	}
+
+	impl From<SetpsbtversionRequest> for Request {
+	    fn from(r: SetpsbtversionRequest) -> Self {
+	        Request::SetPsbtVersion(r)
+	    }
+	}
+
+	impl IntoRequest for SetpsbtversionRequest {
+	    type Response = super::responses::SetpsbtversionResponse;
+	}
+
+	impl TypedRequest for SetpsbtversionRequest {
+	    type Response = super::responses::SetpsbtversionResponse;
+
+	    fn method(&self) -> &str {
+	        "setpsbtversion"
 	    }
 	}
 	#[derive(Clone, Debug, Deserialize, Serialize)]
@@ -2701,6 +3323,132 @@ pub mod requests {
 
 	    fn method(&self) -> &str {
 	        "signmessage"
+	    }
+	}
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct Splice_initRequest {
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub feerate_per_kw: Option<u32>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub force_feerate: Option<bool>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub initialpsbt: Option<String>,
+	    pub channel_id: Sha256,
+	    pub relative_amount: i64,
+	}
+
+	impl From<Splice_initRequest> for Request {
+	    fn from(r: Splice_initRequest) -> Self {
+	        Request::Splice_Init(r)
+	    }
+	}
+
+	impl IntoRequest for Splice_initRequest {
+	    type Response = super::responses::Splice_initResponse;
+	}
+
+	impl TypedRequest for Splice_initRequest {
+	    type Response = super::responses::Splice_initResponse;
+
+	    fn method(&self) -> &str {
+	        "splice_init"
+	    }
+	}
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct Splice_signedRequest {
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub sign_first: Option<bool>,
+	    pub channel_id: Sha256,
+	    pub psbt: String,
+	}
+
+	impl From<Splice_signedRequest> for Request {
+	    fn from(r: Splice_signedRequest) -> Self {
+	        Request::Splice_Signed(r)
+	    }
+	}
+
+	impl IntoRequest for Splice_signedRequest {
+	    type Response = super::responses::Splice_signedResponse;
+	}
+
+	impl TypedRequest for Splice_signedRequest {
+	    type Response = super::responses::Splice_signedResponse;
+
+	    fn method(&self) -> &str {
+	        "splice_signed"
+	    }
+	}
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct Splice_updateRequest {
+	    pub channel_id: Sha256,
+	    pub psbt: String,
+	}
+
+	impl From<Splice_updateRequest> for Request {
+	    fn from(r: Splice_updateRequest) -> Self {
+	        Request::Splice_Update(r)
+	    }
+	}
+
+	impl IntoRequest for Splice_updateRequest {
+	    type Response = super::responses::Splice_updateResponse;
+	}
+
+	impl TypedRequest for Splice_updateRequest {
+	    type Response = super::responses::Splice_updateResponse;
+
+	    fn method(&self) -> &str {
+	        "splice_update"
+	    }
+	}
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct UnreserveinputsRequest {
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub reserve: Option<u32>,
+	    pub psbt: String,
+	}
+
+	impl From<UnreserveinputsRequest> for Request {
+	    fn from(r: UnreserveinputsRequest) -> Self {
+	        Request::UnreserveInputs(r)
+	    }
+	}
+
+	impl IntoRequest for UnreserveinputsRequest {
+	    type Response = super::responses::UnreserveinputsResponse;
+	}
+
+	impl TypedRequest for UnreserveinputsRequest {
+	    type Response = super::responses::UnreserveinputsResponse;
+
+	    fn method(&self) -> &str {
+	        "unreserveinputs"
+	    }
+	}
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct UpgradewalletRequest {
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub feerate: Option<Feerate>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub reservedok: Option<bool>,
+	}
+
+	impl From<UpgradewalletRequest> for Request {
+	    fn from(r: UpgradewalletRequest) -> Self {
+	        Request::UpgradeWallet(r)
+	    }
+	}
+
+	impl IntoRequest for UpgradewalletRequest {
+	    type Response = super::responses::UpgradewalletResponse;
+	}
+
+	impl TypedRequest for UpgradewalletRequest {
+	    type Response = super::responses::UpgradewalletResponse;
+
+	    fn method(&self) -> &str {
+	        "upgradewallet"
 	    }
 	}
 	#[derive(Clone, Debug, Deserialize, Serialize)]
@@ -2820,6 +3568,29 @@ pub mod requests {
 	    }
 	}
 	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsRequest {
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub config: Option<String>,
+	}
+
+	impl From<ListconfigsRequest> for Request {
+	    fn from(r: ListconfigsRequest) -> Self {
+	        Request::ListConfigs(r)
+	    }
+	}
+
+	impl IntoRequest for ListconfigsRequest {
+	    type Response = super::responses::ListconfigsResponse;
+	}
+
+	impl TypedRequest for ListconfigsRequest {
+	    type Response = super::responses::ListconfigsResponse;
+
+	    fn method(&self) -> &str {
+	        "listconfigs"
+	    }
+	}
+	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct StopRequest {
 	}
 
@@ -2841,13 +3612,33 @@ pub mod requests {
 	    }
 	}
 	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct HelpRequest {
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub command: Option<String>,
+	}
+
+	impl From<HelpRequest> for Request {
+	    fn from(r: HelpRequest) -> Self {
+	        Request::Help(r)
+	    }
+	}
+
+	impl IntoRequest for HelpRequest {
+	    type Response = super::responses::HelpResponse;
+	}
+
+	impl TypedRequest for HelpRequest {
+	    type Response = super::responses::HelpResponse;
+
+	    fn method(&self) -> &str {
+	        "help"
+	    }
+	}
+	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct PreapprovekeysendRequest {
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub amount_msat: Option<Amount>,
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub destination: Option<PublicKey>,
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub payment_hash: Option<String>,
+	    pub amount_msat: Amount,
+	    pub destination: PublicKey,
+	    pub payment_hash: String,
 	}
 
 	impl From<PreapprovekeysendRequest> for Request {
@@ -2869,8 +3660,7 @@ pub mod requests {
 	}
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct PreapproveinvoiceRequest {
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub bolt11: Option<String>,
+	    pub bolt11: String,
 	}
 
 	impl From<PreapproveinvoiceRequest> for Request {
@@ -3057,6 +3847,107 @@ pub mod requests {
 
 	    fn method(&self) -> &str {
 	        "bkpr-listincome"
+	    }
+	}
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct BlacklistruneRequest {
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub end: Option<u64>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub start: Option<u64>,
+	}
+
+	impl From<BlacklistruneRequest> for Request {
+	    fn from(r: BlacklistruneRequest) -> Self {
+	        Request::BlacklistRune(r)
+	    }
+	}
+
+	impl IntoRequest for BlacklistruneRequest {
+	    type Response = super::responses::BlacklistruneResponse;
+	}
+
+	impl TypedRequest for BlacklistruneRequest {
+	    type Response = super::responses::BlacklistruneResponse;
+
+	    fn method(&self) -> &str {
+	        "blacklistrune"
+	    }
+	}
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct CheckruneRequest {
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub method: Option<String>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub nodeid: Option<String>,
+	    #[serde(skip_serializing_if = "crate::is_none_or_empty")]
+	    pub params: Option<Vec<String>>,
+	    pub rune: String,
+	}
+
+	impl From<CheckruneRequest> for Request {
+	    fn from(r: CheckruneRequest) -> Self {
+	        Request::CheckRune(r)
+	    }
+	}
+
+	impl IntoRequest for CheckruneRequest {
+	    type Response = super::responses::CheckruneResponse;
+	}
+
+	impl TypedRequest for CheckruneRequest {
+	    type Response = super::responses::CheckruneResponse;
+
+	    fn method(&self) -> &str {
+	        "checkrune"
+	    }
+	}
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct CreateruneRequest {
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub rune: Option<String>,
+	    #[serde(skip_serializing_if = "crate::is_none_or_empty")]
+	    pub restrictions: Option<Vec<String>>,
+	}
+
+	impl From<CreateruneRequest> for Request {
+	    fn from(r: CreateruneRequest) -> Self {
+	        Request::CreateRune(r)
+	    }
+	}
+
+	impl IntoRequest for CreateruneRequest {
+	    type Response = super::responses::CreateruneResponse;
+	}
+
+	impl TypedRequest for CreateruneRequest {
+	    type Response = super::responses::CreateruneResponse;
+
+	    fn method(&self) -> &str {
+	        "createrune"
+	    }
+	}
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ShowrunesRequest {
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub rune: Option<String>,
+	}
+
+	impl From<ShowrunesRequest> for Request {
+	    fn from(r: ShowrunesRequest) -> Self {
+	        Request::ShowRunes(r)
+	    }
+	}
+
+	impl IntoRequest for ShowrunesRequest {
+	    type Response = super::responses::ShowrunesResponse;
+	}
+
+	impl TypedRequest for ShowrunesRequest {
+	    type Response = super::responses::ShowrunesResponse;
+
+	    fn method(&self) -> &str {
+	        "showrunes"
 	    }
 	}
 }
@@ -3545,6 +4436,24 @@ pub mod responses {
 	}
 
 	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct AddpsbtoutputResponse {
+	    pub estimated_added_weight: u32,
+	    pub outnum: u32,
+	    pub psbt: String,
+	}
+
+	impl TryFrom<Response> for AddpsbtoutputResponse {
+	    type Error = super::TryFromResponseError;
+
+	    fn try_from(response: Response) -> Result<Self, Self::Error> {
+	        match response {
+	            Response::AddPsbtOutput(response) => Ok(response),
+	            _ => Err(TryFromResponseError)
+	        }
+	    }
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct AutocleaninvoiceResponse {
 	    #[serde(skip_serializing_if = "Option::is_none")]
 	    pub cycle_seconds: Option<u64>,
@@ -3889,10 +4798,8 @@ pub mod responses {
 
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct CreateinvoicePaid_outpoint {
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub outnum: Option<u32>,
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub txid: Option<String>,
+	    pub outnum: u32,
+	    pub txid: String,
 	}
 
 	/// ['Whether it has been paid, or can no longer be paid.']
@@ -3995,16 +4902,13 @@ pub mod responses {
 
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct DatastoreusageDatastoreusage {
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub key: Option<String>,
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub total_bytes: Option<u64>,
+	    pub key: String,
+	    pub total_bytes: u64,
 	}
 
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct DatastoreusageResponse {
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub datastoreusage: Option<DatastoreusageDatastoreusage>,
+	    pub datastoreusage: DatastoreusageDatastoreusage,
 	}
 
 	impl TryFrom<Response> for DatastoreusageResponse {
@@ -4135,6 +5039,97 @@ pub mod responses {
 	}
 
 	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct DevforgetchannelResponse {
+	    pub forced: bool,
+	    pub funding_txid: String,
+	    pub funding_unspent: bool,
+	}
+
+	impl TryFrom<Response> for DevforgetchannelResponse {
+	    type Error = super::TryFromResponseError;
+
+	    fn try_from(response: Response) -> Result<Self, Self::Error> {
+	        match response {
+	            Response::DevForgetChannel(response) => Ok(response),
+	            _ => Err(TryFromResponseError)
+	        }
+	    }
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct EmergencyrecoverResponse {
+	    pub stubs: Vec<Sha256>,
+	}
+
+	impl TryFrom<Response> for EmergencyrecoverResponse {
+	    type Error = super::TryFromResponseError;
+
+	    fn try_from(response: Response) -> Result<Self, Self::Error> {
+	        match response {
+	            Response::EmergencyRecover(response) => Ok(response),
+	            _ => Err(TryFromResponseError)
+	        }
+	    }
+	}
+
+	#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+	pub enum RecoverResult {
+	    #[serde(rename = "Recovery restart in progress")]
+	    RECOVERY_RESTART_IN_PROGRESS = 0,
+	}
+
+	impl TryFrom<i32> for RecoverResult {
+	    type Error = anyhow::Error;
+	    fn try_from(c: i32) -> Result<RecoverResult, anyhow::Error> {
+	        match c {
+	    0 => Ok(RecoverResult::RECOVERY_RESTART_IN_PROGRESS),
+	            o => Err(anyhow::anyhow!("Unknown variant {} for enum RecoverResult", o)),
+	        }
+	    }
+	}
+
+	impl ToString for RecoverResult {
+	    fn to_string(&self) -> String {
+	        match self {
+	            RecoverResult::RECOVERY_RESTART_IN_PROGRESS => "RECOVERY_RESTART_IN_PROGRESS",
+	        }.to_string()
+	    }
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct RecoverResponse {
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub result: Option<RecoverResult>,
+	}
+
+	impl TryFrom<Response> for RecoverResponse {
+	    type Error = super::TryFromResponseError;
+
+	    fn try_from(response: Response) -> Result<Self, Self::Error> {
+	        match response {
+	            Response::Recover(response) => Ok(response),
+	            _ => Err(TryFromResponseError)
+	        }
+	    }
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct RecoverchannelResponse {
+	    pub stubs: Vec<String>,
+	}
+
+	impl TryFrom<Response> for RecoverchannelResponse {
+	    type Error = super::TryFromResponseError;
+
+	    fn try_from(response: Response) -> Result<Self, Self::Error> {
+	        match response {
+	            Response::RecoverChannel(response) => Ok(response),
+	            _ => Err(TryFromResponseError)
+	        }
+	    }
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct InvoiceResponse {
 	    #[serde(skip_serializing_if = "Option::is_none")]
 	    pub created_index: Option<u64>,
@@ -4160,6 +5155,77 @@ pub mod responses {
 	    fn try_from(response: Response) -> Result<Self, Self::Error> {
 	        match response {
 	            Response::Invoice(response) => Ok(response),
+	            _ => Err(TryFromResponseError)
+	        }
+	    }
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct InvoicerequestResponse {
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub label: Option<String>,
+	    pub active: bool,
+	    pub bolt12: String,
+	    pub invreq_id: Sha256,
+	    pub single_use: bool,
+	    pub used: bool,
+	}
+
+	impl TryFrom<Response> for InvoicerequestResponse {
+	    type Error = super::TryFromResponseError;
+
+	    fn try_from(response: Response) -> Result<Self, Self::Error> {
+	        match response {
+	            Response::InvoiceRequest(response) => Ok(response),
+	            _ => Err(TryFromResponseError)
+	        }
+	    }
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct DisableinvoicerequestResponse {
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub label: Option<String>,
+	    pub active: bool,
+	    pub bolt12: String,
+	    pub invreq_id: Sha256,
+	    pub single_use: bool,
+	    pub used: bool,
+	}
+
+	impl TryFrom<Response> for DisableinvoicerequestResponse {
+	    type Error = super::TryFromResponseError;
+
+	    fn try_from(response: Response) -> Result<Self, Self::Error> {
+	        match response {
+	            Response::DisableInvoiceRequest(response) => Ok(response),
+	            _ => Err(TryFromResponseError)
+	        }
+	    }
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListinvoicerequestsInvoicerequests {
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub label: Option<String>,
+	    pub active: bool,
+	    pub bolt12: String,
+	    pub invreq_id: Sha256,
+	    pub single_use: bool,
+	    pub used: bool,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListinvoicerequestsResponse {
+	    pub invoicerequests: Vec<ListinvoicerequestsInvoicerequests>,
+	}
+
+	impl TryFrom<Response> for ListinvoicerequestsResponse {
+	    type Error = super::TryFromResponseError;
+
+	    fn try_from(response: Response) -> Result<Self, Self::Error> {
+	        match response {
+	            Response::ListInvoiceRequests(response) => Ok(response),
 	            _ => Err(TryFromResponseError)
 	        }
 	    }
@@ -4194,10 +5260,8 @@ pub mod responses {
 
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct ListinvoicesInvoicesPaid_outpoint {
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub outnum: Option<u32>,
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub txid: Option<String>,
+	    pub outnum: u32,
+	    pub txid: String,
 	}
 
 	/// ["Whether it's paid, unpaid or unpayable."]
@@ -4481,6 +5545,22 @@ pub mod responses {
 	    }
 	}
 
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct MakesecretResponse {
+	    pub secret: Secret,
+	}
+
+	impl TryFrom<Response> for MakesecretResponse {
+	    type Error = super::TryFromResponseError;
+
+	    fn try_from(response: Response) -> Result<Self, Self::Error> {
+	        match response {
+	            Response::MakeSecret(response) => Ok(response),
+	            _ => Err(TryFromResponseError)
+	        }
+	    }
+	}
+
 	/// ['Status of payment.']
 	#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 	pub enum PayStatus {
@@ -4637,10 +5717,8 @@ pub mod responses {
 
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct WaitanyinvoicePaid_outpoint {
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub outnum: Option<u32>,
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub txid: Option<String>,
+	    pub outnum: u32,
+	    pub txid: String,
 	}
 
 	/// ["Whether it's paid or expired."]
@@ -4715,10 +5793,8 @@ pub mod responses {
 
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct WaitinvoicePaid_outpoint {
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub outnum: Option<u32>,
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub txid: Option<String>,
+	    pub outnum: u32,
+	    pub txid: String,
 	}
 
 	/// ["Whether it's paid or expired."]
@@ -5108,10 +6184,8 @@ pub mod responses {
 
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct ListpeerchannelsChannelsFeerate {
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub perkb: Option<u32>,
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub perkw: Option<u32>,
+	    pub perkb: u32,
+	    pub perkw: u32,
 	}
 
 	#[derive(Clone, Debug, Deserialize, Serialize)]
@@ -5121,11 +6195,92 @@ pub mod responses {
 	    #[serde(skip_serializing_if = "Option::is_none")]
 	    pub fee_rcvd_msat: Option<Amount>,
 	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub local_funds_msat: Option<Amount>,
-	    #[serde(skip_serializing_if = "Option::is_none")]
 	    pub pushed_msat: Option<Amount>,
+	    pub local_funds_msat: Amount,
+	    pub remote_funds_msat: Amount,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListpeerchannelsChannelsUpdatesRemote {
+	    pub cltv_expiry_delta: u32,
+	    pub fee_base_msat: Amount,
+	    pub fee_proportional_millionths: u32,
+	    pub htlc_maximum_msat: Amount,
+	    pub htlc_minimum_msat: Amount,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListpeerchannelsChannelsUpdatesLocal {
+	    pub cltv_expiry_delta: u32,
+	    pub fee_base_msat: Amount,
+	    pub fee_proportional_millionths: u32,
+	    pub htlc_maximum_msat: Amount,
+	    pub htlc_minimum_msat: Amount,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListpeerchannelsChannelsUpdates {
 	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub remote_funds_msat: Option<Amount>,
+	    pub remote: Option<ListpeerchannelsChannelsUpdatesRemote>,
+	    pub local: ListpeerchannelsChannelsUpdatesLocal,
+	}
+
+	/// ['Whether it came from peer, or is going to peer.']
+	#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+	pub enum ListpeerchannelsChannelsHtlcsDirection {
+	    #[serde(rename = "in")]
+	    IN = 0,
+	    #[serde(rename = "out")]
+	    OUT = 1,
+	}
+
+	impl TryFrom<i32> for ListpeerchannelsChannelsHtlcsDirection {
+	    type Error = anyhow::Error;
+	    fn try_from(c: i32) -> Result<ListpeerchannelsChannelsHtlcsDirection, anyhow::Error> {
+	        match c {
+	    0 => Ok(ListpeerchannelsChannelsHtlcsDirection::IN),
+	    1 => Ok(ListpeerchannelsChannelsHtlcsDirection::OUT),
+	            o => Err(anyhow::anyhow!("Unknown variant {} for enum ListpeerchannelsChannelsHtlcsDirection", o)),
+	        }
+	    }
+	}
+
+	impl ToString for ListpeerchannelsChannelsHtlcsDirection {
+	    fn to_string(&self) -> String {
+	        match self {
+	            ListpeerchannelsChannelsHtlcsDirection::IN => "IN",
+	            ListpeerchannelsChannelsHtlcsDirection::OUT => "OUT",
+	        }.to_string()
+	    }
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListpeerchannelsChannelsHtlcs {
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub local_trimmed: Option<bool>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub status: Option<String>,
+	    // Path `ListPeerChannels.channels[].htlcs[].direction`
+	    pub direction: ListpeerchannelsChannelsHtlcsDirection,
+	    // Path `ListPeerChannels.channels[].htlcs[].state`
+	    pub state: HtlcState,
+	    pub amount_msat: Amount,
+	    pub expiry: u32,
+	    pub id: u64,
+	    pub payment_hash: Sha256,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListpeerchannelsChannelsInflight {
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub scratch_txid: Option<String>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub splice_amount: Option<i64>,
+	    pub feerate: String,
+	    pub funding_outnum: u32,
+	    pub funding_txid: String,
+	    pub our_funding_msat: Amount,
+	    pub total_funding_msat: Amount,
 	}
 
 	/// ['The channel state, in particular `CHANNELD_NORMAL` means the channel can be used normally.']
@@ -5206,109 +6361,6 @@ pub mod responses {
 	}
 
 	#[derive(Clone, Debug, Deserialize, Serialize)]
-	pub struct ListpeerchannelsChannelsUpdatesLocal {
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub cltv_expiry_delta: Option<u32>,
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub fee_base_msat: Option<Amount>,
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub fee_proportional_millionths: Option<u32>,
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub htlc_maximum_msat: Option<Amount>,
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub htlc_minimum_msat: Option<Amount>,
-	}
-
-	#[derive(Clone, Debug, Deserialize, Serialize)]
-	pub struct ListpeerchannelsChannelsUpdatesRemote {
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub cltv_expiry_delta: Option<u32>,
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub fee_base_msat: Option<Amount>,
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub fee_proportional_millionths: Option<u32>,
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub htlc_maximum_msat: Option<Amount>,
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub htlc_minimum_msat: Option<Amount>,
-	}
-
-	#[derive(Clone, Debug, Deserialize, Serialize)]
-	pub struct ListpeerchannelsChannelsUpdates {
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub local: Option<ListpeerchannelsChannelsUpdatesLocal>,
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub remote: Option<ListpeerchannelsChannelsUpdatesRemote>,
-	}
-
-	/// ['Whether it came from peer, or is going to peer.']
-	#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
-	pub enum ListpeerchannelsChannelsHtlcsDirection {
-	    #[serde(rename = "in")]
-	    IN = 0,
-	    #[serde(rename = "out")]
-	    OUT = 1,
-	}
-
-	impl TryFrom<i32> for ListpeerchannelsChannelsHtlcsDirection {
-	    type Error = anyhow::Error;
-	    fn try_from(c: i32) -> Result<ListpeerchannelsChannelsHtlcsDirection, anyhow::Error> {
-	        match c {
-	    0 => Ok(ListpeerchannelsChannelsHtlcsDirection::IN),
-	    1 => Ok(ListpeerchannelsChannelsHtlcsDirection::OUT),
-	            o => Err(anyhow::anyhow!("Unknown variant {} for enum ListpeerchannelsChannelsHtlcsDirection", o)),
-	        }
-	    }
-	}
-
-	impl ToString for ListpeerchannelsChannelsHtlcsDirection {
-	    fn to_string(&self) -> String {
-	        match self {
-	            ListpeerchannelsChannelsHtlcsDirection::IN => "IN",
-	            ListpeerchannelsChannelsHtlcsDirection::OUT => "OUT",
-	        }.to_string()
-	    }
-	}
-
-	#[derive(Clone, Debug, Deserialize, Serialize)]
-	pub struct ListpeerchannelsChannelsHtlcs {
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub amount_msat: Option<Amount>,
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub direction: Option<ListpeerchannelsChannelsHtlcsDirection>,
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub expiry: Option<u32>,
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub id: Option<u64>,
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub local_trimmed: Option<bool>,
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub payment_hash: Option<Sha256>,
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub state: Option<HtlcState>,
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub status: Option<String>,
-	}
-
-	#[derive(Clone, Debug, Deserialize, Serialize)]
-	pub struct ListpeerchannelsChannelsInflight {
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub feerate: Option<String>,
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub funding_outnum: Option<u32>,
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub funding_txid: Option<String>,
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub our_funding_msat: Option<Amount>,
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub scratch_txid: Option<String>,
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub splice_amount: Option<i64>,
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub total_funding_msat: Option<Amount>,
-	}
-
-	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct ListpeerchannelsChannels {
 	    #[serde(skip_serializing_if = "Option::is_none")]
 	    pub alias: Option<ListpeerchannelsChannelsAlias>,
@@ -5375,8 +6427,6 @@ pub mod responses {
 	    #[serde(skip_serializing_if = "Option::is_none")]
 	    pub next_feerate: Option<String>,
 	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub opener: Option<ChannelSide>,
-	    #[serde(skip_serializing_if = "Option::is_none")]
 	    pub our_reserve_msat: Option<Amount>,
 	    #[serde(skip_serializing_if = "Option::is_none")]
 	    pub our_to_self_delay: Option<u32>,
@@ -5391,10 +6441,6 @@ pub mod responses {
 	    #[serde(skip_serializing_if = "Option::is_none")]
 	    pub owner: Option<String>,
 	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub peer_connected: Option<bool>,
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub peer_id: Option<PublicKey>,
-	    #[serde(skip_serializing_if = "Option::is_none")]
 	    pub private: Option<bool>,
 	    #[serde(skip_serializing_if = "Option::is_none")]
 	    pub receivable_msat: Option<Amount>,
@@ -5406,8 +6452,6 @@ pub mod responses {
 	    pub short_channel_id: Option<ShortChannelId>,
 	    #[serde(skip_serializing_if = "Option::is_none")]
 	    pub spendable_msat: Option<Amount>,
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub state: Option<ListpeerchannelsChannelsState>,
 	    #[serde(skip_serializing_if = "Option::is_none")]
 	    pub their_reserve_msat: Option<Amount>,
 	    #[serde(skip_serializing_if = "Option::is_none")]
@@ -5424,12 +6468,17 @@ pub mod responses {
 	    pub inflight: Option<Vec<ListpeerchannelsChannelsInflight>>,
 	    #[serde(skip_serializing_if = "crate::is_none_or_empty")]
 	    pub status: Option<Vec<String>>,
+	    // Path `ListPeerChannels.channels[].opener`
+	    pub opener: ChannelSide,
+	    // Path `ListPeerChannels.channels[].state`
+	    pub state: ListpeerchannelsChannelsState,
+	    pub peer_connected: bool,
+	    pub peer_id: PublicKey,
 	}
 
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct ListpeerchannelsResponse {
-	    #[serde(skip_serializing_if = "crate::is_none_or_empty")]
-	    pub channels: Option<Vec<ListpeerchannelsChannels>>,
+	    pub channels: Vec<ListpeerchannelsChannels>,
 	}
 
 	impl TryFrom<Response> for ListpeerchannelsResponse {
@@ -5623,6 +6672,8 @@ pub mod responses {
 	    pub payment_metadata: Option<String>,
 	    #[serde(skip_serializing_if = "Option::is_none")]
 	    pub payment_secret: Option<Sha256>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub routes: Option<DecodeRoutehintList>,
 	    #[serde(skip_serializing_if = "crate::is_none_or_empty")]
 	    pub extra: Option<Vec<DecodepayExtra>>,
 	    #[serde(skip_serializing_if = "crate::is_none_or_empty")]
@@ -5716,8 +6767,13 @@ pub mod responses {
 
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct DecodeOffer_paths {
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub first_node_id: Option<PublicKey>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub first_scid: Option<ShortChannelId>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub first_scid_dir: Option<u32>,
 	    pub blinding: PublicKey,
-	    pub first_node_id: PublicKey,
 	}
 
 	#[derive(Clone, Debug, Deserialize, Serialize)]
@@ -5857,6 +6913,8 @@ pub mod responses {
 	    pub payment_metadata: Option<String>,
 	    #[serde(skip_serializing_if = "Option::is_none")]
 	    pub payment_secret: Option<Secret>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub routes: Option<DecodeRoutehintList>,
 	    #[serde(skip_serializing_if = "Option::is_none")]
 	    pub signature: Option<String>,
 	    #[serde(skip_serializing_if = "Option::is_none")]
@@ -6084,12 +7142,9 @@ pub mod responses {
 
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct FeeratesPerkbEstimates {
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub blockcount: Option<u32>,
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub feerate: Option<u32>,
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub smoothed_feerate: Option<u32>,
+	    pub blockcount: u32,
+	    pub feerate: u32,
+	    pub smoothed_feerate: u32,
 	}
 
 	#[derive(Clone, Debug, Deserialize, Serialize)]
@@ -6120,12 +7175,9 @@ pub mod responses {
 
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct FeeratesPerkwEstimates {
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub blockcount: Option<u32>,
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub feerate: Option<u32>,
-	    #[serde(skip_serializing_if = "Option::is_none")]
-	    pub smoothed_feerate: Option<u32>,
+	    pub blockcount: u32,
+	    pub feerate: u32,
+	    pub smoothed_feerate: u32,
 	}
 
 	#[derive(Clone, Debug, Deserialize, Serialize)]
@@ -6254,10 +7306,8 @@ pub mod responses {
 
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct FundchannelChannel_type {
-	    #[serde(skip_serializing_if = "crate::is_none_or_empty")]
-	    pub bits: Option<Vec<u32>>,
-	    #[serde(skip_serializing_if = "crate::is_none_or_empty")]
-	    pub names: Option<Vec<ChannelTypeName>>,
+	    pub bits: Vec<u32>,
+	    pub names: Vec<ChannelTypeName>,
 	}
 
 	#[derive(Clone, Debug, Deserialize, Serialize)]
@@ -6287,10 +7337,8 @@ pub mod responses {
 
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct Fundchannel_startChannel_type {
-	    #[serde(skip_serializing_if = "crate::is_none_or_empty")]
-	    pub bits: Option<Vec<u32>>,
-	    #[serde(skip_serializing_if = "crate::is_none_or_empty")]
-	    pub names: Option<Vec<ChannelTypeName>>,
+	    pub bits: Vec<u32>,
+	    pub names: Vec<ChannelTypeName>,
 	}
 
 	#[derive(Clone, Debug, Deserialize, Serialize)]
@@ -6402,6 +7450,78 @@ pub mod responses {
 	    fn try_from(response: Response) -> Result<Self, Self::Error> {
 	        match response {
 	            Response::GetLog(response) => Ok(response),
+	            _ => Err(TryFromResponseError)
+	        }
+	    }
+	}
+
+	/// ['Policy funder plugin will use to decide how much capital to commit to a v2 open channel request.']
+	#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+	pub enum FunderupdatePolicy {
+	    #[serde(rename = "match")]
+	    MATCH = 0,
+	    #[serde(rename = "available")]
+	    AVAILABLE = 1,
+	    #[serde(rename = "fixed")]
+	    FIXED = 2,
+	}
+
+	impl TryFrom<i32> for FunderupdatePolicy {
+	    type Error = anyhow::Error;
+	    fn try_from(c: i32) -> Result<FunderupdatePolicy, anyhow::Error> {
+	        match c {
+	    0 => Ok(FunderupdatePolicy::MATCH),
+	    1 => Ok(FunderupdatePolicy::AVAILABLE),
+	    2 => Ok(FunderupdatePolicy::FIXED),
+	            o => Err(anyhow::anyhow!("Unknown variant {} for enum FunderupdatePolicy", o)),
+	        }
+	    }
+	}
+
+	impl ToString for FunderupdatePolicy {
+	    fn to_string(&self) -> String {
+	        match self {
+	            FunderupdatePolicy::MATCH => "MATCH",
+	            FunderupdatePolicy::AVAILABLE => "AVAILABLE",
+	            FunderupdatePolicy::FIXED => "FIXED",
+	        }.to_string()
+	    }
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct FunderupdateResponse {
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub channel_fee_max_base_msat: Option<Amount>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub channel_fee_max_proportional_thousandths: Option<u32>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub compact_lease: Option<String>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub funding_weight: Option<u32>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub lease_fee_base_msat: Option<Amount>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub lease_fee_basis: Option<u32>,
+	    // Path `FunderUpdate.policy`
+	    pub policy: FunderupdatePolicy,
+	    pub fund_probability: u32,
+	    pub fuzz_percent: u32,
+	    pub leases_only: bool,
+	    pub max_their_funding_msat: Amount,
+	    pub min_their_funding_msat: Amount,
+	    pub per_channel_max_msat: Amount,
+	    pub per_channel_min_msat: Amount,
+	    pub policy_mod: u32,
+	    pub reserve_tank_msat: Amount,
+	    pub summary: String,
+	}
+
+	impl TryFrom<Response> for FunderupdateResponse {
+	    type Error = super::TryFromResponseError;
+
+	    fn try_from(response: Response) -> Result<Self, Self::Error> {
+	        match response {
+	            Response::FunderUpdate(response) => Ok(response),
 	            _ => Err(TryFromResponseError)
 	        }
 	    }
@@ -6789,10 +7909,8 @@ pub mod responses {
 
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct MultifundchannelChannel_idsChannel_type {
-	    #[serde(skip_serializing_if = "crate::is_none_or_empty")]
-	    pub bits: Option<Vec<u32>>,
-	    #[serde(skip_serializing_if = "crate::is_none_or_empty")]
-	    pub names: Option<Vec<ChannelTypeName>>,
+	    pub bits: Vec<u32>,
+	    pub names: Vec<ChannelTypeName>,
 	}
 
 	#[derive(Clone, Debug, Deserialize, Serialize)]
@@ -6821,6 +7939,23 @@ pub mod responses {
 	    fn try_from(response: Response) -> Result<Self, Self::Error> {
 	        match response {
 	            Response::MultiFundChannel(response) => Ok(response),
+	            _ => Err(TryFromResponseError)
+	        }
+	    }
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct MultiwithdrawResponse {
+	    pub tx: String,
+	    pub txid: String,
+	}
+
+	impl TryFrom<Response> for MultiwithdrawResponse {
+	    type Error = super::TryFromResponseError;
+
+	    fn try_from(response: Response) -> Result<Self, Self::Error> {
+	        match response {
+	            Response::MultiWithdraw(response) => Ok(response),
 	            _ => Err(TryFromResponseError)
 	        }
 	    }
@@ -6869,10 +8004,8 @@ pub mod responses {
 
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct Openchannel_bumpChannel_type {
-	    #[serde(skip_serializing_if = "crate::is_none_or_empty")]
-	    pub bits: Option<Vec<u32>>,
-	    #[serde(skip_serializing_if = "crate::is_none_or_empty")]
-	    pub names: Option<Vec<ChannelTypeName>>,
+	    pub bits: Vec<u32>,
+	    pub names: Vec<ChannelTypeName>,
 	}
 
 	#[derive(Clone, Debug, Deserialize, Serialize)]
@@ -6900,10 +8033,8 @@ pub mod responses {
 
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct Openchannel_initChannel_type {
-	    #[serde(skip_serializing_if = "crate::is_none_or_empty")]
-	    pub bits: Option<Vec<u32>>,
-	    #[serde(skip_serializing_if = "crate::is_none_or_empty")]
-	    pub names: Option<Vec<ChannelTypeName>>,
+	    pub bits: Vec<u32>,
+	    pub names: Vec<ChannelTypeName>,
 	}
 
 	#[derive(Clone, Debug, Deserialize, Serialize)]
@@ -6949,10 +8080,8 @@ pub mod responses {
 
 	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct Openchannel_updateChannel_type {
-	    #[serde(skip_serializing_if = "crate::is_none_or_empty")]
-	    pub bits: Option<Vec<u32>>,
-	    #[serde(skip_serializing_if = "crate::is_none_or_empty")]
-	    pub names: Option<Vec<ChannelTypeName>>,
+	    pub bits: Vec<u32>,
+	    pub names: Vec<ChannelTypeName>,
 	}
 
 	#[derive(Clone, Debug, Deserialize, Serialize)]
@@ -6997,6 +8126,186 @@ pub mod responses {
 	}
 
 	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct PluginPlugins {
+	    pub active: bool,
+	    pub dynamic: bool,
+	    pub name: String,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct PluginResponse {
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub result: Option<String>,
+	    #[serde(skip_serializing_if = "crate::is_none_or_empty")]
+	    pub plugins: Option<Vec<PluginPlugins>>,
+	    // Path `Plugin.command`
+	    pub command: PluginSubcommand,
+	}
+
+	impl TryFrom<Response> for PluginResponse {
+	    type Error = super::TryFromResponseError;
+
+	    fn try_from(response: Response) -> Result<Self, Self::Error> {
+	        match response {
+	            Response::Plugin(response) => Ok(response),
+	            _ => Err(TryFromResponseError)
+	        }
+	    }
+	}
+
+	/// ['Status of payment.']
+	#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+	pub enum RenepaystatusPaystatusStatus {
+	    #[serde(rename = "complete")]
+	    COMPLETE = 0,
+	    #[serde(rename = "pending")]
+	    PENDING = 1,
+	    #[serde(rename = "failed")]
+	    FAILED = 2,
+	}
+
+	impl TryFrom<i32> for RenepaystatusPaystatusStatus {
+	    type Error = anyhow::Error;
+	    fn try_from(c: i32) -> Result<RenepaystatusPaystatusStatus, anyhow::Error> {
+	        match c {
+	    0 => Ok(RenepaystatusPaystatusStatus::COMPLETE),
+	    1 => Ok(RenepaystatusPaystatusStatus::PENDING),
+	    2 => Ok(RenepaystatusPaystatusStatus::FAILED),
+	            o => Err(anyhow::anyhow!("Unknown variant {} for enum RenepaystatusPaystatusStatus", o)),
+	        }
+	    }
+	}
+
+	impl ToString for RenepaystatusPaystatusStatus {
+	    fn to_string(&self) -> String {
+	        match self {
+	            RenepaystatusPaystatusStatus::COMPLETE => "COMPLETE",
+	            RenepaystatusPaystatusStatus::PENDING => "PENDING",
+	            RenepaystatusPaystatusStatus::FAILED => "FAILED",
+	        }.to_string()
+	    }
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct RenepaystatusPaystatus {
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub amount_sent_msat: Option<Amount>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub destination: Option<PublicKey>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub parts: Option<u32>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub payment_preimage: Option<Secret>,
+	    // Path `RenePayStatus.paystatus[].status`
+	    pub status: RenepaystatusPaystatusStatus,
+	    pub amount_msat: Amount,
+	    pub bolt11: String,
+	    pub created_at: f64,
+	    pub groupid: u32,
+	    pub notes: Vec<String>,
+	    pub payment_hash: Sha256,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct RenepaystatusResponse {
+	    pub paystatus: Vec<RenepaystatusPaystatus>,
+	}
+
+	impl TryFrom<Response> for RenepaystatusResponse {
+	    type Error = super::TryFromResponseError;
+
+	    fn try_from(response: Response) -> Result<Self, Self::Error> {
+	        match response {
+	            Response::RenePayStatus(response) => Ok(response),
+	            _ => Err(TryFromResponseError)
+	        }
+	    }
+	}
+
+	/// ['Status of payment.']
+	#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+	pub enum RenepayStatus {
+	    #[serde(rename = "complete")]
+	    COMPLETE = 0,
+	    #[serde(rename = "pending")]
+	    PENDING = 1,
+	    #[serde(rename = "failed")]
+	    FAILED = 2,
+	}
+
+	impl TryFrom<i32> for RenepayStatus {
+	    type Error = anyhow::Error;
+	    fn try_from(c: i32) -> Result<RenepayStatus, anyhow::Error> {
+	        match c {
+	    0 => Ok(RenepayStatus::COMPLETE),
+	    1 => Ok(RenepayStatus::PENDING),
+	    2 => Ok(RenepayStatus::FAILED),
+	            o => Err(anyhow::anyhow!("Unknown variant {} for enum RenepayStatus", o)),
+	        }
+	    }
+	}
+
+	impl ToString for RenepayStatus {
+	    fn to_string(&self) -> String {
+	        match self {
+	            RenepayStatus::COMPLETE => "COMPLETE",
+	            RenepayStatus::PENDING => "PENDING",
+	            RenepayStatus::FAILED => "FAILED",
+	        }.to_string()
+	    }
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct RenepayResponse {
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub destination: Option<PublicKey>,
+	    // Path `RenePay.status`
+	    pub status: RenepayStatus,
+	    pub amount_msat: Amount,
+	    pub amount_sent_msat: Amount,
+	    pub created_at: f64,
+	    pub parts: u32,
+	    pub payment_hash: Sha256,
+	    pub payment_preimage: Secret,
+	}
+
+	impl TryFrom<Response> for RenepayResponse {
+	    type Error = super::TryFromResponseError;
+
+	    fn try_from(response: Response) -> Result<Self, Self::Error> {
+	        match response {
+	            Response::RenePay(response) => Ok(response),
+	            _ => Err(TryFromResponseError)
+	        }
+	    }
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ReserveinputsReservations {
+	    pub reserved: bool,
+	    pub reserved_to_block: u32,
+	    pub txid: String,
+	    pub vout: u32,
+	    pub was_reserved: bool,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ReserveinputsResponse {
+	    pub reservations: Vec<ReserveinputsReservations>,
+	}
+
+	impl TryFrom<Response> for ReserveinputsResponse {
+	    type Error = super::TryFromResponseError;
+
+	    fn try_from(response: Response) -> Result<Self, Self::Error> {
+	        match response {
+	            Response::ReserveInputs(response) => Ok(response),
+	            _ => Err(TryFromResponseError)
+	        }
+	    }
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct SendcustommsgResponse {
 	    pub status: String,
 	}
@@ -7007,6 +8316,91 @@ pub mod responses {
 	    fn try_from(response: Response) -> Result<Self, Self::Error> {
 	        match response {
 	            Response::SendCustomMsg(response) => Ok(response),
+	            _ => Err(TryFromResponseError)
+	        }
+	    }
+	}
+
+	/// ["Whether it's paid, unpaid or unpayable."]
+	#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+	pub enum SendinvoiceStatus {
+	    #[serde(rename = "unpaid")]
+	    UNPAID = 0,
+	    #[serde(rename = "paid")]
+	    PAID = 1,
+	    #[serde(rename = "expired")]
+	    EXPIRED = 2,
+	}
+
+	impl TryFrom<i32> for SendinvoiceStatus {
+	    type Error = anyhow::Error;
+	    fn try_from(c: i32) -> Result<SendinvoiceStatus, anyhow::Error> {
+	        match c {
+	    0 => Ok(SendinvoiceStatus::UNPAID),
+	    1 => Ok(SendinvoiceStatus::PAID),
+	    2 => Ok(SendinvoiceStatus::EXPIRED),
+	            o => Err(anyhow::anyhow!("Unknown variant {} for enum SendinvoiceStatus", o)),
+	        }
+	    }
+	}
+
+	impl ToString for SendinvoiceStatus {
+	    fn to_string(&self) -> String {
+	        match self {
+	            SendinvoiceStatus::UNPAID => "UNPAID",
+	            SendinvoiceStatus::PAID => "PAID",
+	            SendinvoiceStatus::EXPIRED => "EXPIRED",
+	        }.to_string()
+	    }
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct SendinvoiceResponse {
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub amount_msat: Option<Amount>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub amount_received_msat: Option<Amount>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub bolt12: Option<String>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub created_index: Option<u64>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub paid_at: Option<u64>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub pay_index: Option<u64>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub payment_preimage: Option<Secret>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub updated_index: Option<u64>,
+	    // Path `SendInvoice.status`
+	    pub status: SendinvoiceStatus,
+	    pub description: String,
+	    pub expires_at: u64,
+	    pub label: String,
+	    pub payment_hash: Sha256,
+	}
+
+	impl TryFrom<Response> for SendinvoiceResponse {
+	    type Error = super::TryFromResponseError;
+
+	    fn try_from(response: Response) -> Result<Self, Self::Error> {
+	        match response {
+	            Response::SendInvoice(response) => Ok(response),
+	            _ => Err(TryFromResponseError)
+	        }
+	    }
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct SendonionmessageResponse {
+	}
+
+	impl TryFrom<Response> for SendonionmessageResponse {
+	    type Error = super::TryFromResponseError;
+
+	    fn try_from(response: Response) -> Result<Self, Self::Error> {
+	        match response {
+	            Response::SendOnionMessage(response) => Ok(response),
 	            _ => Err(TryFromResponseError)
 	        }
 	    }
@@ -7047,6 +8441,57 @@ pub mod responses {
 	}
 
 	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct SetconfigConfig {
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub plugin: Option<String>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub set: Option<bool>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub value_bool: Option<bool>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub value_int: Option<i64>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub value_msat: Option<Amount>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub value_str: Option<String>,
+	    pub config: String,
+	    pub dynamic: bool,
+	    pub source: String,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct SetconfigResponse {
+	    pub config: SetconfigConfig,
+	}
+
+	impl TryFrom<Response> for SetconfigResponse {
+	    type Error = super::TryFromResponseError;
+
+	    fn try_from(response: Response) -> Result<Self, Self::Error> {
+	        match response {
+	            Response::SetConfig(response) => Ok(response),
+	            _ => Err(TryFromResponseError)
+	        }
+	    }
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct SetpsbtversionResponse {
+	    pub psbt: String,
+	}
+
+	impl TryFrom<Response> for SetpsbtversionResponse {
+	    type Error = super::TryFromResponseError;
+
+	    fn try_from(response: Response) -> Result<Self, Self::Error> {
+	        match response {
+	            Response::SetPsbtVersion(response) => Ok(response),
+	            _ => Err(TryFromResponseError)
+	        }
+	    }
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
 	pub struct SigninvoiceResponse {
 	    pub bolt11: String,
 	}
@@ -7075,6 +8520,105 @@ pub mod responses {
 	    fn try_from(response: Response) -> Result<Self, Self::Error> {
 	        match response {
 	            Response::SignMessage(response) => Ok(response),
+	            _ => Err(TryFromResponseError)
+	        }
+	    }
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct Splice_initResponse {
+	    pub psbt: String,
+	}
+
+	impl TryFrom<Response> for Splice_initResponse {
+	    type Error = super::TryFromResponseError;
+
+	    fn try_from(response: Response) -> Result<Self, Self::Error> {
+	        match response {
+	            Response::Splice_Init(response) => Ok(response),
+	            _ => Err(TryFromResponseError)
+	        }
+	    }
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct Splice_signedResponse {
+	    pub tx: String,
+	    pub txid: String,
+	}
+
+	impl TryFrom<Response> for Splice_signedResponse {
+	    type Error = super::TryFromResponseError;
+
+	    fn try_from(response: Response) -> Result<Self, Self::Error> {
+	        match response {
+	            Response::Splice_Signed(response) => Ok(response),
+	            _ => Err(TryFromResponseError)
+	        }
+	    }
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct Splice_updateResponse {
+	    pub commitments_secured: bool,
+	    pub psbt: String,
+	}
+
+	impl TryFrom<Response> for Splice_updateResponse {
+	    type Error = super::TryFromResponseError;
+
+	    fn try_from(response: Response) -> Result<Self, Self::Error> {
+	        match response {
+	            Response::Splice_Update(response) => Ok(response),
+	            _ => Err(TryFromResponseError)
+	        }
+	    }
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct UnreserveinputsReservations {
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub reserved_to_block: Option<u32>,
+	    pub reserved: bool,
+	    pub txid: String,
+	    pub vout: u32,
+	    pub was_reserved: bool,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct UnreserveinputsResponse {
+	    pub reservations: Vec<UnreserveinputsReservations>,
+	}
+
+	impl TryFrom<Response> for UnreserveinputsResponse {
+	    type Error = super::TryFromResponseError;
+
+	    fn try_from(response: Response) -> Result<Self, Self::Error> {
+	        match response {
+	            Response::UnreserveInputs(response) => Ok(response),
+	            _ => Err(TryFromResponseError)
+	        }
+	    }
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct UpgradewalletResponse {
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub psbt: Option<String>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub tx: Option<String>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub txid: Option<String>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub upgraded_outs: Option<u64>,
+	}
+
+	impl TryFrom<Response> for UpgradewalletResponse {
+	    type Error = super::TryFromResponseError;
+
+	    fn try_from(response: Response) -> Result<Self, Self::Error> {
+	        match response {
+	            Response::UpgradeWallet(response) => Ok(response),
 	            _ => Err(TryFromResponseError)
 	        }
 	    }
@@ -7238,6 +8782,984 @@ pub mod responses {
 	    }
 	}
 
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsImportantpluginsOptions {
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsImportantplugins {
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub options: Option<ListconfigsImportantpluginsOptions>,
+	    pub name: String,
+	    pub path: String,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsPluginsOptions {
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsPlugins {
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub options: Option<ListconfigsPluginsOptions>,
+	    pub name: String,
+	    pub path: String,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsMaxlocktimeblocks {
+	    pub source: String,
+	    pub value_int: u32,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsAccepthtlctlvtypes {
+	    pub source: String,
+	    pub value_str: String,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsAllowdeprecatedapis {
+	    pub source: String,
+	    pub value_bool: bool,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsAlwaysuseproxy {
+	    pub source: String,
+	    pub value_bool: bool,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsAnnounceaddr {
+	    pub sources: Vec<String>,
+	    pub values_str: Vec<String>,
+	}
+
+	/// ['Field from config or cmdline, or default.']
+	#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+	pub enum ListconfigsConfigsAnnounceaddrdiscoveredValue_str {
+	    #[serde(rename = "true")]
+	    TRUE = 0,
+	    #[serde(rename = "false")]
+	    FALSE = 1,
+	    #[serde(rename = "auto")]
+	    AUTO = 2,
+	}
+
+	impl TryFrom<i32> for ListconfigsConfigsAnnounceaddrdiscoveredValue_str {
+	    type Error = anyhow::Error;
+	    fn try_from(c: i32) -> Result<ListconfigsConfigsAnnounceaddrdiscoveredValue_str, anyhow::Error> {
+	        match c {
+	    0 => Ok(ListconfigsConfigsAnnounceaddrdiscoveredValue_str::TRUE),
+	    1 => Ok(ListconfigsConfigsAnnounceaddrdiscoveredValue_str::FALSE),
+	    2 => Ok(ListconfigsConfigsAnnounceaddrdiscoveredValue_str::AUTO),
+	            o => Err(anyhow::anyhow!("Unknown variant {} for enum ListconfigsConfigsAnnounceaddrdiscoveredValue_str", o)),
+	        }
+	    }
+	}
+
+	impl ToString for ListconfigsConfigsAnnounceaddrdiscoveredValue_str {
+	    fn to_string(&self) -> String {
+	        match self {
+	            ListconfigsConfigsAnnounceaddrdiscoveredValue_str::TRUE => "TRUE",
+	            ListconfigsConfigsAnnounceaddrdiscoveredValue_str::FALSE => "FALSE",
+	            ListconfigsConfigsAnnounceaddrdiscoveredValue_str::AUTO => "AUTO",
+	        }.to_string()
+	    }
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsAnnounceaddrdiscovered {
+	    // Path `ListConfigs.configs.announce-addr-discovered.value_str`
+	    pub value_str: ListconfigsConfigsAnnounceaddrdiscoveredValue_str,
+	    pub source: String,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsAnnounceaddrdiscoveredport {
+	    pub source: String,
+	    pub value_int: u32,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsAnnounceaddrdns {
+	    pub source: String,
+	    pub value_bool: bool,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsBindaddr {
+	    pub sources: Vec<String>,
+	    pub values_str: Vec<String>,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsClearplugins {
+	    pub set: bool,
+	    pub source: String,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsCltvdelta {
+	    pub source: String,
+	    pub value_int: u32,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsCltvfinal {
+	    pub source: String,
+	    pub value_int: u32,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsCommitfee {
+	    pub source: String,
+	    pub value_int: u64,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsCommitfeerateoffset {
+	    pub source: String,
+	    pub value_int: u32,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsCommittime {
+	    pub source: String,
+	    pub value_int: u32,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsDatabaseupgrade {
+	    pub source: String,
+	    pub value_bool: bool,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsDisabledns {
+	    pub set: bool,
+	    pub source: String,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsDisablempp {
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub plugin: Option<String>,
+	    pub set: bool,
+	    pub source: String,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsDisableplugin {
+	    pub sources: Vec<String>,
+	    pub values_str: Vec<String>,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsEncryptedhsm {
+	    pub set: bool,
+	    pub source: String,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsExperimentalanchors {
+	    pub set: bool,
+	    pub source: String,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsExperimentaldualfund {
+	    pub set: bool,
+	    pub source: String,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsExperimentaloffers {
+	    pub set: bool,
+	    pub source: String,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsExperimentalonionmessages {
+	    pub set: bool,
+	    pub source: String,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsExperimentalpeerstorage {
+	    pub set: bool,
+	    pub source: String,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsExperimentalshutdownwrongfunding {
+	    pub set: bool,
+	    pub source: String,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsExperimentalsplicing {
+	    pub set: bool,
+	    pub source: String,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsFeebase {
+	    pub source: String,
+	    pub value_int: u32,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsFeepersatoshi {
+	    pub source: String,
+	    pub value_int: u32,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsFetchinvoicenoconnect {
+	    pub set: bool,
+	    pub source: String,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsForcefeerates {
+	    pub source: String,
+	    pub value_str: String,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsFundingconfirms {
+	    pub source: String,
+	    pub value_int: u32,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsHtlcmaximummsat {
+	    pub source: String,
+	    pub value_msat: Amount,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsHtlcminimummsat {
+	    pub source: String,
+	    pub value_msat: Amount,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsIgnorefeelimits {
+	    pub source: String,
+	    pub value_bool: bool,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsImportantplugin {
+	    pub sources: Vec<String>,
+	    pub values_str: Vec<String>,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsLargechannels {
+	    pub set: bool,
+	    pub source: String,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsLightningdir {
+	    pub source: String,
+	    pub value_str: String,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsLogfile {
+	    pub sources: Vec<String>,
+	    pub values_str: Vec<String>,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsLoglevel {
+	    pub source: String,
+	    pub value_str: String,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsLogprefix {
+	    pub source: String,
+	    pub value_str: String,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsLogtimestamps {
+	    pub source: String,
+	    pub value_bool: bool,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsMaxconcurrenthtlcs {
+	    pub source: String,
+	    pub value_int: u32,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsMaxdusthtlcexposuremsat {
+	    pub source: String,
+	    pub value_msat: Amount,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsMincapacitysat {
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub dynamic: Option<bool>,
+	    pub source: String,
+	    pub value_int: u64,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsPidfile {
+	    pub source: String,
+	    pub value_str: String,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsPlugindir {
+	    pub sources: Vec<String>,
+	    pub values_str: Vec<String>,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsRequireconfirmedinputs {
+	    pub source: String,
+	    pub value_bool: bool,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsRpcfile {
+	    pub source: String,
+	    pub value_str: String,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsRpcfilemode {
+	    pub source: String,
+	    pub value_str: String,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsTorservicepassword {
+	    pub source: String,
+	    pub value_str: String,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsWatchtimeblocks {
+	    pub source: String,
+	    pub value_int: u32,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsAddr {
+	    pub sources: Vec<String>,
+	    pub values_str: Vec<String>,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsAlias {
+	    pub source: String,
+	    pub value_str: String,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsAutolisten {
+	    pub source: String,
+	    pub value_bool: bool,
+	}
+
+	/// ['Source of configuration setting.']
+	#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+	pub enum ListconfigsConfigsConfSource {
+	    #[serde(rename = "cmdline")]
+	    CMDLINE = 0,
+	}
+
+	impl TryFrom<i32> for ListconfigsConfigsConfSource {
+	    type Error = anyhow::Error;
+	    fn try_from(c: i32) -> Result<ListconfigsConfigsConfSource, anyhow::Error> {
+	        match c {
+	    0 => Ok(ListconfigsConfigsConfSource::CMDLINE),
+	            o => Err(anyhow::anyhow!("Unknown variant {} for enum ListconfigsConfigsConfSource", o)),
+	        }
+	    }
+	}
+
+	impl ToString for ListconfigsConfigsConfSource {
+	    fn to_string(&self) -> String {
+	        match self {
+	            ListconfigsConfigsConfSource::CMDLINE => "CMDLINE",
+	        }.to_string()
+	    }
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsConf {
+	    // Path `ListConfigs.configs.conf.source`
+	    pub source: ListconfigsConfigsConfSource,
+	    pub value_str: String,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsDaemon {
+	    pub set: bool,
+	    pub source: String,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsDeveloper {
+	    pub set: bool,
+	    pub source: String,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsMainnet {
+	    pub set: bool,
+	    pub source: String,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsNetwork {
+	    pub source: String,
+	    pub value_str: String,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsOffline {
+	    pub set: bool,
+	    pub source: String,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsPlugin {
+	    pub sources: Vec<String>,
+	    pub values_str: Vec<String>,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsProxy {
+	    pub source: String,
+	    pub value_str: String,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsRegtest {
+	    pub set: bool,
+	    pub source: String,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsRescan {
+	    pub source: String,
+	    pub value_int: i64,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsRgb {
+	    pub source: String,
+	    pub value_str: String,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsSignet {
+	    pub set: bool,
+	    pub source: String,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsSubdaemon {
+	    pub sources: Vec<String>,
+	    pub values_str: Vec<String>,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsTestnet {
+	    pub set: bool,
+	    pub source: String,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigsWallet {
+	    pub source: String,
+	    pub value_str: String,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsConfigs {
+	    #[deprecated]
+	    #[serde(rename = "max-locktime-blocks")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub max_locktime_blocks: Option<ListconfigsConfigsMaxlocktimeblocks>,
+	    #[serde(rename = "accept-htlc-tlv-types")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub accept_htlc_tlv_types: Option<ListconfigsConfigsAccepthtlctlvtypes>,
+	    #[serde(rename = "allow-deprecated-apis")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub allow_deprecated_apis: Option<ListconfigsConfigsAllowdeprecatedapis>,
+	    #[serde(rename = "always-use-proxy")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub always_use_proxy: Option<ListconfigsConfigsAlwaysuseproxy>,
+	    #[serde(rename = "announce-addr")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub announce_addr: Option<ListconfigsConfigsAnnounceaddr>,
+	    #[serde(rename = "announce-addr-discovered")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub announce_addr_discovered: Option<ListconfigsConfigsAnnounceaddrdiscovered>,
+	    #[serde(rename = "announce-addr-discovered-port")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub announce_addr_discovered_port: Option<ListconfigsConfigsAnnounceaddrdiscoveredport>,
+	    #[serde(rename = "announce-addr-dns")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub announce_addr_dns: Option<ListconfigsConfigsAnnounceaddrdns>,
+	    #[serde(rename = "bind-addr")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub bind_addr: Option<ListconfigsConfigsBindaddr>,
+	    #[serde(rename = "clear-plugins")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub clear_plugins: Option<ListconfigsConfigsClearplugins>,
+	    #[serde(rename = "cltv-delta")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub cltv_delta: Option<ListconfigsConfigsCltvdelta>,
+	    #[serde(rename = "cltv-final")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub cltv_final: Option<ListconfigsConfigsCltvfinal>,
+	    #[serde(rename = "commit-fee")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub commit_fee: Option<ListconfigsConfigsCommitfee>,
+	    #[serde(rename = "commit-feerate-offset")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub commit_feerate_offset: Option<ListconfigsConfigsCommitfeerateoffset>,
+	    #[serde(rename = "commit-time")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub commit_time: Option<ListconfigsConfigsCommittime>,
+	    #[serde(rename = "database-upgrade")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub database_upgrade: Option<ListconfigsConfigsDatabaseupgrade>,
+	    #[serde(rename = "disable-dns")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub disable_dns: Option<ListconfigsConfigsDisabledns>,
+	    #[serde(rename = "disable-mpp")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub disable_mpp: Option<ListconfigsConfigsDisablempp>,
+	    #[serde(rename = "disable-plugin")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub disable_plugin: Option<ListconfigsConfigsDisableplugin>,
+	    #[serde(rename = "encrypted-hsm")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub encrypted_hsm: Option<ListconfigsConfigsEncryptedhsm>,
+	    #[serde(rename = "experimental-anchors")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub experimental_anchors: Option<ListconfigsConfigsExperimentalanchors>,
+	    #[serde(rename = "experimental-dual-fund")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub experimental_dual_fund: Option<ListconfigsConfigsExperimentaldualfund>,
+	    #[serde(rename = "experimental-offers")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub experimental_offers: Option<ListconfigsConfigsExperimentaloffers>,
+	    #[serde(rename = "experimental-onion-messages")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub experimental_onion_messages: Option<ListconfigsConfigsExperimentalonionmessages>,
+	    #[serde(rename = "experimental-peer-storage")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub experimental_peer_storage: Option<ListconfigsConfigsExperimentalpeerstorage>,
+	    #[serde(rename = "experimental-shutdown-wrong-funding")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub experimental_shutdown_wrong_funding: Option<ListconfigsConfigsExperimentalshutdownwrongfunding>,
+	    #[serde(rename = "experimental-splicing")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub experimental_splicing: Option<ListconfigsConfigsExperimentalsplicing>,
+	    #[serde(rename = "fee-base")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub fee_base: Option<ListconfigsConfigsFeebase>,
+	    #[serde(rename = "fee-per-satoshi")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub fee_per_satoshi: Option<ListconfigsConfigsFeepersatoshi>,
+	    #[serde(rename = "fetchinvoice-noconnect")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub fetchinvoice_noconnect: Option<ListconfigsConfigsFetchinvoicenoconnect>,
+	    #[serde(rename = "force-feerates")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub force_feerates: Option<ListconfigsConfigsForcefeerates>,
+	    #[serde(rename = "funding-confirms")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub funding_confirms: Option<ListconfigsConfigsFundingconfirms>,
+	    #[serde(rename = "htlc-maximum-msat")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub htlc_maximum_msat: Option<ListconfigsConfigsHtlcmaximummsat>,
+	    #[serde(rename = "htlc-minimum-msat")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub htlc_minimum_msat: Option<ListconfigsConfigsHtlcminimummsat>,
+	    #[serde(rename = "ignore-fee-limits")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub ignore_fee_limits: Option<ListconfigsConfigsIgnorefeelimits>,
+	    #[serde(rename = "important-plugin")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub important_plugin: Option<ListconfigsConfigsImportantplugin>,
+	    #[serde(rename = "large-channels")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub large_channels: Option<ListconfigsConfigsLargechannels>,
+	    #[serde(rename = "lightning-dir")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub lightning_dir: Option<ListconfigsConfigsLightningdir>,
+	    #[serde(rename = "log-file")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub log_file: Option<ListconfigsConfigsLogfile>,
+	    #[serde(rename = "log-level")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub log_level: Option<ListconfigsConfigsLoglevel>,
+	    #[serde(rename = "log-prefix")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub log_prefix: Option<ListconfigsConfigsLogprefix>,
+	    #[serde(rename = "log-timestamps")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub log_timestamps: Option<ListconfigsConfigsLogtimestamps>,
+	    #[serde(rename = "max-concurrent-htlcs")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub max_concurrent_htlcs: Option<ListconfigsConfigsMaxconcurrenthtlcs>,
+	    #[serde(rename = "max-dust-htlc-exposure-msat")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub max_dust_htlc_exposure_msat: Option<ListconfigsConfigsMaxdusthtlcexposuremsat>,
+	    #[serde(rename = "min-capacity-sat")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub min_capacity_sat: Option<ListconfigsConfigsMincapacitysat>,
+	    #[serde(rename = "pid-file")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub pid_file: Option<ListconfigsConfigsPidfile>,
+	    #[serde(rename = "plugin-dir")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub plugin_dir: Option<ListconfigsConfigsPlugindir>,
+	    #[serde(rename = "require-confirmed-inputs")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub require_confirmed_inputs: Option<ListconfigsConfigsRequireconfirmedinputs>,
+	    #[serde(rename = "rpc-file")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub rpc_file: Option<ListconfigsConfigsRpcfile>,
+	    #[serde(rename = "rpc-file-mode")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub rpc_file_mode: Option<ListconfigsConfigsRpcfilemode>,
+	    #[serde(rename = "tor-service-password")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub tor_service_password: Option<ListconfigsConfigsTorservicepassword>,
+	    #[serde(rename = "watchtime-blocks")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub watchtime_blocks: Option<ListconfigsConfigsWatchtimeblocks>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub addr: Option<ListconfigsConfigsAddr>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub alias: Option<ListconfigsConfigsAlias>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub autolisten: Option<ListconfigsConfigsAutolisten>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub conf: Option<ListconfigsConfigsConf>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub daemon: Option<ListconfigsConfigsDaemon>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub developer: Option<ListconfigsConfigsDeveloper>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub mainnet: Option<ListconfigsConfigsMainnet>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub network: Option<ListconfigsConfigsNetwork>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub offline: Option<ListconfigsConfigsOffline>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub plugin: Option<ListconfigsConfigsPlugin>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub proxy: Option<ListconfigsConfigsProxy>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub regtest: Option<ListconfigsConfigsRegtest>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub rescan: Option<ListconfigsConfigsRescan>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub rgb: Option<ListconfigsConfigsRgb>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub signet: Option<ListconfigsConfigsSignet>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub subdaemon: Option<ListconfigsConfigsSubdaemon>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub testnet: Option<ListconfigsConfigsTestnet>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub wallet: Option<ListconfigsConfigsWallet>,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ListconfigsResponse {
+	    #[deprecated]
+	    #[serde(rename = "accept-htlc-tlv-types")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub accept_htlc_tlv_types: Option<String>,
+	    #[deprecated]
+	    #[serde(rename = "allow-deprecated-apis")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub allow_deprecated_apis: Option<bool>,
+	    #[deprecated]
+	    #[serde(rename = "always-use-proxy")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub always_use_proxy: Option<bool>,
+	    #[deprecated]
+	    #[serde(rename = "announce-addr")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub announce_addr: Option<String>,
+	    #[deprecated]
+	    #[serde(rename = "announce-addr-discovered")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub announce_addr_discovered: Option<String>,
+	    #[deprecated]
+	    #[serde(rename = "announce-addr-discovered-port")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub announce_addr_discovered_port: Option<i64>,
+	    #[deprecated]
+	    #[serde(rename = "announce-addr-dns")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub announce_addr_dns: Option<bool>,
+	    #[deprecated]
+	    #[serde(rename = "bind-addr")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub bind_addr: Option<String>,
+	    #[deprecated]
+	    #[serde(rename = "bookkeeper-db")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub bookkeeper_db: Option<String>,
+	    #[deprecated]
+	    #[serde(rename = "bookkeeper-dir")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub bookkeeper_dir: Option<String>,
+	    #[deprecated]
+	    #[serde(rename = "cltv-delta")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub cltv_delta: Option<u32>,
+	    #[deprecated]
+	    #[serde(rename = "cltv-final")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub cltv_final: Option<u32>,
+	    #[deprecated]
+	    #[serde(rename = "commit-fee")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub commit_fee: Option<u64>,
+	    #[deprecated]
+	    #[serde(rename = "commit-time")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub commit_time: Option<u32>,
+	    #[deprecated]
+	    #[serde(rename = "database-upgrade")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub database_upgrade: Option<bool>,
+	    #[deprecated]
+	    #[serde(rename = "dev-allowdustreserve")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub dev_allowdustreserve: Option<bool>,
+	    #[deprecated]
+	    #[serde(rename = "disable-dns")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub disable_dns: Option<bool>,
+	    #[deprecated]
+	    #[serde(rename = "encrypted-hsm")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub encrypted_hsm: Option<bool>,
+	    #[deprecated]
+	    #[serde(rename = "experimental-dual-fund")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub experimental_dual_fund: Option<bool>,
+	    #[deprecated]
+	    #[serde(rename = "experimental-offers")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub experimental_offers: Option<bool>,
+	    #[deprecated]
+	    #[serde(rename = "experimental-onion-messages")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub experimental_onion_messages: Option<bool>,
+	    #[deprecated]
+	    #[serde(rename = "experimental-peer-storage")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub experimental_peer_storage: Option<bool>,
+	    #[deprecated]
+	    #[serde(rename = "experimental-quiesce")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub experimental_quiesce: Option<bool>,
+	    #[deprecated]
+	    #[serde(rename = "experimental-shutdown-wrong-funding")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub experimental_shutdown_wrong_funding: Option<bool>,
+	    #[deprecated]
+	    #[serde(rename = "experimental-splicing")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub experimental_splicing: Option<bool>,
+	    #[deprecated]
+	    #[serde(rename = "experimental-upgrade-protocol")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub experimental_upgrade_protocol: Option<bool>,
+	    #[deprecated]
+	    #[serde(rename = "fee-base")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub fee_base: Option<u32>,
+	    #[deprecated]
+	    #[serde(rename = "fee-per-satoshi")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub fee_per_satoshi: Option<u32>,
+	    #[deprecated]
+	    #[serde(rename = "fetchinvoice-noconnect")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub fetchinvoice_noconnect: Option<bool>,
+	    #[deprecated]
+	    #[serde(rename = "force-feerates")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub force_feerates: Option<String>,
+	    #[deprecated]
+	    #[serde(rename = "funding-confirms")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub funding_confirms: Option<u32>,
+	    #[deprecated]
+	    #[serde(rename = "htlc-maximum-msat")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub htlc_maximum_msat: Option<Amount>,
+	    #[deprecated]
+	    #[serde(rename = "htlc-minimum-msat")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub htlc_minimum_msat: Option<Amount>,
+	    #[deprecated]
+	    #[serde(rename = "ignore-fee-limits")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub ignore_fee_limits: Option<bool>,
+	    #[deprecated]
+	    #[serde(rename = "large-channels")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub large_channels: Option<bool>,
+	    #[deprecated]
+	    #[serde(rename = "lightning-dir")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub lightning_dir: Option<String>,
+	    #[deprecated]
+	    #[serde(rename = "log-file")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub log_file: Option<String>,
+	    #[deprecated]
+	    #[serde(rename = "log-level")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub log_level: Option<String>,
+	    #[deprecated]
+	    #[serde(rename = "log-prefix")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub log_prefix: Option<String>,
+	    #[deprecated]
+	    #[serde(rename = "log-timestamps")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub log_timestamps: Option<bool>,
+	    #[deprecated]
+	    #[serde(rename = "max-concurrent-htlcs")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub max_concurrent_htlcs: Option<u32>,
+	    #[deprecated]
+	    #[serde(rename = "max-dust-htlc-exposure-msat")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub max_dust_htlc_exposure_msat: Option<Amount>,
+	    #[deprecated]
+	    #[serde(rename = "max-locktime-blocks")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub max_locktime_blocks: Option<u32>,
+	    #[deprecated]
+	    #[serde(rename = "min-capacity-sat")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub min_capacity_sat: Option<u64>,
+	    #[deprecated]
+	    #[serde(rename = "pid-file")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub pid_file: Option<String>,
+	    #[deprecated]
+	    #[serde(rename = "require-confirmed-inputs")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub require_confirmed_inputs: Option<bool>,
+	    #[deprecated]
+	    #[serde(rename = "rpc-file")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub rpc_file: Option<String>,
+	    #[deprecated]
+	    #[serde(rename = "rpc-file-mode")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub rpc_file_mode: Option<String>,
+	    #[deprecated]
+	    #[serde(rename = "tor-service-password")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub tor_service_password: Option<String>,
+	    #[deprecated]
+	    #[serde(rename = "watchtime-blocks")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub watchtime_blocks: Option<u32>,
+	    #[deprecated]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub addr: Option<String>,
+	    #[deprecated]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub alias: Option<String>,
+	    #[deprecated]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub autolisten: Option<bool>,
+	    #[deprecated]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub conf: Option<String>,
+	    #[deprecated]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub daemon: Option<bool>,
+	    #[deprecated]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub network: Option<String>,
+	    #[deprecated]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub offline: Option<bool>,
+	    #[deprecated]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub proxy: Option<String>,
+	    #[deprecated]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub rescan: Option<i64>,
+	    #[deprecated]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub rgb: Option<String>,
+	    #[deprecated]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub subdaemon: Option<String>,
+	    #[deprecated]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub wallet: Option<String>,
+	    #[deprecated]
+	    #[serde(skip_serializing_if = "crate::is_none_or_empty")]
+	    pub disable_plugin: Option<Vec<String>>,
+	    #[deprecated]
+	    #[serde(skip_serializing_if = "crate::is_none_or_empty")]
+	    pub important_plugins: Option<Vec<ListconfigsImportantplugins>>,
+	    #[deprecated]
+	    #[serde(skip_serializing_if = "crate::is_none_or_empty")]
+	    pub plugins: Option<Vec<ListconfigsPlugins>>,
+	    #[serde(rename = "commit-feerate-offset")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub commit_feerate_offset: Option<u32>,
+	    #[serde(rename = "invoices-onchain-fallback")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub invoices_onchain_fallback: Option<bool>,
+	    #[serde(rename = "min-emergency-msat")]
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub min_emergency_msat: Option<Amount>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub configs: Option<ListconfigsConfigs>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub developer: Option<bool>,
+	}
+
+	impl TryFrom<Response> for ListconfigsResponse {
+	    type Error = super::TryFromResponseError;
+
+	    fn try_from(response: Response) -> Result<Self, Self::Error> {
+	        match response {
+	            Response::ListConfigs(response) => Ok(response),
+	            _ => Err(TryFromResponseError)
+	        }
+	    }
+	}
+
 	#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 	pub enum StopResult {
 	    #[serde(rename = "Shutdown complete")]
@@ -7274,6 +9796,57 @@ pub mod responses {
 	    fn try_from(response: Response) -> Result<Self, Self::Error> {
 	        match response {
 	            Response::Stop(response) => Ok(response),
+	            _ => Err(TryFromResponseError)
+	        }
+	    }
+	}
+
+	/// ['Prints the help in human-readable flat form.']
+	#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+	pub enum HelpFormathint {
+	    #[serde(rename = "simple")]
+	    SIMPLE = 0,
+	}
+
+	impl TryFrom<i32> for HelpFormathint {
+	    type Error = anyhow::Error;
+	    fn try_from(c: i32) -> Result<HelpFormathint, anyhow::Error> {
+	        match c {
+	    0 => Ok(HelpFormathint::SIMPLE),
+	            o => Err(anyhow::anyhow!("Unknown variant {} for enum HelpFormathint", o)),
+	        }
+	    }
+	}
+
+	impl ToString for HelpFormathint {
+	    fn to_string(&self) -> String {
+	        match self {
+	            HelpFormathint::SIMPLE => "SIMPLE",
+	        }.to_string()
+	    }
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct HelpHelp {
+	    pub category: String,
+	    pub command: String,
+	    pub description: String,
+	    pub verbose: String,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct HelpResponse {
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub format_hint: Option<HelpFormathint>,
+	    pub help: Vec<HelpHelp>,
+	}
+
+	impl TryFrom<Response> for HelpResponse {
+	    type Error = super::TryFromResponseError;
+
+	    fn try_from(response: Response) -> Result<Self, Self::Error> {
+	        match response {
+	            Response::Help(response) => Ok(response),
 	            _ => Err(TryFromResponseError)
 	        }
 	    }
@@ -7623,6 +10196,109 @@ pub mod responses {
 	    fn try_from(response: Response) -> Result<Self, Self::Error> {
 	        match response {
 	            Response::BkprListIncome(response) => Ok(response),
+	            _ => Err(TryFromResponseError)
+	        }
+	    }
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct BlacklistruneBlacklist {
+	    pub end: u64,
+	    pub start: u64,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct BlacklistruneResponse {
+	    pub blacklist: Vec<BlacklistruneBlacklist>,
+	}
+
+	impl TryFrom<Response> for BlacklistruneResponse {
+	    type Error = super::TryFromResponseError;
+
+	    fn try_from(response: Response) -> Result<Self, Self::Error> {
+	        match response {
+	            Response::BlacklistRune(response) => Ok(response),
+	            _ => Err(TryFromResponseError)
+	        }
+	    }
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct CheckruneResponse {
+	    pub valid: bool,
+	}
+
+	impl TryFrom<Response> for CheckruneResponse {
+	    type Error = super::TryFromResponseError;
+
+	    fn try_from(response: Response) -> Result<Self, Self::Error> {
+	        match response {
+	            Response::CheckRune(response) => Ok(response),
+	            _ => Err(TryFromResponseError)
+	        }
+	    }
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct CreateruneResponse {
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub warning_unrestricted_rune: Option<String>,
+	    pub rune: String,
+	    pub unique_id: String,
+	}
+
+	impl TryFrom<Response> for CreateruneResponse {
+	    type Error = super::TryFromResponseError;
+
+	    fn try_from(response: Response) -> Result<Self, Self::Error> {
+	        match response {
+	            Response::CreateRune(response) => Ok(response),
+	            _ => Err(TryFromResponseError)
+	        }
+	    }
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ShowrunesRunesRestrictionsAlternatives {
+	    pub condition: String,
+	    pub english: String,
+	    pub fieldname: String,
+	    pub value: String,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ShowrunesRunesRestrictions {
+	    pub alternatives: Vec<ShowrunesRunesRestrictionsAlternatives>,
+	    pub english: String,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ShowrunesRunes {
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub blacklisted: Option<bool>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub last_used: Option<f64>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub our_rune: Option<bool>,
+	    #[serde(skip_serializing_if = "Option::is_none")]
+	    pub stored: Option<bool>,
+	    pub restrictions: Vec<ShowrunesRunesRestrictions>,
+	    pub restrictions_as_english: String,
+	    pub rune: String,
+	    pub unique_id: String,
+	}
+
+	#[derive(Clone, Debug, Deserialize, Serialize)]
+	pub struct ShowrunesResponse {
+	    pub runes: Vec<ShowrunesRunes>,
+	}
+
+	impl TryFrom<Response> for ShowrunesResponse {
+	    type Error = super::TryFromResponseError;
+
+	    fn try_from(response: Response) -> Result<Self, Self::Error> {
+	        match response {
+	            Response::ShowRunes(response) => Ok(response),
 	            _ => Err(TryFromResponseError)
 	        }
 	    }

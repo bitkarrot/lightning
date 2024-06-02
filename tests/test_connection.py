@@ -1,7 +1,6 @@
 from fixtures import *  # noqa: F401,F403
 from fixtures import TEST_NETWORK
 from decimal import Decimal
-from ephemeral_port_reserve import reserve  # type: ignore
 from pyln.client import RpcError, Millisatoshi
 import pyln.proto.wire as wire
 from utils import (
@@ -2492,12 +2491,13 @@ def test_fee_limits(node_factory, bitcoind):
     wait_for(lambda: only_one(l2.rpc.listpeerchannels()['channels'])['feerate']['perkw'] == fee)
     assert only_one(l2.rpc.listpeerchannels()['channels'])['peer_connected'] is True
 
-    l1.rpc.close(l2.info['id'])
+    # This will fail to mutual close, since l2 won't ignore insane *close* fees!
+    assert l1.rpc.close(l2.info['id'], unilateraltimeout=5)['type'] == 'unilateral'
 
     # Make sure the resolution of this one doesn't interfere with the next!
     # Note: may succeed, may fail with insufficient fee, depending on how
     # bitcoind feels!
-    l2.daemon.wait_for_log('sendrawtx exit')
+    l1.daemon.wait_for_log('sendrawtx exit')
     bitcoind.generate_block(1)
     sync_blockheight(bitcoind, [l1, l2])
 
@@ -2531,7 +2531,6 @@ def test_fee_limits(node_factory, bitcoind):
     # 15sat/byte fee
     l1.daemon.wait_for_log('peer_out WIRE_REVOKE_AND_ACK')
 
-    # This should wait for close to complete
     l1.rpc.close(chan)
 
 
@@ -4099,8 +4098,8 @@ def test_old_feerate(node_factory):
 
 
 def test_websocket(node_factory):
-    ws_port = reserve()
-    port = reserve()
+    ws_port = node_factory.get_unused_port()
+    port = node_factory.get_unused_port()
     l1, l2 = node_factory.line_graph(2,
                                      opts=[{'addr': ':' + str(port),
                                             'bind-addr': 'ws:127.0.0.1: ' + str(ws_port),
@@ -4524,9 +4523,9 @@ def test_last_stable_connection(node_factory):
 
 
 def test_wss_proxy(node_factory):
-    wss_port = reserve()
-    ws_port = reserve()
-    port = reserve()
+    wss_port = node_factory.get_unused_port()
+    ws_port = node_factory.get_unused_port()
+    port = node_factory.get_unused_port()
     wss_proxy_certs = node_factory.directory + '/wss-proxy-certs'
     l1 = node_factory.get_node(options={'addr': ':' + str(port),
                                         'bind-addr': 'ws:127.0.0.1:' + str(ws_port),
@@ -4596,3 +4595,56 @@ def test_wss_proxy(node_factory):
         msg = lconn.read_message()
         if int.from_bytes(msg[0:2], 'big') == 19:
             break
+
+
+def test_connect_transient(node_factory):
+    l1, l2, l3, l4 = node_factory.get_nodes(4, opts={'may_reconnect': True})
+
+    # This is not transient, because they have a channel
+    node_factory.join_nodes([l1, l2])
+
+    # Make sure it reconnects once it has a channel.
+    l1.rpc.disconnect(l2.info['id'], force=True)
+    l1.rpc.connect(l2.info['id'], 'localhost', l2.port)
+
+    # This has no channel, and thus is a transient.
+    l1.rpc.connect(l3.info['id'], 'localhost', l3.port)
+
+    l1.rpc.dev_connectd_exhaust_fds()
+
+    # Connecting to l4 will discard connection to l3!
+    l1.rpc.connect(l4.info['id'], 'localhost', l4.port)
+    assert l1.rpc.listpeers(l3.info['id'])['peers'] == []
+    assert l1.daemon.is_in_log(fr"due to stress, randomly closing peer {l3.info['id']} \(score 0\)")
+
+
+def test_connect_transient_pending(node_factory, bitcoind, executor):
+    """Test that we kick out in-connection transient connections"""
+    l1, l2, l3, l4 = node_factory.get_nodes(4, opts=[{},
+                                                     {'dev-handshake-no-reply': None},
+                                                     {'dev-handshake-no-reply': None},
+                                                     {}])
+
+    # This will block...
+    fut1 = executor.submit(l1.rpc.connect, l2.info['id'], 'localhost', l2.port)
+    fut2 = executor.submit(l1.rpc.connect, l3.info['id'], 'localhost', l3.port)
+
+    assert not l1.daemon.is_in_log("due to stress, closing transient connect attempt")
+
+    # Wait until those connects in progress.
+    l2.daemon.wait_for_log("Connect IN")
+    l3.daemon.wait_for_log("Connect IN")
+
+    # Now force exhaustion.
+    l1.rpc.dev_connectd_exhaust_fds()
+
+    # This one will kick out one of the others.
+    l1.rpc.connect(l4.info['id'], 'localhost', l4.port)
+    line = l1.daemon.wait_for_log("due to stress, closing transient connect attempt")
+    peerid = re.search(r'due to stress, closing transient connect attempt to (.*)', line).groups()[0]
+
+    with pytest.raises(RpcError, match="Terminated due to too many connections"):
+        if peerid == l2.info['id']:
+            fut1.result(TIMEOUT)
+        else:
+            fut2.result(TIMEOUT)
